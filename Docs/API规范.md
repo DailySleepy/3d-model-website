@@ -5,7 +5,7 @@
 | 模块 | 用户故事 | 前端任务 | 后端任务 | 数据库设计 | 说明 |
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | **首页展示** | 游客打开网站可浏览推荐模型与作者 | `HomePage.vue`，轮播图与推荐区块 | `GET /api/models/recommend` 返回推荐模型与作者 | `models`, `users` | 推荐策略初期可随机或按点赞数排序 |
-| **搜索** | 用户通过关键词搜索模型或作者 | `SearchBar.vue`；URL Query 同步 | `GET /api/search?q=&type=(model 或 author)&sort=(hot 或 time)&page=` | `models`, `users` | 模糊匹配 title / description；分页返回 |
+| **搜索** | 用户通过关键词搜索模型或作者 | `SearchBar.vue` 跳转至 `SearchResult.vue`；URL Query 同步 | `GET /api/search?q=&type=(model 或 author)&sort=(hot 或 time)&page=` | `models`, `users` | 模糊匹配 title / description；分页返回 |
 | **排序过滤** | 用户可按时间或热门程度排序 | `SearchResult.vue` 排序菜单 | 同上接口，通过 `sort` 参数控制 | - | 默认热门排序（按点赞+收藏权重） |
 
 ---
@@ -25,11 +25,11 @@
 
 | 模块 | 用户故事 | 前端任务 | 后端任务 | 数据库设计 | 说明 |
 | :-- | :-- | :-- | :-- | :-- | :-- |
-| **上传流程** | 登录用户上传模型 | `Upload.vue` 上传表单 + 进度条 | `POST /api/upload` (Multer) | `models(title, desc, category, tags, fileUrl, thumbnailUrl, authorId, createdAt)` | 支持 `.glb`、`.zip` (含纹理) |
-| **封面上传** | 上传封面图 | 同上或独立接口 | `POST /api/upload/cover` | `models.thumbnailUrl` | 前端压缩后上传 |
+| **上传流程** | 登录用户上传模型 | `Upload.vue` 上传表单 + 进度条 | `POST /api/upload` (Multer) | `models(title, desc, category, tags, fileUrl, thumbnailUrl, previewUrls, authorId, createdAt)` | 支持 `.glb` (含纹理) |
+| **封面上传** | 上传封面图 | 同上或独立接口 | `POST /api/upload/thumbnail` | `models.thumbnailUrl` | 前端压缩后上传 |
+| **预览图上传** | 上传预览图 | 同上或独立接口 | `POST /api/upload/previews` | `models.previewUrls` | 前端压缩后上传 |
 | **模型解析** | 上传后本地解析、可预览 | 使用 `Three.js` 在浏览器解析 | 无需后端参与 | - | 解析成功后点击提交发布 |
-| **发布模型** | 上传完成后正式提交 | 点击“发布”按钮 | `POST /api/models` | `models` | 写入数据库，模型才正式可见 |
-| **缩略图生成** | 上传后自动生成封面截图 | 后端异步脚本 | `POST /api/models/:id/thumbnail` | `models.thumbnailUrl` | 可使用 headless-gl 或 Puppeteer 自动截图 |
+| **发布模型** | 上传完成后正式提交 | 点击“发布”按钮提交所有元数据和 URL | `POST /api/models` 接收 Title, Description, Category, Tags, FileUrl, ThumbnailUrl, PreviewUrls 等所有元数据 | `models` | 写入数据库，模型才正式可见 |
 
 ---
 
@@ -88,6 +88,7 @@
   tags: [String],
   fileUrl,
   thumbnailUrl,
+  previewUrls: [String], // 可选的多张预览图的 URL 列表
   authorId,
   likeCount,
   collectCount,
