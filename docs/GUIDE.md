@@ -1,5 +1,17 @@
-# 3D 模型分享网站 - 项目功能说明
+# 开发指南
 
+### 前端开发
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 后端开发
+```bash
+cd backend
+./mvnw spring-boot:run
+```
 
 ## 网站整体结构概览
 
