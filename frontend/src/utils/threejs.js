@@ -1,60 +1,68 @@
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-// 场景
-export const createScene = (backgroundColor = 0xdddddd) => {
+export function initScene(container, callback) {
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(backgroundColor)
-  return scene
-}
+  scene.background = new THREE.Color(0xdddddd)
 
-// 相机
-export const createCamera = (container, fov = 75, near = 0.1, far = 1000) => {
-  const camera = new THREE.PerspectiveCamera(
-    fov,
-    container.clientWidth / container.clientHeight,
-    near,
-    far
-  )
+  const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000)
   camera.position.z = 2
-  return camera
-}
 
-// 渲染器
-export const createRenderer = (container, antialias = true) => {
-  const renderer = new THREE.WebGLRenderer({ antialias })
+  const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setSize(container.clientWidth, container.clientHeight)
-  return renderer
-}
-
-// 基础灯光
-export const createBasicLights = () => {
-  const lights = []
+  container.appendChild(renderer.domElement)
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8)
-  lights.push(ambientLight)
-
+  scene.add(ambientLight)
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
   directionalLight.position.set(5, 5, 5)
-  lights.push(directionalLight)
+  scene.add(directionalLight)
 
-  return lights
+  const controls = new OrbitControls(camera, renderer.domElement)
+  controls.enableDamping = true
+
+  window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(container.clientWidth, container.clientHeight)
+  })
+
+  callback(scene, camera, renderer, controls)
 }
 
-// 调整相机位置以适应模型
-export const fitCameraToObject = (camera, object, controls, fitOffset = 1.5) => {
-  const box = new THREE.Box3().setFromObject(object)
-  const size = box.getSize(new THREE.Vector3())
-  const center = box.getCenter(new THREE.Vector3())
+export function loadModel(modelPath, scene, camera, controls) {
+  const loader = new GLTFLoader()
+  loader.load(
+    modelPath,
+    (gltf) => {
+      while (scene.children.length > 2) {
+        const object = scene.children[2]
+        if (object.isMesh || object.isGroup) {
+          scene.remove(object)
+        }
+      }
+      scene.add(gltf.scene)
 
-  const maxDim = Math.max(size.x, size.y, size.z)
-  const fov = camera.fov * (Math.PI / 180)
-  const cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2))
+      const box = new THREE.Box3().setFromObject(gltf.scene)
+      const center = box.getCenter(new THREE.Vector3())
+      const size = box.getSize(new THREE.Vector3())
+      const maxDim = Math.max(size.x, size.y, size.z)
+      const fov = camera.fov * (Math.PI / 180)
+      const cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2))
 
-  camera.position.z = cameraZ * fitOffset
-  camera.position.y = size.y / 2
+      camera.position.z = cameraZ * 1.5
+      camera.position.y = size.y / 2
+      controls.target.copy(center)
+      controls.update()
 
-  if (controls) {
-    controls.target.copy(center)
-    controls.update()
-  }
+      console.log('Model loaded:', gltf.scene)
+    },
+    (xhr) => {
+      console.log((xhr.loaded / xhr.total * 100) + '% loaded')
+    },
+    (error) => {
+      console.error('An error happened', error)
+    }
+  )
 }

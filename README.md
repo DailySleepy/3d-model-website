@@ -26,12 +26,14 @@
 │ ├── src/
 │ │ ├── assets/ # 图片、字体等
 │ │ ├── components/ # 可复用组件
+│ │ │ ├── BasePagination.vue # 分页
+│ │ │ ├── CommentSection.vue # 评论区
+│ │ │ ├── ImageCarousel.vue # 图片轮播
 │ │ │ ├── ModelViewer.vue # 3D 模型渲染（Three.js）
 │ │ │ ├── ModelCard.vue # 模型卡片
-│ │ │ ├── UploadForm.vue # 上传表单
+│ │ │ ├── UserCard.vue # 用户卡片
 │ │ │ ├── SearchBar.vue # 搜索栏
-│ │ │ ├── Pagination.vue # 分页
-│ │ │ └── CommentSection.vue # 评论区
+│ │ │ └── UploadForm.vue # 上传表单
 │ │ ├── views/ # 页面视图
 │ │ │ ├── HomePage.vue # 首页（推荐+轮播）
 │ │ │ ├── SearchResult.vue # 搜索结果
