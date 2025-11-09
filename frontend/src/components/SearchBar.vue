@@ -1,5 +1,5 @@
 <template>
-  <div class="flex justify-center p-4 bg-white shadow">
+  <div class="flex justify-center">
     <input
       v-model="query"
       type="text"
