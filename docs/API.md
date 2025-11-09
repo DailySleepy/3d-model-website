@@ -5,7 +5,7 @@
 | 模块 | 用户故事 | 前端任务 | 后端任务 | 数据库设计 | 说明 |
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | **首页展示** | 游客打开网站可浏览推荐模型与作者 | `HomePage.vue`，轮播图与推荐区块 | `GET /api/models/recommend` 返回推荐模型与作者 | `models`, `users` | 推荐策略初期可随机或按点赞数排序 |
-| **搜索** | 用户通过关键词搜索模型或作者 | `SearchBar.vue` 跳转至 `SearchResult.vue`；URL Query 同步 | `GET /api/search?q=&type=(model 或 author)&sort=(hot 或 time)&page=` | `models`, `users` | 模糊匹配 title / description；分页返回 |
+| **搜索** | 用户通过关键词搜索模型或作者 | `SearchBar.vue` 跳转至 `SearchResult.vue`；URL Query 同步 | `GET /api/search?q=&type=(model 或 author)&sort=(hot 或 time)&page(第几页)=&pageSize(每页的数量)=` | `models`, `users` | 模糊匹配 title / description；分页返回 |
 | **排序过滤** | 用户可按时间或热门程度排序 | `SearchResult.vue` 排序菜单 | 同上接口，通过 `sort` 参数控制 | - | 默认热门排序（按点赞+收藏权重） |
 
 ---

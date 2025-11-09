@@ -31,7 +31,7 @@ import { useModelsStore } from '@/stores/models'
 import ModelCard from '@/components/ModelCard.vue'
 import ImageCarousel from '@/components/ImageCarousel.vue'
 
-import { recommendedModelsMock } from '@/mock/model.js' // MOCK
+import { mockModels } from '@/mock/model.js' // MOCK
 
 const router = useRouter()
 const modelsStore = useModelsStore()
@@ -43,7 +43,7 @@ const goToDetail = (id) => {
 }
 
 onMounted(async () => {
-  recommendedModels.value = recommendedModelsMock // MOCK
+  recommendedModels.value = mockModels // MOCK
   modelsStore // remove later
   // recommendedModels.value = await modelsStore.fetchRecommendedModels()
   // recommendedUsers.value = await modelsStore.fetchRecommendedUsers() // TODO

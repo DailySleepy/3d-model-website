@@ -1,10 +1,10 @@
 <template>
-  <div ref="container" class="model-viewer-container"></div>
+  <div ref="container" class="w-full h-full min-h-[384px] model-viewer-container"></div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { initScene, loadModel } from '@/utils/threejs.js' // 从utils提取
+import { ref, onMounted, onUnmounted } from 'vue'
+import { initScene, loadModel } from '@/utils/threejs.js'
 
 const props = defineProps({
   modelUrl: {
@@ -23,14 +23,9 @@ onMounted(() => {
     camera = c
     renderer = r
     controls = ctrl
+    if (props.modelUrl) loadModel(props.modelUrl, scene, camera, controls)
     animate()
   })
-})
-
-watch(() => props.modelUrl, (newUrl) => {
-  if (newUrl && scene) {
-    loadModel(newUrl, scene, camera, controls)
-  }
 })
 
 const animate = () => {
@@ -44,10 +39,3 @@ onUnmounted(() => {
   if (renderer) renderer.dispose()
 })
 </script>
-
-<style scoped>
-.model-viewer-container {
-  width: 100%;
-  height: 100%;
-}
-</style>

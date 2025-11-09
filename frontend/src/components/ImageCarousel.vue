@@ -1,5 +1,7 @@
 <template>
   <div class="relative w-full overflow-hidden">
+
+    <!-- 图片循环 -->
     <div
       class="flex transition-transform duration-500 "
       :style="{ transform: `translateX(-${currentIndex * 100}%)` }"
@@ -13,6 +15,7 @@
       />
     </div>
 
+    <!-- 左右箭头 -->
     <button
       @click="handleMouseAction(prev)"
       class="absolute top-1/2 left-2 transform -translate-y-1/2 text-white bg-black bg-opacity-50 px-3 py-1 rounded hover:bg-opacity-70 z-10"
@@ -26,6 +29,7 @@
       &#10095;
     </button>
 
+    <!-- 底部原点 -->
     <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
       <span
         v-for="(slide, idx) in slides"
