@@ -5,7 +5,8 @@
         <router-link to="/" class="text-2xl font-bold">3D模型分享</router-link>
         <SearchBar />
         <!-- TODO: 用户逻辑 -->
-        <div>登录 注册 创作</div>
+        <router-link to="/login" class="text-gray-600 hover:text-gray-800">登录</router-link>
+        <router-link to="/register" class="text-gray-600 hover:text-gray-800">注册</router-link>
       </nav>
     </header>
     <main class="pt-20">

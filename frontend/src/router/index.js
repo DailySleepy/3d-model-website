@@ -2,12 +2,16 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '@/views/HomePage.vue'
 import SearchResult from '@/views/SearchResult.vue'
 import ModelDetail from '@/views/ModelDetail.vue'
+import LoginPage from '@/views/LoginPage.vue'
+import RegisterPage from '@/views/RegisterPage.vue'
 // TODO: 添加其他路由
 
 const routes = [
   { path: '/', component: HomePage },
   { path: '/search', component: SearchResult },
-  { path: '/model/:id', component: ModelDetail }
+  { path: '/model/:id', component: ModelDetail },
+  { path: '/login', component: LoginPage },
+  { path: '/register', component: RegisterPage }
 ]
 
 const router = createRouter({
