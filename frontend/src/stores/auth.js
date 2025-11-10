@@ -26,9 +26,14 @@ export const useAuthStore = defineStore('auth', {
         // 响应拦截器确保code === 10000，所以这里直接返回成功
         return { success: true, message: result.msg || '验证码发送成功' }
       } catch (error) {
+        // API错误统一格式：验证码发送失败，原因：#########
+        // error.originalMessage: 来自API响应的错误消息（如"手机号已注册"、"验证码错误"等）
+        const reason = error.originalMessage || '请稍后重试'
+        const errorMessage = `验证码发送失败，原因：${reason}`
+        console.error(errorMessage)
         return {
           success: false,
-          msg: error.message || '验证码发送失败，请稍后重试'
+          message: errorMessage
         }
       }
     },
@@ -36,17 +41,20 @@ export const useAuthStore = defineStore('auth', {
     async registerAccount(username, phone, password, verificationCode ) {
       try {
         const result = await AuthApi.verifyCode(phone, password, verificationCode)
-        if (result.code === 10000) {
-          this.token = result.data.token
-          this.isLoggedIn = true
-          this.phone = phone
-          localStorage.setItem('token', result.data.token)
-          localStorage.setItem('phone', phone)
-          localStorage.setItem('username', username)
-          return { success: true, message: '注册成功' }
-        } 
+          return {
+            success: true,
+            message: result.msg || result.message || '注册成功，请登录',
+          }
       } catch (error) {
-        return { success: false, message: error.message || '注册失败' }
+        // API错误统一格式：注册失败，原因：#########
+        // error.originalMessage: 来自API响应的错误消息（如"用户名已存在"、"手机号已注册"、"验证码错误"等）
+        const reason = error.originalMessage || '请稍后重试'
+        const errorMessage = `注册失败，原因：${reason}`
+        console.error(errorMessage)
+        return {
+          success: false,
+          message: errorMessage
+        }
       }
     }
   }

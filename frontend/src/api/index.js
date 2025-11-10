@@ -42,10 +42,15 @@ testApi.interceptors.response.use(response => {
   if (data.code === 10000) {
     return data
   } else {
-    const message = data.msg || '请求失败'
-    console.log(message)
+      // 如果code不是10000，抛出错误（错误信息将在Store层格式化）
+      const message = data.msg || data.message?.msg || '请求失败'
+      const error = new Error(message)
+      // 保存原始错误信息（来自API响应的错误消息）
+      error.originalMessage = message
+      return Promise.reject(error)
+    }
   }
-})
+)
 //统一封装接口
 export const AuthApi = {
   getCode: (tel) => testApi.post('/get/code', { tel }),

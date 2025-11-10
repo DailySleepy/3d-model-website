@@ -23,12 +23,12 @@
 
         <!-- 电话输入框 -->
         <div class="mb-4">
-          <input type="tel" id="phone" v-model="phone" class="w-full p-3 border rounded-lg focus:outline-none" placeholder="请输入电话" required />
+          <input type="tel" id="phone" v-model="phone" @input="handlePhoneInput" class="w-full p-3 border rounded-lg focus:outline-none" placeholder="请输入电话" required />
         </div>
 
         <!-- 验证码输入框 -->
         <div class="mb-4 flex items-center">
-          <input type="text" id="verificationCode" v-model="verificationCode" class="w-2/3 p-3 border rounded-lg focus:outline-none" placeholder="请输入验证码" required />
+          <input type="text" id="verificationCode" v-model="verificationCode" @input="handleCodeInput" class="w-2/3 p-3 border rounded-lg focus:outline-none" placeholder="请输入验证码" required />
           <button type="button" class="ml-2 text-white bg-blue-600 rounded-lg px-4 py-2" @click="sendVerificationCode" :disabled="codeCountDown > 0">
             {{ codeCountDown > 0 ? `${codeCountDown}秒` : '发送验证码' }}</button>
         </div>
@@ -58,6 +58,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const username = ref('')
 const phone = ref('')
@@ -69,11 +70,36 @@ const successMessage = ref('')
 const codeCountDown = ref('')
 let countDownTimer = null
 
+// 手机号格式验证正则
+const phoneRegex = /^1[3-9]\d{9}$/
+
+// 手机号输入格式化（只允许数字）
+const handlePhoneInput = (e) => {
+  const value = e.target.value.replace(/\D/g, '')
+  phone.value = value
+}
+
+// 验证码输入格式化（只允许数字）
+const handleCodeInput = (e) => {
+  const value = e.target.value.replace(/\D/g, '')
+  verificationCode.value = value
+}
+
 const sendVerificationCode = async () => {
   errorMessage.value = ''
   successMessage.value = ''
+    // 前端验证：检查手机号
+  if (!phone.value) {
+    errorMessage.value = '请先输入手机号'
+    return
+  }
+
+  // 前端验证：手机号格式
+  if (!phoneRegex.test(phone.value)) {
+    errorMessage.value = '请输入正确的手机号'
+    return
+  }
   if (codeCountDown.value > 0) return
-  try {
     const res = await authStore.getVerificationCode(phone.value) 
     if (res.success) {
       successMessage.value = '验证码发送成功'
@@ -81,20 +107,37 @@ const sendVerificationCode = async () => {
       countDownTimer = setInterval(() => {
         codeCountDown.value--
       }, 1000)
-    } 
-  } catch (error) {
-    errorMessage.value = error.message || '验证码发送失败'
-  }
+    } else {
+      errorMessage.value = res.message
+    }
 }
 
 const handleRegister = async () => {
   errorMessage.value = ''
   successMessage.value = ''
+  // 前端验证：输入项
   if (!username.value || !phone.value || !verificationCode.value || !password.value) {
-    errorMessage.value = '请填写完整信息'
+    errorMessage.value = '请填写所有必填项'
     return
   }
-  try {
+
+  // 前端验证：手机号格式
+  if (!phoneRegex.test(phone.value)) {
+    errorMessage.value = '请输入正确的手机号'
+    return
+  }
+
+  // 前端验证：密码长度
+  if (password.value.length < 6) {
+    errorMessage.value = '密码长度至少6位'
+    return
+  }
+
+  // 前端验证：验证码格式
+  if (!verificationCode.value || verificationCode.value.length !== 4) {
+    errorMessage.value = '请输入4位数字'
+    return
+  }
     const res = await authStore.registerAccount(
       username.value,
       phone.value,
@@ -103,11 +146,10 @@ const handleRegister = async () => {
     )
     if (res.success) {
       successMessage.value = '注册成功'
-      router.push('/')
-    } 
-  } catch (error) {
-    errorMessage.value = error.message || '注册失败'
-  }
+      router.push('/login')
+    } else {
+      errorMessage.value = res.message
+    }
 }
 
 </script>
