@@ -21,3 +21,34 @@ export const modelsApi = {
   search: (params) => api.get('/api/search', { params }),
   getById: (id) => api.get(`/api/models/${id}`)
 }
+
+
+// 以下代码为测试用API，来源于基于Apifox创建的接口
+
+const testApi = axios.create({
+  baseURL: 'https://v3pz.itndedu.com/v3pz', 
+  timeout: 10000
+})
+//登录请求需要额外参数
+testApi.interceptors.request.use(config => {
+  if (config.url === '/login') {
+    config.headers.terminal = 'h5'
+  }
+  return config
+})
+//处理响应与错误
+testApi.interceptors.response.use(response => {
+  const data = response.data
+  if (data.code === 10000) {
+    return data
+  } else {
+    const message = data.msg || '请求失败'
+    console.log(message)
+  }
+})
+//统一封装接口
+export const AuthApi = {
+  getCode: (tel) => testApi.post('/get/code', { tel }),
+  verifyCode: (userName, passWord, validCode) => testApi.post('/user/authentication', { userName, passWord, validCode }),
+  Login: (userName, passWord) => testApi.post('/Login', { userName, passWord })
+}
