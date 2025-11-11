@@ -1,6 +1,11 @@
 <template>
   <!-- TODO:用户协议的内容 -->
   <div class="flex items-center justify-center min-h-screen bg-gray-50">
+        <nav class="absolute top-40 left-40 text-1xl text-gray-600">
+      <router-link to="/" class="hover:underline">主页</router-link>
+      <span class="mx-2">></span>
+      <span class="text-gray-900">注册</span>
+    </nav>
     <!-- 注册表单 -->
     <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
       <!--提示信息-->

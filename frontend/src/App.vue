@@ -12,14 +12,13 @@
         <!-- 登录后样式 -->
          <div v-else class="flex items-center p-4 space-x-10">
           <!-- 用户头像和用户名 -->
-          <div class="flex items-center gap-2">
-            <img
-              :src="authStore.avatarUrl"
-              :alt="authStore.username"
-              class="w-8 h-8 rounded-full"
-            />
-            <span class="text-gray-700">{{ authStore.username }}</span>
-          </div>
+           <router-link to="/user" class="flex items-center gap-2">
+             <img
+               :src="authStore.avatarUrl"
+               :alt="authStore.username"
+               class="w-8 h-8 rounded-full"
+             />
+           </router-link>
           <!-- 退出登录按钮 -->
           <button
             @click="handleLogout"
