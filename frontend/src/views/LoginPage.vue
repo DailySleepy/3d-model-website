@@ -2,6 +2,9 @@
   <div class="flex items-center justify-center min-h-screen bg-gray-50">
     <!-- 登录表单 -->
     <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+      <!--提示信息-->
+      <div v-if="errorMessage" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{{ errorMessage }}</div>
+      <div v-if="successMessage" class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">{{ successMessage }}</div>
       <!-- Logo部分 -->
       <div class="flex justify-center mb-4">
         <router-link to="/" class="flex items-center space-x-2 text-blue-600">
@@ -13,7 +16,7 @@
       <h2 class="text-3xl font-bold text-center mb-6">登录</h2>
       <form @submit.prevent="handleLogin">
         <div class="mb-4">
-          <input type="text" id="username" v-model="username" class="w-full p-3 border rounded-lg focus:outline-none" placeholder="请输入用户名或邮箱" required />
+          <input type="text" id="identifier" v-model="identifier" class="w-full p-3 border rounded-lg focus:outline-none" placeholder="请输入用户名或电话" required />
         </div>
 
         <div class="mb-6">
@@ -44,20 +47,40 @@
   </div>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      username: '', // 用户名或邮箱
-      password: '', // 密码
-      rememberMe: false, // 记住密码
-    };
-  },
-  methods: {
-    handleLogin() {
-      //API调用登录接口
-    },
-  },
-};
+<script setup>
+import { ref, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const router = useRouter()
+
+const identifier = ref('')
+const password = ref('')
+const rememberMe = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+
+const handleLogin = async () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+  // 前端验证：输入项
+  if (!identifier.value || !password.value) {
+    errorMessage.value = '请填写所有必填项'
+    return
+  }
+
+  const res = await authStore.loginAccount(
+    identifier.value,
+    password.value,
+  )
+  if (res.success) {
+    successMessage.value = '登录成功'
+    router.push('/')
+  } else {
+    errorMessage.value = res.message
+  }
+}
+
 </script>
 

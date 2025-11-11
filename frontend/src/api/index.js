@@ -43,7 +43,7 @@ testApi.interceptors.response.use(response => {
     return data
   } else {
       // 如果code不是10000，抛出错误（错误信息将在Store层格式化）
-      const message = data.msg || data.message?.msg || '请求失败'
+      const message = data.msg || data.message ||data.message?.msg || '请求失败'
       const error = new Error(message)
       // 保存原始错误信息（来自API响应的错误消息）
       error.originalMessage = message
@@ -55,5 +55,5 @@ testApi.interceptors.response.use(response => {
 export const AuthApi = {
   getCode: (tel) => testApi.post('/get/code', { tel }),
   verifyCode: (userName, passWord, validCode) => testApi.post('/user/authentication', { userName, passWord, validCode }),
-  Login: (userName, passWord) => testApi.post('/Login', { userName, passWord })
+  Login: (userName, passWord) => testApi.post('/login', { userName, passWord })
 }

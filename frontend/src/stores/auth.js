@@ -56,6 +56,54 @@ export const useAuthStore = defineStore('auth', {
           message: errorMessage
         }
       }
+    },
+
+    async loginAccount(identifier, password) { 
+      try {
+        //首先检查identifier是手机号还是用户名
+        const isPhone = /^1[3456789]\d{9}$/.test(identifier)  
+
+        const result = await AuthApi.Login(identifier, password)
+        if(result.data?.token) {
+          this.token = result.data.token
+          //这里逻辑先这样写，后续设计接口时需要返回项把用户名和手机号都返回
+          this.phone = isPhone ? identifier : (this.phone || '')
+          this.username = !isPhone ? identifier : (this.username || '')
+          this.isLoggedIn = true
+          // 保存到localStorage
+          localStorage.setItem('token', result.data.token)
+          if (this.phone) localStorage.setItem('phone', this.phone)
+          if (this.username) localStorage.setItem('username', this.username)
+          return {
+            success: true,
+            message: result.msg || result.message || '登录成功'
+          }
+        } 
+      } catch (error) {
+        // API错误统一格式：登录失败，原因：#########
+        // error.originalMessage: 来自API响应的错误消息（如"用户名或密码错误"、"账号已禁用"等）
+        const reason = error.originalMessage || '请稍后重试'
+        const errorMessage = `登录失败，原因：${reason}`
+        console.error(errorMessage)
+        return {
+          success: false,
+          message: errorMessage
+        }
+      }
+    },
+
+    async logoutAccount() {
+      this.token = null
+      this.user = null
+      this.isLoggedIn = false
+      this.username = ''
+      this.phone = ''
+      // 从localStorage移除token和用户名
+      localStorage.removeItem('token')
+      localStorage.removeItem('username')
+      localStorage.removeItem('phone')
+      // 导航到登录页
+      router.push('/')
     }
   }
 })
