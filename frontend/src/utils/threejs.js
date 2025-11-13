@@ -2,15 +2,42 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
+const RENDER_WIDTH = 1200
+const RENDER_HEIGHT = 675
+
+function createRadialGradientTexture() {
+  const canvas = document.createElement('canvas')
+  canvas.width = RENDER_WIDTH
+  canvas.height = RENDER_HEIGHT
+  const ctx = canvas.getContext('2d')
+
+  const gradient = ctx.createRadialGradient(
+    RENDER_WIDTH / 2, RENDER_HEIGHT / 2, 0,
+    RENDER_WIDTH / 2, RENDER_HEIGHT / 2, RENDER_WIDTH / 2
+  )
+
+  gradient.addColorStop(0, '#303030')
+  gradient.addColorStop(1, '#121212')
+
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT)
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  return texture
+}
+
 export function initScene(container, callback) {
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0xdddddd)
+  scene.background = createRadialGradientTexture()
 
-  const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000)
+  const camera = new THREE.PerspectiveCamera(45, RENDER_WIDTH / RENDER_HEIGHT, 0.1, 1000)
   camera.position.z = 2
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
-  renderer.setSize(container.clientWidth, container.clientHeight)
+  renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false)
+  renderer.domElement.style.width = '100%'
+  renderer.domElement.style.height = '100%'
   container.appendChild(renderer.domElement)
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8)
@@ -21,12 +48,6 @@ export function initScene(container, callback) {
 
   const controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
-
-  window.addEventListener('resize', () => {
-    camera.aspect = container.clientWidth / container.clientHeight
-    camera.updateProjectionMatrix()
-    renderer.setSize(container.clientWidth, container.clientHeight)
-  })
 
   callback(scene, camera, renderer, controls)
 }

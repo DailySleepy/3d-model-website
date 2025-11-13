@@ -1,5 +1,5 @@
 <template>
-  <div ref="container" class="w-full h-full min-h-[384px] model-viewer-container"></div>
+  <div ref="container" class="w-full h-full model-viewer-container"></div>
 </template>
 
 <script setup>
