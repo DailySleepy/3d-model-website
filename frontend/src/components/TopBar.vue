@@ -1,5 +1,5 @@
 <template>
-  <div class="flex justify-center items-center w-full h-20">
+  <div class="container mx-auto px-12 py-4 max-w-6xl flex justify-center items-center w-full h-20">
     <nav class="flex justify-center items-center p-4 space-x-10">
       <router-link to="/" class="text-2xl font-bold">3D模型分享</router-link>
       <input

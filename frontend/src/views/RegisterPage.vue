@@ -1,11 +1,13 @@
 <template>
   <div class="flex flex-col min-h-screen bg-gray-50">
     <section>
-      <nav class="text-1xl text-gray-600">
-        <router-link to="/" class="hover:underline">主页</router-link>
-        <span class="mx-2">></span>
-        <span class="text-gray-900">注册</span>
-      </nav>
+      <div class="container mx-auto px-12 py-4 max-w-6xl">
+        <nav class="text-1xl text-gray-600">
+          <router-link to="/" class="hover:underline">主页</router-link>
+          <span class="mx-2">></span>
+          <span class="text-gray-900">注册</span>
+        </nav>
+      </div>
     </section>
     <section>
       <div class="container mx-auto px-4">
