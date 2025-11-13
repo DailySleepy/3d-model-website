@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-100 p-4">
+  <div class="min-h-screen p-4">
 
     <!-- 筛选和排序 -->
     <div class="flex justify-between mb-4 bg-white p-4 rounded shadow">
