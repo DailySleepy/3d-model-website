@@ -4,7 +4,7 @@ import SearchResult from '@/views/SearchResult.vue'
 import ModelDetail from '@/views/ModelDetail.vue'
 import LoginPage from '@/views/LoginPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
-import UserSettingsPage from '@/views/UserSettingsPage.vue'
+import UserSettings from '@/views/UserSettings.vue'
 import UserPage from '@/views/UserPage.vue'
 // TODO: 添加其他路由
 
@@ -15,7 +15,7 @@ const routes = [
   { path: '/login', component: LoginPage },
   { path: '/register', component: RegisterPage },
   { path: '/user', component: UserPage },
-  { path: '/user/settings', component: UserSettingsPage }
+  { path: '/user/settings', component: UserSettings }
 ]
 
 const router = createRouter({

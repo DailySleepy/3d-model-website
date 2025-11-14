@@ -1,5 +1,5 @@
 <template>
-  <div class="container mx-auto px-12 py-4 max-w-6xl flex justify-center items-center w-full h-20">
+  <div class="container mx-auto px-8 py-4 max-w-6xl flex justify-center items-center w-full h-20">
     <nav class="flex items-center w-full flex-nowrap whitespace-nowrap gap-4 md:gap-8">
       <div class="whitespace-nowrap">
         <router-link to="/" class="text-2xl font-bold whitespace-nowrap">ModelCraft</router-link>

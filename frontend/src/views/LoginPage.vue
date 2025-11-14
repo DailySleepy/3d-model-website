@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col min-h-screen bg-gray-50">
+  <div class="flex flex-col">
     <section>
-      <div class="container mx-auto px-12 py-4 max-w-6xl">
+      <div class="container mx-auto px-8 py-4 max-w-6xl">
         <nav class="text-1xl text-gray-600">
           <router-link to="/" class="hover:underline">主页</router-link>
           <span class="mx-2">></span>
@@ -10,8 +10,8 @@
       </div>
     </section>
     <section>
-      <div class="container mx-auto px-4">
-        <div class="min-h-[70vh] flex items-center justify-center">
+      <div class="container mx-auto px-8">
+        <div class="min-h-[700px] flex items-center justify-center">
           <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
             <!--提示信息-->
             <div v-if="errorMessage" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{{ errorMessage }}</div>

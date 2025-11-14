@@ -1,24 +1,31 @@
 <template>
-  <div class="min-h-screen">
-    <!-- 轮播区 -->
-    <ImageCarousel/>
-
+  <div class="flex flex-col min-h-screen">
+    <section>
+      <div class="container mx-auto px-8 py-4 max-w-6xl">
+        <!-- 轮播区 -->
+        <ImageCarousel/>
+      </div>
+    </section>
     <!-- 推荐创作者 -->
-    <section class="py-8 px-4">
-      <h2 class="text-2xl font-semibold mb-4">推荐创作者</h2>
+    <section>
+      <div class="container mx-auto px-8 py-4 max-w-6xl">
+       <h2 class="text-2xl font-semibold mb-4">推荐创作者</h2>
+      </div>
       <!-- TODO: UserCard.vue -->
     </section>
 
     <!-- 推荐模型 -->
-    <section class="py-8 px-4">
-      <h2 class="text-2xl font-semibold mb-4">推荐模型</h2>
-      <div class="grid grid-cols-4 gap-4">
-        <ModelCard
-          v-for="model in recommendedModels"
-          :key="model.id"
-          :model="model"
-          @click="goToDetail(model.id)"
-        />
+    <section>
+      <div class="container mx-auto px-8 py-4 max-w-6xl">
+        <h2 class="text-2xl font-semibold mb-4">推荐模型</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ModelCard
+            v-for="model in recommendedModels"
+            :key="model.id"
+            :model="model"
+            @click="goToDetail(model.id)"
+          />
+        </div>
       </div>
     </section>
   </div>
