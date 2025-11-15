@@ -1,0 +1,13 @@
+server:
+  port: 8080 #default port, 可以改
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/threeD_model #先创建你的数据库 createdb xx_db
+    username: postgres
+    password: YOURPASSPORT #记得改
+    driver-class-name: org.postgresql.Driver
+
+mybatis-plus: #not necessary
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 打印 SQL
