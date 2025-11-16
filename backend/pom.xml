@@ -75,6 +75,22 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+             <!-- 参数校验依赖（支持@NotBlank/@Email等注解） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+              <!--import org.apache.ibatis.type.ArrayTypeHandler（类型处理器） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-extension</artifactId>
+            <version>3.5.7</version>
+        </dependency>
     </dependencies>
 
     <build>
