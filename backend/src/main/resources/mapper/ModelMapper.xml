@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.threedmodel.mapper.ModelMapper">
+
+    <!-- 通用结果集：关联用户表，返回模型+作者信息 -->
+    <resultMap id="ModelWithAuthorResultMap" type="com.example.threedmodel.model.entity.Model">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="description" property="description"/>
+        <result column="category" property="category"/>
+        <result column="tags" property="tags" typeHandler="org.apache.ibatis.type.ArrayTypeHandler"/>
+        <result column="file_url" property="fileUrl"/>
+        <result column="thumbnail_url" property="thumbnailUrl"/>
+        <result column="preview_urls" property="previewUrls" typeHandler="org.apache.ibatis.type.ArrayTypeHandler"/>
+        <result column="author_id" property="authorId"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="collect_count" property="collectCount"/>
+        <result column="created_at" property="createdAt"/>
+        <!-- 关联用户表的作者名 -->
+        <result column="username" property="authorName"/>
+    </resultMap>
+
+    <!-- 1. 按模型维度搜索：名称、分类、标签模糊匹配 -->
+    <select id="searchByModel" resultMap="ModelWithAuthorResultMap">
+        SELECT
+        m.*, u.username
+        FROM
+        models m
+        LEFT JOIN
+        users u ON m.author_id = u.id
+        WHERE
+        1=1
+        AND (
+        m.title LIKE #{keyword}  -- 模型名称模糊匹配
+        OR m.category LIKE #{keyword}  -- 模型分类模糊匹配
+        OR EXISTS (  -- 模型标签模糊匹配（PostgreSQL数组适配）
+        SELECT 1 FROM unnest(m.tags) AS tag
+        WHERE tag LIKE #{keyword}
+        )
+        )
+        <!-- 排序逻辑 -->
+        <choose>
+            <when test="sort == 'time'">
+                ORDER BY m.created_at DESC  -- 按创建时间倒序（最新优先）
+            </when>
+            <otherwise>
+                ORDER BY (m.like_count + m.collect_count) DESC  -- 热门排序（点赞+收藏权重）
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 2. 按作者维度搜索：用户名模糊匹配 -->
+    <select id="searchByAuthor" resultMap="ModelWithAuthorResultMap">
+        SELECT
+        m.*, u.username
+        FROM
+        models m
+        LEFT JOIN
+        users u ON m.author_id = u.id
+        WHERE
+        u.username LIKE #{authorName}  -- 作者名模糊匹配
+        <!-- 排序逻辑 -->
+        <choose>
+            <when test="sort == 'time'">
+                ORDER BY m.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY (m.like_count + m.collect_count) DESC
+            </otherwise>
+        </choose>
+    </select>
+
+</mapper>
