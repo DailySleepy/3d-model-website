@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.threedmodel.dto.PageResultDTO;
 import com.example.threedmodel.dto.SearchParamDTO;
 import com.example.threedmodel.model.entity.Model;
-import com.example.threedmodel.mapper.ModelMapper;
+import com.example.threedmodel.mapper.SearchMapper;
 import com.example.threedmodel.mapper.UserMapper;
 import com.example.threedmodel.service.SearchService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 public class SearchServiceImpl implements SearchService {
 
     @Autowired
-    private ModelMapper modelMapper;
+    private SearchMapper searchMapper;
 
     @Autowired
     private UserMapper userMapper;
@@ -34,10 +34,10 @@ public class SearchServiceImpl implements SearchService {
 
         if ("author".equals(paramDTO.getType())) {
             // 2.1 搜索作者：按用户名模糊匹配，查询该作者的所有模型
-            resultPage = modelMapper.searchByAuthor(page, keyword, paramDTO.getSort());
+            resultPage = searchMapper.searchByAuthor(page, keyword, paramDTO.getSort());
         } else {
             // 2.2 搜索模型：按名称、分类、标签模糊匹配
-            resultPage = modelMapper.searchByModel(page, keyword, paramDTO.getSort());
+            resultPage = searchMapper.searchByModel(page, keyword, paramDTO.getSort());
         }
 
         // 3. 封装分页结果返回
