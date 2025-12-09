@@ -19,4 +19,12 @@ public class UserServiceImpl implements UserService {
         wrapper.eq("email", identifier).or().eq("username", identifier);
         return userMapper.selectOne(wrapper);
     }
+    @Override
+    public User getUserByUsername(String username) {
+        QueryWrapper<User> wrapper = new QueryWrapper<>();
+        // 仅匹配username字段，比原有方法更精准
+        wrapper.eq("username", username);
+        return userMapper.selectOne(wrapper);
+    }
+
 }
