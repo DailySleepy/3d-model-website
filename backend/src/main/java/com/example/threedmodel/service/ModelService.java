@@ -6,7 +6,7 @@ import com.example.threedmodel.entity.Model;
 import com.example.threedmodel.mapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
-
+import java.util.List;
 
 
 @Service
@@ -30,5 +30,13 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         this.save(model);
 
         return model.getId();
+    }
+
+
+    public List<Model> getModelsByAuthor(Long authorId) {
+        return this.lambdaQuery()
+                .eq(Model::getAuthorId, authorId)
+                .orderByDesc(Model::getCreatedAt)
+                .list();
     }
 }

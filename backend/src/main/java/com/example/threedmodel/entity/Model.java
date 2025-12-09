@@ -41,4 +41,6 @@ public class Model {
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
+
+
 }

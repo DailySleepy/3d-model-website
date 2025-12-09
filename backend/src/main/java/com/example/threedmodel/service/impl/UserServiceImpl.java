@@ -1,14 +1,18 @@
 package com.example.threedmodel.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.threedmodel.entity.Follower;
+import com.example.threedmodel.mapper.FollowerMapper;
 import com.example.threedmodel.mapper.UserMapper;
 import com.example.threedmodel.model.entity.User;
+import com.example.threedmodel.service.FollowerService;
 import com.example.threedmodel.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
     @Autowired
     private UserMapper userMapper;
