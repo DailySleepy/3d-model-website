@@ -131,3 +131,29 @@ CREATE TABLE verification_codes (
   created_at TIMESTAMP
 );
 ```
+
+### comments <!TODO-BE>
+```sql
+CREATE TABLE comments (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL,        -- 评论发布者
+  model_id BIGINT NOT NULL,       -- 评论所属模型
+  parent_id BIGINT DEFAULT NULL,  -- 父评论ID (若为NULL则表示是一级评论，不为NULL表示是回复)
+  content TEXT NOT NULL,          -- 评论内容
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### notification <!TODO-BE>
+```sql
+CREATE TABLE notifications (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL,        -- 接收通知的用户 ID
+  type VARCHAR(20) NOT NULL,      -- 通知类型: 'LIKE', 'COLLECT', 'COMMENT', 'FOLLOW', 'SYSTEM'
+  sender_id BIGINT,               -- 触发者 ID (如谁给你点了赞)，系统消息可为 NULL
+  model_id BIGINT,                -- 相关联的模型 ID (如点赞/评论了哪个模型)，关注通知可为 NULL
+  content VARCHAR(255),           -- 冗余字段：简略内容或系统消息文本
+  is_read BOOLEAN DEFAULT FALSE,  -- 是否已读
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
