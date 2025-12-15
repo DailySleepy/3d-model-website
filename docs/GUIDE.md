@@ -10,7 +10,7 @@ npm run dev
 ### 后端开发
 ```bash
 cd backend
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 ## 网站整体结构概览
