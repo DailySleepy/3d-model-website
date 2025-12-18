@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.threedmodel.mapper.SearchMapper">
+
+    <!-- 搜索模型 -->
+    <select id="searchModels" resultType="com.example.threedmodel.entity.Model">
+        SELECT * FROM models
+        <where>
+            <!-- 关键词模糊匹配标题或描述 -->
+            <if test="q != null and q != ''">
+                AND (title LIKE CONCAT('%', #{q}, '%')
+                OR description LIKE CONCAT('%', #{q}, '%'))
+            </if>
+        </where>
+        <!-- 排序逻辑 -->
+        <choose>
+            <when test="sort == 'time'">
+                ORDER BY created_at DESC
+            </when>
+            <when test="sort == 'hot'">
+                <!-- 热门排序：点赞数+收藏数权重 -->
+                ORDER BY (like_count + collect_count) DESC
+            </when>
+            <otherwise>
+                ORDER BY (like_count + collect_count) DESC
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 搜索用户 -->
+    <select id="searchUsers" resultType="com.example.threedmodel.model.entity.User">
+        SELECT * FROM users
+        <where>
+            <!-- 关键词模糊匹配用户名 -->
+            <if test="q != null and q != ''">
+                AND username LIKE CONCAT('%', #{q}, '%')
+            </if>
+        </where>
+        <!-- 用户排序：按创建时间（热门排序可根据实际需求调整） -->
+        <choose>
+            <when test="sort == 'time'">
+                ORDER BY created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY created_at DESC
+            </otherwise>
+        </choose>
+    </select>
+
+</mapper>
