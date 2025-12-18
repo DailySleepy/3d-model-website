@@ -8,6 +8,9 @@ spring:
     password: YOURPASSPORT #记得改
     driver-class-name: org.postgresql.Driver
 
-mybatis-plus: #not necessary
+mybatis-plus:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 打印 SQL
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      db-type: postgresql  # 指定数据库类型
