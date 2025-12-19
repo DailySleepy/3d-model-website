@@ -50,7 +50,7 @@
 
 | 模块 | 用户故事 | 前端任务 | 后端任务 | 数据库设计 | 说明 |
 | :-- | :-- | :-- | :-- | :-- | :-- |
-| **通知中心** | 用户查看收到的赞、评论、系统消息 | <!TODO-FE: 创建 NotificationDropdown.vue> | <!TODO-BE: 通知模块待开发> | - | 暂未实现 |
+| **通知中心** | 用户查看收到的赞、评论、系统消息 | <!TODO-FE: 创建 NotificationDropdown.vue> | 'GET api/notifications' + 'POST api/notifications/:id/read' | notifications | 暂未实现 |
 | **私信** | 用户之间私聊（可选） | <!TODO-FE: 创建 ChatModal.vue> | <!TODO-BE: 私信模块待开发> | - | 暂未实现 |
 
 ---
@@ -149,10 +149,9 @@ CREATE TABLE comments (
 CREATE TABLE notifications (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL,        -- 接收通知的用户 ID
-  type VARCHAR(20) NOT NULL,      -- 通知类型: 'LIKE', 'COLLECT', 'COMMENT', 'FOLLOW', 'SYSTEM'
-  sender_id BIGINT,               -- 触发者 ID (如谁给你点了赞)，系统消息可为 NULL
+  type VARCHAR(20) NOT NULL,      -- 通知类型: 'LIKE', 'COLLECT', 'COMMENT', 'FOLLOW(to do)', 'SYSTEM'
+  from_id BIGINT,               -- 触发者 ID (如谁给你点了赞)，系统消息可为 NULL
   model_id BIGINT,                -- 相关联的模型 ID (如点赞/评论了哪个模型)，关注通知可为 NULL
-  content VARCHAR(255),           -- 冗余字段：简略内容或系统消息文本
   is_read BOOLEAN DEFAULT FALSE,  -- 是否已读
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
