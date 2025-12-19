@@ -1,6 +1,7 @@
 package com.example.threedmodel.service;
 
 import com.example.threedmodel.entity.ModelLike;
+import com.example.threedmodel.event.ModelActionEvent;
 import com.example.threedmodel.mapper.ModelLikeMapper;
 import com.example.threedmodel.mapper.ModelMapper;
 import com.example.threedmodel.entity.Model;
@@ -42,6 +43,13 @@ public class ModelLikeService {
         Model model = modelMapper.selectById(modelId);
         model.setLikeCount((model.getLikeCount() == null ? 0 : model.getLikeCount()) + 1);
         modelMapper.updateById(model);
+
+        Long authorId = model.getAuthorId();
+        ModelActionEvent event = new ModelActionEvent();
+        event.setOperatorId(userId);
+        event.setTargetUserId(authorId);
+        event.setModelId(modelId);
+        event.setType("like");
     }
 
     @Transactional

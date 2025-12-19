@@ -1,6 +1,7 @@
 package com.example.threedmodel.service;
 
 import com.example.threedmodel.entity.ModelCollect;
+import com.example.threedmodel.event.ModelActionEvent;
 import com.example.threedmodel.mapper.ModelCollectMapper;
 import com.example.threedmodel.mapper.ModelMapper;
 import com.example.threedmodel.entity.Model;
@@ -44,6 +45,13 @@ public class ModelCollectService {
         Model model = modelMapper.selectById(modelId);
         model.setCollectCount((model.getCollectCount() == null ? 0 : model.getCollectCount()) + 1);
         modelMapper.updateById(model);
+
+        Long authorId = model.getAuthorId();
+        ModelActionEvent event = new ModelActionEvent();
+        event.setOperatorId(userId);
+        event.setTargetUserId(authorId);
+        event.setModelId(modelId);
+        event.setType("collect");
     }
 
     @Transactional

@@ -10,6 +10,9 @@ import com.example.threedmodel.mapper.UserMapper;
 import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.FollowerService;
 import com.example.threedmodel.service.UserService;
+
+import lombok.Builder.ObtainVia;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -61,5 +64,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         .last("LIMIT 1")
         );
     }
+
 
 }

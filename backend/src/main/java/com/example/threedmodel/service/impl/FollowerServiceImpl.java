@@ -7,6 +7,10 @@ import com.example.threedmodel.mapper.FollowerMapper;
 import com.example.threedmodel.mapper.UserMapper;
 import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.FollowerService;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,5 +77,23 @@ public class FollowerServiceImpl extends ServiceImpl<FollowerMapper, Follower> i
     @Override
     public boolean isFollowing(Long userId, Long followerId) {
         return baseMapper.selectCountByUserAndFollower(userId, followerId) > 0;
+    }
+
+    /**
+     * 获取某个用户（作者）的所有粉丝 ID
+     * 被 NotificationEventListener.handlePublish 调用
+     */
+    @Override
+    public List<Long> getFollowerIds(Long userId) {
+
+        QueryWrapper<Follower> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("user_id", userId);
+
+        List<Follower> followers = baseMapper.selectList(queryWrapper);
+
+        // 只返回 follower_id
+        return followers.stream()
+                .map(Follower::getFollowerId)
+                .collect(Collectors.toList());
     }
 }

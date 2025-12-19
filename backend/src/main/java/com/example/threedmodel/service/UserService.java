@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.threedmodel.entity.Follower;
 import com.example.threedmodel.model.entity.User;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 public interface UserService extends IService<User> {
     User findByEmailOrUsername(String identifier);
     User getUserByUsername(String username);
@@ -14,4 +16,5 @@ public interface UserService extends IService<User> {
     User getByEmail(String email);
 
     User getByEmailOrUsername(String identifier);
+
 }
