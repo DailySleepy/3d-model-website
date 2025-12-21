@@ -1,9 +1,10 @@
 package com.example.threedmodel.listener;
 
+import com.example.threedmodel.entity.Notification;
 import com.example.threedmodel.event.*;
 import com.example.threedmodel.service.NotificationService;
 import com.example.threedmodel.service.FollowerService;
-//import com.example.threedmodel.service.CommentService;
+import com.example.threedmodel.service.CommentService;
 import jakarta.annotation.Resource;
 
 import java.util.List;
@@ -42,13 +43,17 @@ public class NotificationEventListener {
     /**
      * 评论通知
      */
+    // 新增评论事件处理
     @EventListener
-    public void handleComment(ModelCommentEvent event) {
+    public void handleModelCommentEvent(ModelCommentEvent event) {
+        // 直接复用队友封装的 notificationService.create() 方法
+        // 参数对应关系：接收通知用户ID → 触发者ID → 模型ID → 通知类型
+        // 完全匹配 handleModelAction 方法的参数格式，兼容现有逻辑
         notificationService.create(
-                event.getTargetUserId(),
-                event.getOperatorId(),
-                event.getModelId(),
-                "comment"
+                event.getToUserId(),    // 接收通知的用户ID（模型作者/被回复者）
+                event.getFromUserId(),  // 触发者ID（评论者）
+                event.getModelId(),     // 关联模型ID
+                "COMMENT"               // 通知类型（与数据库定义一致）
         );
     }
 

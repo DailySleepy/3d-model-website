@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.threedmodel.mapper.CommentMapper">
+
+    <!-- 基础字段映射 -->
+    <sql id="commentFields">
+        c.id,
+        c.user_id as userId,
+        c.model_id as modelId,
+        c.parent_id as parentId,
+        c.content,
+        c.created_at as createdAt,
+        u.username,
+        u.avatar_url as avatarUrl
+    </sql>
+
+    <!-- 查询一级评论 -->
+    <select id="selectRootCommentsByModelId" resultType="com.example.threedmodel.dto.CommentDTO">
+        SELECT
+        <include refid="commentFields"/>
+        FROM comments c
+        LEFT JOIN user u ON c.user_id = u.id
+        WHERE c.model_id = #{modelId}
+        AND c.parent_id IS NULL
+        ORDER BY c.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 查询子回复 -->
+    <select id="selectChildCommentsByParentId" resultType="com.example.threedmodel.dto.CommentDTO">
+        SELECT
+        <include refid="commentFields"/>
+        FROM comments c
+        LEFT JOIN user u ON c.user_id = u.id
+        WHERE c.parent_id = #{parentId}
+        ORDER BY c.created_at ASC
+    </select>
+
+    <!-- 查询评论总数 -->
+    <select id="selectTotalCommentsByModelId" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM comments
+        WHERE model_id = #{modelId}
+          AND parent_id IS NULL
+    </select>
+</mapper>
