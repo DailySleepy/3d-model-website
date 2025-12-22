@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL
+
 const api = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: BASE_URL,
   timeout: 10000
 })
 
@@ -37,15 +39,15 @@ export const followApi = {
 
 // 用户设置
 export const userSettingsApi = {
-  updateAll: (userId, payload) => 
+  updateAll: (userId, payload) =>
     api.patch('/api/settings/user', payload, { params: { userId } }),
   updateUsername: (userId, username) =>
     api.patch('/api/settings/user/username', { username }, { params: { userId } }),
-  updateEmail: (userId, email) => 
+  updateEmail: (userId, email) =>
     api.patch('/api/settings/user/email', { email }, { params: { userId } }),
-  updateAvatar: (userId, avatar) => 
+  updateAvatar: (userId, avatar) =>
     api.patch('/api/settings/user/avatar', { avatar }, { params: { userId } }),
-  updateBio: (userId, bio) => 
+  updateBio: (userId, bio) =>
     api.patch('/api/settings/user/bio', { bio }, { params: { userId } }),
   changePassword: (userId, payload) =>
     api.post('/api/settings/user/password', payload, { params: { userId } }),

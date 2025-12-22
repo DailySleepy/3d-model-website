@@ -36,3 +36,7 @@ target
 
 # Vitest
 __screenshots__/
+
+# env
+!.env
+.env.local

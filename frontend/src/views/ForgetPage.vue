@@ -81,7 +81,7 @@ let countDownTimer = null
 const toast = ref({ show: false, message: '' })
 let toastTimer = null
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@!#$%^&*()_\-+=\\\/]{6,1007}$/
+const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@!#$%^&*()_\-+=\\/]{6,1007}$/
 
 const showToast = (msg) => {
   toast.value = { show: true, message: msg }
