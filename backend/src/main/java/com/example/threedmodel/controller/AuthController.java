@@ -49,6 +49,7 @@ public class AuthController {
         String token = jwtUtil.generateToken(user.getUsername());
         Map<String, Object> resp = new HashMap<>();
         resp.put("token", token);
+        resp.put("id", user.getId());
         resp.put("username", user.getUsername());
         resp.put("email", user.getEmail());
         resp.put("avatar", user.getAvatar());

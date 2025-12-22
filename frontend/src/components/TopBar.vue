@@ -18,27 +18,27 @@
         </button>
         </div>
       </div>
-      <!-- 登录前样式 -->
+      <!-- 登录前样式-->
       <div v-if="!authStore.isLoggedIn" class="flex items-center space-x-6 md:space-x-10 whitespace-nowrap">
         <router-link to="/login" class="text-gray-600 hover:text-gray-800 whitespace-nowrap">登录</router-link>
         <router-link to="/register" class="text-blue-600 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 whitespace-nowrap">注册</router-link>
       </div>
-      <!-- 登录后样式 -->
+      <!-- 登录后样式-->
       <div v-else class="flex items-center space-x-6 md:space-x-10 whitespace-nowrap">
         <!-- 用户头像和用户名 -->
-        <router-link to="/user" class="flex items-center gap-2 whitespace-nowrap">
-        <img
-          :src="authStore.avatarUrl"
-          :alt="authStore.username"
-          class="w-8 h-8 rounded-full"
-        />
+        <router-link :to="userLink" class="flex items-center gap-2 whitespace-nowrap">
+              <div
+                class="w-8 h-8 rounded-full bg-blue-500 text-white text-sm font-semibold flex items-center justify-center">
+                <span v-if="!userAvatar">{{ userInitial }}</span>
+                <img v-else :src="userAvatar" alt="用户头像" class="w-full h-full rounded-full object-cover" />
+              </div>
         </router-link>
-        <!-- 退出登录按钮 -->
+        <!-- 退出登录按钮-->
         <button
           @click="handleLogout"
           class="text-gray-600 hover:text-gray-800 px-3 py-1 border rounded hover:bg-gray-50 whitespace-nowrap"
         >
-          退出
+          退出       
         </button>
       </div>
     </nav>
@@ -46,29 +46,29 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const query = ref('')
 const authStore = useAuthStore()
+const userLink = computed(() => `/user/${authStore.userId || ''}`)
+const userInitial = computed(() => (authStore.username || 'U').charAt(0).toUpperCase())
+const userAvatar = computed(() => authStore.avatar || '')
 
 const emit = defineEmits(['search'])
 
 const handleSearch = () => {
   if (query.value) {
     router.push({ path: '/search', query: { q: query.value } })
-    emit('search', query.value) // UNUSED: 将搜索的内容传递到 App.vue
+    emit('search', query.value) // UNUSED: 把搜索的内容传递到 App.vue
   }
 }
 
 // 退出登录
 const handleLogout = () => {
-  authStore.logoutAccount()
+  authStore.logout()
   router.push('/')
 }
 </script>
-
-
-
