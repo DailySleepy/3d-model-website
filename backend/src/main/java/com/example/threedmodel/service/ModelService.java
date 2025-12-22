@@ -5,6 +5,9 @@ import com.example.threedmodel.dto.ModelCreateDTO;
 import com.example.threedmodel.entity.Model;
 import com.example.threedmodel.event.ModelPublishEvent;
 import com.example.threedmodel.mapper.ModelMapper;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +15,8 @@ import java.util.List;
 
 @Service
 public class ModelService extends ServiceImpl<ModelMapper, Model> {
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public Long publishModel(ModelCreateDTO dto) {
 
@@ -35,6 +40,8 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         ModelPublishEvent event = new ModelPublishEvent();
         event.setAuthorId(authorId);
         event.setModelId(model.getId());
+        eventPublisher.publishEvent(event);
+
         return model.getId();
     }
 

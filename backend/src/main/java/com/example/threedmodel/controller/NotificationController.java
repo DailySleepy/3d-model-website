@@ -117,7 +117,7 @@ public class NotificationController {
      */
     @GetMapping
     public ResponseEntity<?> getNotifications(@RequestParam Long userId) {
-        if (userId == null || userId <= 0) {
+        if (userId == null || userId < 0) {
             return ResponseEntity.badRequest().body("请提供有效的 userId");
         }
 

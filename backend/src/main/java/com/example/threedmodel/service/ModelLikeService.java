@@ -8,7 +8,7 @@ import com.example.threedmodel.entity.Model;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
@@ -20,6 +20,9 @@ public class ModelLikeService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public boolean toggleLike(Long modelId, Long userId) {
@@ -50,6 +53,8 @@ public class ModelLikeService {
         event.setTargetUserId(authorId);
         event.setModelId(modelId);
         event.setType("like");
+
+        eventPublisher.publishEvent(event);
     }
 
     @Transactional

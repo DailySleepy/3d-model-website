@@ -8,6 +8,7 @@ import com.example.threedmodel.entity.Model;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
  
@@ -22,6 +23,9 @@ public class ModelCollectService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public boolean toggleCollect(Long modelId, Long userId) {
@@ -52,6 +56,8 @@ public class ModelCollectService {
         event.setTargetUserId(authorId);
         event.setModelId(modelId);
         event.setType("collect");
+
+        eventPublisher.publishEvent(event);
     }
 
     @Transactional
