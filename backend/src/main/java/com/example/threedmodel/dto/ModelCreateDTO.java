@@ -12,4 +12,5 @@ public class ModelCreateDTO {
     private String fileUrl;
     private String thumbnailUrl;
     private String[] previewUrls;
+    private Long authorId;
 }

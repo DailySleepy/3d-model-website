@@ -20,7 +20,10 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
 
     public Long publishModel(ModelCreateDTO dto) {
 
-        Long authorId = 0L; //temporary
+        Long authorId = dto.getAuthorId();
+        if (authorId == null) {
+            throw new IllegalArgumentException("authorId 不能为空");
+        }
         
         Model model = new Model();
         model.setTitle(dto.getTitle());

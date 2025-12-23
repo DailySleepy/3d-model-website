@@ -26,7 +26,7 @@
             <div v-if="successMessage" class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">{{ successMessage }}</div>
             <div class="flex justify-center mb-4">
               <router-link to="/" class="flex items-center space-x-2 text-blue-600">
-                <span class="text-xl font-semibold">3D Model Website</span>
+                <span class="text-xl font-semibold">ModelCraft</span>
               </router-link>
             </div>
 
