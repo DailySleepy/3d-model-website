@@ -20,17 +20,21 @@ let mixer = null
 let animationId
 const clock = new THREE.Clock()
 
-onMounted(() => {
-  initScene(container.value, (s, c, r, ctrl) => {
-    scene = s
-    camera = c
-    renderer = r
-    controls = ctrl
-    if (props.modelUrl) loadModel(props.modelUrl, scene, camera, controls, (loadedMixer) => {
-        mixer = loadedMixer
-      })
-    animate()
-  })
+onMounted(async () => {
+  const { scene: s, camera: c, renderer: r, controls: ctrl } = initScene(container.value)
+  scene = s
+  camera = c
+  renderer = r
+  controls = ctrl
+
+  if (props.modelUrl) {
+    try {
+      mixer = await loadModel(props.modelUrl, scene, camera, controls)
+    } catch (error) {
+      console.error("模型加载失败", error)
+    }
+  }
+  animate()
 })
 
 const animate = () => {
