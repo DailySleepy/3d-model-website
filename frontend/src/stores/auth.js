@@ -89,6 +89,19 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    checkLogin() {
+      if (this.isLoggedIn) {
+        return true
+      }
+      const shouldLogin = window.confirm('此操作需要登录，是否去登录？')
+      if (shouldLogin) {
+        const currentPath = router.currentRoute.value.fullPath
+        console.log(currentPath)
+        router.push(`/login?redirect=${encodeURIComponent(currentPath)}`)
+      }
+      return false
+    },
+
     logout() {
       this.clearSession()
       router.push('/login')

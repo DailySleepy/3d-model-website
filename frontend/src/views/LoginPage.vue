@@ -75,11 +75,12 @@
 
 <script setup>
 import { ref, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const identifier = ref('')
 const password = ref('')
@@ -115,7 +116,8 @@ const handleLogin = async () => {
     } else {
       localStorage.removeItem('remember_identifier')
     }
-    router.push('/')
+    const redirectPath = route.query.redirect || '/'
+    router.push(redirectPath)
   } else {
     showToast('账号或密码错误')
   }
