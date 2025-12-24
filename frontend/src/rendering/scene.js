@@ -1,50 +1,31 @@
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { createRadialGradientTexture } from './utils.js'
 
-const RENDER_WIDTH = 1200
-const RENDER_HEIGHT = 675
-
-function createRadialGradientTexture() {
-  const canvas = document.createElement('canvas')
-  canvas.width = RENDER_WIDTH
-  canvas.height = RENDER_HEIGHT
-  const ctx = canvas.getContext('2d')
-
-  const gradient = ctx.createRadialGradient(
-    RENDER_WIDTH / 2, RENDER_HEIGHT / 2, 0,
-    RENDER_WIDTH / 2, RENDER_HEIGHT / 2, RENDER_WIDTH / 2
-  )
-
-  gradient.addColorStop(0, '#303030')
-  gradient.addColorStop(1, '#121212')
-
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT)
-
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  return texture
-}
+const WIDTH = 1200
+const HEIGHT = 675
+let lightCount = 0
 
 export function initScene(container, callback) {
   const scene = new THREE.Scene()
-  scene.background = createRadialGradientTexture()
+  scene.background = createRadialGradientTexture(WIDTH, HEIGHT)
 
-  const camera = new THREE.PerspectiveCamera(45, RENDER_WIDTH / RENDER_HEIGHT, 0.1, 1000)
+  const camera = new THREE.PerspectiveCamera(45, WIDTH / HEIGHT, 0.1, 1000)
   camera.position.z = 2
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
-  renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false)
+  renderer.setSize(WIDTH, HEIGHT, false)
   renderer.domElement.style.width = '100%'
   renderer.domElement.style.height = '100%'
   container.appendChild(renderer.domElement)
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8)
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1)
   scene.add(ambientLight)
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
   directionalLight.position.set(5, 5, 5)
   scene.add(directionalLight)
+  lightCount = 2
 
   const controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
@@ -52,18 +33,31 @@ export function initScene(container, callback) {
   callback(scene, camera, renderer, controls)
 }
 
-export function loadModel(modelPath, scene, camera, controls) {
+export function loadModel(modelPath, scene, camera, controls, onLoaded) {
   const loader = new GLTFLoader()
   loader.load(
     modelPath,
     (gltf) => {
-      while (scene.children.length > 2) {
-        const object = scene.children[2]
+      while (scene.children.length > lightCount) {
+        const object = scene.children[lightCount]
         if (object.isMesh || object.isGroup) {
           scene.remove(object)
         }
       }
       scene.add(gltf.scene)
+      // debugMaterial(gltf.scene)
+      gltf.scene.traverse((child) => {
+        if (child.isMesh && child.material.metalness == 1) {
+          child.material.metalness = 0.7;
+        }
+      });
+
+      let mixer = null
+      if (gltf.animations && gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(gltf.scene)
+        const action = mixer.clipAction(gltf.animations[0])
+        action.play()
+      }
 
       const box = new THREE.Box3().setFromObject(gltf.scene)
       const center = box.getCenter(new THREE.Vector3())
@@ -72,10 +66,12 @@ export function loadModel(modelPath, scene, camera, controls) {
       const fov = camera.fov * (Math.PI / 180)
       const cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2))
 
-      camera.position.z = cameraZ * 1.5
+      camera.position.z = cameraZ * 1.8
       camera.position.y = size.y / 2
       controls.target.copy(center)
       controls.update()
+
+      if (onLoaded) onLoaded(mixer)
 
       console.log('Model loaded:', gltf.scene)
     },

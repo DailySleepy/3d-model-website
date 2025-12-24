@@ -137,6 +137,7 @@ const loadModelData = async (id) => {
   try {
     let data = await modelsStore.fetchModelById(id)
     data = mockModels[0] // TODO
+    if(Date.now() % 2 == 1) data.fileUrl = '/models/rotating_cube.glb'
     model.value = {
       ...model.value,
       ...data,

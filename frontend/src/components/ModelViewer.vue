@@ -3,8 +3,9 @@
 </template>
 
 <script setup>
+import * as THREE from 'three'
 import { ref, onMounted, onUnmounted } from 'vue'
-import { initScene, loadModel } from '@/utils/threejs.js'
+import { initScene, loadModel } from '@/rendering/scene.js'
 
 const props = defineProps({
   modelUrl: {
@@ -15,7 +16,9 @@ const props = defineProps({
 
 const container = ref(null)
 let scene, camera, renderer, controls
+let mixer = null
 let animationId
+const clock = new THREE.Clock()
 
 onMounted(() => {
   initScene(container.value, (s, c, r, ctrl) => {
@@ -23,13 +26,19 @@ onMounted(() => {
     camera = c
     renderer = r
     controls = ctrl
-    if (props.modelUrl) loadModel(props.modelUrl, scene, camera, controls)
+    if (props.modelUrl) loadModel(props.modelUrl, scene, camera, controls, (loadedMixer) => {
+        mixer = loadedMixer
+      })
     animate()
   })
 })
 
 const animate = () => {
   animationId = requestAnimationFrame(animate)
+  const delta = clock.getDelta()
+  if (mixer) {
+    mixer.update(delta)
+  }
   controls.update()
   renderer.render(scene, camera)
 }
