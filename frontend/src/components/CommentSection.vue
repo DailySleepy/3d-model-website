@@ -6,20 +6,14 @@
 
     <div class="flex gap-4 mb-8">
       <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-        <img :src="user?.avatar || 'https://placehold.co/100'" class="w-full h-full object-cover" />
+        <img :src="user?.avatar" class="w-full h-full object-cover" />
       </div>
       <div class="flex-1">
-        <textarea
-          v-model="content"
-          placeholder="分享你的想法..."
-          class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none min-h-[80px]"
-        ></textarea>
+        <textarea v-model="content" placeholder="分享你的想法..."
+          class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none min-h-[80px]"></textarea>
         <div class="flex justify-end mt-2">
-          <button
-            @click="handleSubmit"
-            :disabled="submitting || !content.trim()"
-            class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-          >
+          <button @click="handleSubmit" :disabled="submitting || !content.trim()"
+            class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition-colors">
             {{ isLoggedIn ? (submitting ? '发送中...' : '发布评论') : '请先登录' }}
           </button>
         </div>
@@ -27,32 +21,26 @@
     </div>
 
     <div class="space-y-6">
-      <div v-if="loading && comments.length === 0" class="text-center text-gray-400 py-4">
-        加载中...
-      </div>
-
-      <div v-else-if="comments.length === 0" class="text-center text-gray-400 py-8">
-        暂无评论，快来抢沙发吧~
-      </div>
+      <div v-if="loading && comments.length === 0" class="text-center text-gray-400 py-4">加载中...</div>
+      <div v-else-if="comments.length === 0" class="text-center text-gray-400 py-8">暂无评论，快来抢沙发吧~</div>
 
       <div v-for="comment in comments" :key="comment.id" class="flex gap-4 group">
-        <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+        <router-link :to="`/user/${comment.userId}`"
+          class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
           <img :src="comment.userAvatar" class="w-full h-full object-cover" />
-        </div>
+        </router-link>
 
         <div class="flex-1 border-b border-gray-100 pb-4">
           <div class="flex justify-between items-baseline mb-1">
-            <span class="font-semibold text-gray-800">{{ comment.username }}</span>
+            <router-link :to="`/user/${comment.userId}`"
+              class="font-semibold text-gray-800">{{ comment.username }}</router-link>
             <span class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</span>
           </div>
           <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">{{ comment.content }}</p>
 
           <div class="mt-2 flex gap-4 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              v-if="isCurrentUser(comment.userId)"
-              @click="handleDelete(comment.id)"
-              class="hover:text-red-600 cursor-pointer text-red-400"
-            >
+            <button v-if="isCurrentUser(comment.userId)" @click="handleDelete(comment.id)"
+              class="hover:text-red-600 cursor-pointer text-red-400">
               删除
             </button>
           </div>
@@ -60,11 +48,7 @@
       </div>
     </div>
 
-    <button
-      v-if="hasMore"
-      @click="loadMore"
-      class="w-full text-center text-blue-500 mt-4 text-sm hover:underline py-2"
-    >
+    <button v-if="hasMore" @click="loadMore" class="w-full text-center text-blue-500 mt-4 text-sm hover:underline py-2">
       {{ loading ? '加载中...' : '查看更多评论' }}
     </button>
   </div>
@@ -112,8 +96,8 @@ const fetchComments = async (currentPage = 1, append = false) => {
     // TODO: 适配后端返回结构
     let newItems = res.data.content || []
     newItems = [
-      { id: 1, user: "Bob", content: "这个模型太棒了！" },
-      { id: 2, user: "Charlie", content: "希望能下载使用。" } // TODO
+      { id: 1, userid: 66, username: "Bob", content: "这个模型太棒了！", createdAt: "2025" },
+      { id: 2, userid: 99, username: "Charlie", content: "希望能下载使用。", createdAt: "2024" } // TODO
     ]
     total.value = res.data.totalElements || 0
 
