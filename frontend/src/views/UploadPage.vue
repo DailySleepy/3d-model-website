@@ -23,25 +23,25 @@
                 <h2 class="text-xl font-semibold text-gray-900">模型名称</h2>
                 <p class="text-sm text-gray-500">请输入您的模型名称，最多50个字符</p>
               </div>
-              <span class="text-sm text-gray-400">* 必填项</span>
+              <span class="text-sm text-gray-400"><span class="text-red-600">*</span> 必填项</span>
             </div>
             <div class="space-y-6">
               <div>
                 <label class="flex items-center justify-between text-sm font-medium text-gray-700">
-                  <span>模型名称 *</span>
+                  <span>模型名称 <span class="text-red-600">*</span></span>
                   <span class="text-gray-400">{{ form.title.length }}/50</span>
                 </label>
-<input 
-  v-model="form.title" 
-  type="text" 
-  maxlength="50" 
-  placeholder="请输入模型名称"
-  class="input-modern"
-/>
+                <input
+                  v-model="form.title"
+                  type="text"
+                  maxlength="50"
+                  placeholder="请输入模型名称"
+                  class="input-modern"
+                />
               </div>
               <div>
                 <label class="flex items-center justify-between text-sm font-medium text-gray-700">
-                  <span>模型描述 *</span>
+                  <span>模型描述 <span class="text-red-600">*</span></span>
                   <span class="text-gray-400">{{ form.description.length }}/1200</span>
                 </label>
                 <textarea v-model="form.description" rows="6" maxlength="1200" placeholder="请输入模型描述，最多1200个字符"
@@ -49,7 +49,7 @@
               </div>
               <div class="grid gap-6 md:grid-cols-2">
                 <div>
-                  <label class="text-sm font-medium text-gray-700">模型格式 *</label>
+                  <label class="text-sm font-medium text-gray-700">模型格式 <span class="text-red-600">*</span></label>
                   <select v-model="form.format"
                     class="input-modern">
                     <option value="" disabled>请选择模型格式</option>
@@ -59,7 +59,7 @@
                   </select>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700">模型分类 *</label>
+                  <label class="text-sm font-medium text-gray-700">模型分类 <span class="text-red-600">*</span></label>
                   <select v-model="form.category"
                     class="input-modern">
                     <option value="" disabled>请选择模型分类</option>
@@ -71,7 +71,7 @@
               </div>
               <div>
                 <div class="flex items-center justify-between">
-                  <label class="text-sm font-medium text-gray-700">模型标签 *</label>
+                  <label class="text-sm font-medium text-gray-700">模型标签 <span class="text-red-600">*</span></label>
                   <span class="text-xs text-gray-400">最多 20 个标签，剩余 {{ remainingTags }} 个</span>
                 </div>
                 <div class="mt-2 flex flex-wrap gap-2">
@@ -115,7 +115,7 @@
             <!--模型文件-->
             <div class="grid gap-6 md:grid-cols-3">
               <div class="rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col">
-                <h3 class="text-base font-semibold text-gray-900">模型文件 *</h3>
+                <h3 class="text-base font-semibold text-gray-900">模型文件 <span class="text-red-600">*</span></h3>
                 <p class="text-xs text-gray-500 mt-1">请上传3D模型文件（.glb格式），文件大小不能超过200MB</p>
                 <label
                   class="mt-4 inline-flex items-center justify-center rounded-2xl border border-dashed border-blue-300 bg-blue-50/60 px-4 py-3 text-blue-600 cursor-pointer hover:bg-blue-100">
@@ -130,7 +130,7 @@
               </div>
 
               <div class="rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col">
-                <h3 class="text-base font-semibold text-gray-900">缩略图 *</h3>
+                <h3 class="text-base font-semibold text-gray-900">缩略图 <span class="text-red-600">*</span></h3>
                 <p class="text-xs text-gray-500 mt-1">1280×800像素，支持 jpg/png/webp 格式，文件大小小于 5MB</p>
                 <label
                   class="mt-4 inline-flex items-center justify-center rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 px-4 py-3 text-amber-600 cursor-pointer hover:bg-amber-100">
@@ -145,7 +145,7 @@
               </div>
 
               <div class="rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col">
-                <h3 class="text-base font-semibold text-gray-900">预览图 *</h3>
+                <h3 class="text-base font-semibold text-gray-900">预览图 <span class="text-red-600">*</span></h3>
                 <p class="text-xs text-gray-500 mt-1">1920×1080像素，支持 jpg/png/webp 格式，文件大小小于 5MB，最多上传 6 张</p>
                 <label
                   class="mt-4 inline-flex items-center justify-center rounded-2xl border border-dashed border-purple-300 bg-purple-50/60 px-4 py-3 text-purple-600 cursor-pointer hover:bg-purple-100">
@@ -203,10 +203,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { modelsApi, uploadApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const authStore = useAuthStore()
