@@ -87,7 +87,7 @@
                   <span v-for="(tag, index) in form.tags" :key="`${tag}-${index}`"
                     class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700">
                     {{ tag }}
-                    <button type="button" class="text-xs" @click="removeTag(index)">?</button>
+                    <button type="button" class="text-xs" @click="removeTag(index)">×</button>
                   </span>
                 </div>
                 <div class="mt-4">
@@ -212,8 +212,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const formatOptions = ['GLB (.glb)']
-const categoryOptions = ['人物', '场景', '材质', '配件', '建筑', '其他']
-const recommendedTags = ['MMD', '模型配布', 'Blender', '原神', '改模配布', 'TDA', '场景', '场景配布', 'Vup', '崩坏3']
+const categoryOptions = ['人物', '场景', '材质', '配件', '建筑', '植物', '机械', '其他']
+const recommendedTags = ['MMD', 'Blender', 'UE', '写实', '二次元', 'NPR', 'PBR', 'Rigged', 'Animated', '高模', '低模']
 const maxTags = 20
 
 const form = reactive({
