@@ -1,15 +1,22 @@
+// stores/models.js
 import { defineStore } from 'pinia'
 import api from '@/api' // Axios实例
 
 export const useModelsStore = defineStore('models', {
   state: () => ({
-    models: []
+    models: [],
+    users: [],
   }),
   actions: {
     async fetchRecommendedModels() {
       const res = await api.get('/api/models/recommend')
       this.models = res.data.models
       return this.models
+    },
+    async fetchRecommendedUsers() {
+      const res = await api.get('/api/users/recommend')
+      this.users = res.data.users
+      return this.users
     },
     async searchModels(params) {
       const res = await api.get('/api/search', { params })
@@ -18,6 +25,18 @@ export const useModelsStore = defineStore('models', {
     async fetchModelById(id) {
       const res = await api.get(`/api/models/${id}`)
       return res.data
-    }
+    },
+    async toggleLike(modelId) {
+      return await api.post(`/api/models/${modelId}/like`)
+    },
+    async toggleCollect(modelId) {
+      return await api.post(`/api/models/${modelId}/collect`)
+    },
+    async postComment(payload) {
+      return await api.post('/api/comments', payload)
+    },
+    async fetchComments(modelId, page = 1, size = 10) {
+      return await api.get('/api/comments', { params: { modelId, page, size }})
+    },
   }
 })

@@ -1,3 +1,4 @@
+// store/auth.js
 import { defineStore } from 'pinia'
 import router from '@/router'
 import { authApi } from '@/api'
@@ -5,7 +6,7 @@ import { authApi } from '@/api'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem('token') || null,
-    user: JSON.parse(localStorage.getItem('user') || 'null') 
+    user: JSON.parse(localStorage.getItem('user') || 'null')
   }),
 
   getters: {

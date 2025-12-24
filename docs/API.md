@@ -39,10 +39,10 @@
 | 模块 | 用户故事 | 前端任务 | 后端任务                                                                                                                                                      | 数据库设计 | 说明                                                      |
 | :-- | :-- | :-- |:----------------------------------------------------------------------------------------------------------------------------------------------------------| :-- |:--------------------------------------------------------|
 | **模型详情** | 点击模型进入详情页 | `ModelDetail.vue` + `ModelViewer.vue` 渲染 (依赖 `utils/threejs.js`) | `GET /api/models/:id`                                                                                                                                     | `models` | 返回详情及 `likedByUser`, `collectedByUser` 状态               |
-| **点赞** | 登录用户可点赞 | <!TODO-FE: 创建 LikeButton.vue> | `POST /api/models/:id/like`                                                                                                                               | `model_like` | **Toggle模式**：重复调用即为取消点赞                                 |
-| **收藏** | 登录用户可收藏模型 | <!TODO-FE: 创建 CollectButton.vue> | `POST /api/models/:id/collect`                                                                                                                            | `model_collect` | **Toggle模式**：重复调用即为取消收藏                                 |
+| **点赞** | 登录用户可点赞 | <!TODO-FE> | `POST /api/models/:id/like`                                                                                                                               | `model_like` | **Toggle模式**：重复调用即为取消点赞                                 |
+| **收藏** | 登录用户可收藏模型 | <!TODO-FE> | `POST /api/models/:id/collect`                                                                                                                            | `model_collect` | **Toggle模式**：重复调用即为取消收藏                                 |
 | **评论** | 登录用户可评论模型 | <!TODO-FE: 创建 CommentSection.vue> | `POST /api/comments：创建评论 / 回复；  DELETE /api/comments/{id}：删除评论 / 回复；  GET /api/comments?modelId={modelId}&page={page}&size={size}：查询模型评论列表### 评论功能后端开发实现` | - | 创建/删除 评论 / 回复；生成评论页面表                                   |
-| **下载模型** | 登录用户可下载模型文件 | <!TODO-FE: 创建 DownloadButton.vue> | 直接访问静态资源 `/uploads/models/xxx.glb`                                                                                                                        | - | <!TODO-BE: 带权限校验的下载接口 GET /api/models/:id/download 待开发> |
+| **下载模型** | 登录用户可下载模型文件 | <!TODO-FE> | 直接访问静态资源 `/uploads/models/xxx.glb`                                                                                                                        | - | <!TODO-BE: 带权限校验的下载接口 GET /api/models/:id/download 待开发> |
 
 ---
 

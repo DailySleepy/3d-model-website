@@ -10,8 +10,15 @@
     <section>
       <div class="container mx-auto px-8 py-4 max-w-6xl">
        <h2 class="text-2xl font-semibold mb-4">推荐创作者</h2>
+       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <UserCard
+            v-for="user in recommendedUsers"
+            :key="user.id"
+            :user="user"
+            @click="goToUserPage(user.id)"
+          />
+        </div>
       </div>
-      <!-- TODO: UserCard.vue -->
     </section>
 
     <!-- 推荐模型 -->
@@ -35,15 +42,19 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useModelsStore } from '@/stores/models'
-import ModelCard from '@/components/ModelCard.vue'
 import ImageCarousel from '@/components/ImageCarousel.vue'
-
+import UserCard from '@/components/UserCard.vue'
+import ModelCard from '@/components/ModelCard.vue'
 import { mockModels } from '@/mock/model.js' // MOCK
 
 const router = useRouter()
 const modelsStore = useModelsStore()
 const recommendedModels = ref([])
-// const recommendedUsers = ref([]) // TODO
+const recommendedUsers = ref([])
+
+const goToUserPage = (id) => {
+  router.push(`/user/${id}`)
+}
 
 const goToDetail = (id) => {
   router.push(`/model/${id}`)

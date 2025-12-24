@@ -1,90 +1,217 @@
 <template>
-<div class="flex justify-center min-h-screen p-4">
-  <div class="flex w-full max-w-[1600px] min-w-[1000px]">
-    <div class="flex-1">
-      <!-- 预览/3D模型渲染 -->
-      <div class="relative">
-        <button @click="toggleRender" class="absolute top-2 left-2 bg-blue-500 text-white px-4 py-2 rounded">
-          {{ isRendering ? '停止渲染' : '播放3D' }}
-        </button>
-        <ModelViewer v-if="isRendering" :model-url="model.fileUrl" class=" w-full aspect-[16/9]" />
-        <img v-else :src="model.thumbnailUrl" alt="thumbnail" class="w-full aspect-[16/9] object-cover" />
-      </div>
+  <div class="flex justify-center min-h-screen p-4">
+    <div class="flex w-full max-w-[1600px] min-w-[1000px]">
 
-      <!-- 模型互动按钮 -->
-      <div class="mt-4 bg-white p-4 rounded shadow flex gap-2">
-        <button>点赞 ({{ model.likeCount }})</button>
-        <button>收藏 ({{ model.collectCount }})</button>
-        <button v-if="isLoggedIn" class="bg-blue-500 text-white px-4 py-2 rounded">下载</button>
-      </div>
+      <div class="flex-1">
+        <!-- 预览/3D模型渲染 -->
+        <div class="relative">
+          <button @click="toggleRender" class="absolute top-2 left-2 z-10 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 transition">
+            {{ isRendering ? '停止渲染' : '播放3D' }}
+          </button>
 
-      <!-- 评论区 -->
-      <div class="mt-4 bg-white p-4 rounded shadow">
-        <h2 class="font-semibold mb-2">评论</h2>
-        <div v-for="comment in model.comments || []" :key="comment.id" class="mb-2">
-          <p class="font-medium">{{ comment.user }}</p>
-          <p>{{ comment.content }}</p>
+          <div class="w-full aspect-[16/9] bg-gray-100 rounded overflow-hidden">
+            <ModelViewer v-if="isRendering" :model-url="model.fileUrl" class="w-full h-full" />
+            <img v-else :src="model.thumbnailUrl" alt="thumbnail" class="w-full h-full object-cover" />
+          </div>
         </div>
-      </div>
-    </div>
 
-    <div class="w-[250px] ml-4 flex flex-col gap-4">
-      <!-- 作者信息 -->
-      <div class="bg-white p-4 rounded shadow flex items-center gap-4">
-        <img :src="model.author.avatarUrl" class="w-16 h-16 rounded-full" />
-        <div>
-          <p class="font-medium">{{ model.author.username }}</p>
-          <button class="bg-green-500 text-white px-4 py-2 rounded mt-1">关注</button>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mt-4">
+          <!-- 模型基础信息 -->
+          <h1 class="text-2xl font-bold text-gray-800 mb-2">{{ model.title }}</h1>
+          <div class="flex items-center text-sm text-gray-500 mb-4 gap-4">
+            <span>分类: {{ model.category || '未分类' }}</span>
+            <span>发布于: {{ formatDate(model.createdAt) }}</span>
+          </div>
+
+          <!-- 点赞 -->
+          <div class="flex flex-wrap gap-3 border-t pt-4">
+            <button @click="handleLike" :class="[
+              'flex items-center gap-2 px-6 py-2 rounded-full transition-colors font-medium border',
+              model.likedByUser
+                ? 'bg-pink-50 text-pink-600 border-pink-200 hover:bg-pink-100'
+                : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+            ]">
+              <span class="text-lg">{{ model.likedByUser ? '♥' : '♡' }}</span>
+              <span>{{ model.likedByUser ? '已点赞' : '点赞' }}</span>
+              <span class="ml-1 bg-white/50 px-2 rounded-full text-xs py-0.5">
+                {{ model.likeCount }}
+              </span>
+            </button>
+
+            <!-- 收藏 -->
+            <button @click="handleCollect" :class="[
+              'flex items-center gap-2 px-6 py-2 rounded-full transition-colors font-medium border',
+              model.collectedByUser
+                ? 'bg-yellow-50 text-yellow-600 border-yellow-200 hover:bg-yellow-100'
+                : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+            ]">
+              <span class="text-lg">{{ model.collectedByUser ? '★' : '☆' }}</span>
+              <span>{{ model.collectedByUser ? '已收藏' : '收藏' }}</span>
+              <span class="ml-1 bg-white/50 px-2 rounded-full text-xs py-0.5">
+                {{ model.collectCount }}
+              </span>
+            </button>
+
+            <!-- 下载 -->
+            <button @click="handleDownload"
+              class="ml-auto bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2 disabled:bg-gray-400"
+            >
+              <span>📥 下载模型</span>
+            </button>
+          </div>
+
+          <!-- 模型简介 -->
+          <div class="mt-6 text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-md">
+            <h3 class="font-semibold mb-2 text-gray-900">模型简介</h3>
+            <p>{{ model.description || '作者很懒，没有留下描述。' }}</p>
+          </div>
         </div>
+
+        <!-- 评论区 -->
+        <CommentSection :modelId="model.id" />
+
       </div>
 
-      <!-- 作者其他作品 -->
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold mb-2">作者的其他作品</h3>
-        <div class="grid grid-cols-1 gap-2">
-          <div v-for="other in model.author.otherModels || []" :key="other.id">
-            <img :src="other.thumbnailUrl" class="w-full h-[100px] object-cover rounded" />
-            <p class="text-sm">{{ other.title }}</p>
+      <!-- TODO -->
+      <div class="w-[250px] ml-6 flex flex-col gap-4 flex-shrink-0">
+        <!-- 作者信息 -->
+        <div class="bg-white p-4 rounded shadow flex items-center gap-4">
+          <img :src="model.author.avatarUrl" class="w-16 h-16 rounded-full object-cover border" />
+          <div class="overflow-hidden">
+            <p class="font-medium truncate" :title="model.author.username">{{ model.author.username }}</p>
+            <button class="bg-green-500 text-white px-4 py-2 rounded mt-1 text-sm hover:bg-green-600 w-full">关注</button>
+          </div>
+        </div>
+
+        <!-- 作者其他作品 -->
+        <div class="bg-white p-4 rounded shadow">
+          <h3 class="font-semibold mb-2">作者的其他作品</h3>
+          <div class="grid grid-cols-1 gap-3">
+            <div v-for="other in model.author.otherModels || []" :key="other.id" class="cursor-pointer hover:opacity-80">
+              <img :src="other.thumbnailUrl" class="w-full h-[120px] object-cover rounded mb-1" />
+              <p class="text-sm truncate">{{ other.title }}</p>
+            </div>
+            <div v-if="!model.author.otherModels?.length" class="text-gray-400 text-sm">暂无其他作品</div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router' // TODO: useRouter 用于跳转到用户界面
-import { useModelsStore } from '@/stores/models'
-import ModelViewer from '@/components/ModelViewer.vue'
-
-import { mockModels } from '@/mock/model.js' // MOCK
+import api from '@/api';
+import CommentSection from '@/components/CommentSection.vue';
+import ModelViewer from '@/components/ModelViewer.vue';
+import { useAuthStore } from '@/stores/auth';
+import { useModelsStore } from '@/stores/models';
+import { storeToRefs } from 'pinia';
+import { onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute()
+const router = useRouter()
 const modelsStore = useModelsStore()
-const model = ref({
-  previewUrls: [],
-  fileUrl: '',
-  thumbnailUrl: '',
-  title: '',
-  description: '',
-  author: { username: '', avatarUrl: '' },
-  likeCount: 0,
-  collectCount: 0
-})
+const authStore = useAuthStore()
 
 const isRendering = ref(false)
-const isLoggedIn = ref(false) // TODO: 从auth store获取
+const { isLoggedIn } = storeToRefs(authStore)
 
-onMounted(async () => {
-  const id = route.params.id
-  //model.value = await modelsStore.fetchModelById(id)
-  model.value = mockModels[0];
+const model = ref({
+  id: '',
+  title: 'Loading...',
+  description: '',
+  category: '',
+  tags: [],
+  fileUrl: '',
+  thumbnailUrl: '',
+  createdAt: '',
+  likeCount: 0,
+  collectCount: 0,
+  likedByUser: false,
+  collectedByUser: false,
+  // comments
+  author: {
+    id: 0,
+    username: 'Unknown',
+    avatarUrl: '',
+    bio: '',
+    otherModels: []
+  }
+})
+
+import { mockModels } from '@/mock/model.js' // MOCK
+const loadModelData = async (id) => {
+  try {
+    let data = await modelsStore.fetchModelById(id)
+    data = mockModels[0] // TODO
+    model.value = {
+      ...model.value,
+      ...data,
+      author: data.author || { username: 'Unknown', avatarUrl: '', otherModels: [] }
+    }
+  } catch (error) {
+    console.error('Failed to load model:', error)
+  }
+}
+
+onMounted(() => {
+  if (route.params.id) {
+    loadModelData(route.params.id)
+  }
 })
 
 const toggleRender = () => {
   isRendering.value = !isRendering.value
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString()
+}
+
+const handleLike = async () => {
+  if (!checkLogin()) return
+
+  const previousState = model.value.likedByUser
+  model.value.likedByUser = !previousState
+  model.value.likeCount += previousState ? -1 : 1
+
+  try {
+    await api.post(`/api/models/${model.value.id}/like`)
+  } catch (error) {
+    model.value.likedByUser = previousState
+    model.value.likeCount += previousState ? 1 : -1
+    console.error('Like failed:', error)
+  }
+}
+
+const handleCollect = async () => {
+  if (!checkLogin()) return
+
+  const previousState = model.value.collectedByUser
+  model.value.collectedByUser = !previousState
+  model.value.collectCount += previousState ? -1 : 1
+
+  try {
+    await api.post(`/api/models/${model.value.id}/collect`)
+  } catch (error) {
+    model.value.collectedByUser = previousState
+    model.value.collectCount += previousState ? 1 : -1
+    console.error('Collect failed:', error)
+  }
+}
+
+const handleDownload = () => {
+  if (!checkLogin()) return
+  // TODO
+}
+
+const checkLogin = () => {
+  if (!isLoggedIn.value) {
+    if (confirm('请先登录')) router.push('/login')
+    return false
+  }
+  return true
 }
 </script>

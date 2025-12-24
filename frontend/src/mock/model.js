@@ -2,6 +2,7 @@ export const mockModels = [
   {
     id: 1,
     title: "未来城市建筑",
+    category: '建筑',
     description: "一个具有科幻风格的未来城市建筑模型，包含高楼和霓虹灯效果。",
     fileUrl: "/models/stbrry.glb",
     thumbnailUrl: "https://picsum.photos/600/400?random=1",
@@ -20,10 +21,7 @@ export const mockModels = [
     },
     likeCount: 128,
     collectCount: 64,
-    comments: [
-      { id: 1, user: "Bob", content: "这个模型太棒了！" },
-      { id: 2, user: "Charlie", content: "希望能下载使用。" }
-    ]
+    createdAt: '2026',
   },
   {
     id: 2,
