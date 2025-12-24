@@ -13,6 +13,7 @@ export const mockModels = [
     author: {
       username: "Alice",
       avatarUrl: "https://i.pravatar.cc/150?img=1",
+      followedByUser: false,
       otherModels: [
         { id: 101, title: "未来街区", thumbnailUrl: "https://picsum.photos/200/150?random=4" },
         { id: 102, title: "飞行车道", thumbnailUrl: "https://picsum.photos/200/150?random=5" },

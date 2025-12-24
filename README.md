@@ -27,7 +27,7 @@
 │   │   ├── assets/               # 图片、字体等
 │   │   ├── components/           # 可复用组件
 │   │   │   ├── BasePagination.vue # 分页
-│   │   │   ├── CommentSection.vue # 评论区 <TODO>
+│   │   │   ├── CommentSection.vue # 评论区
 │   │   │   ├── ImageCarousel.vue # 图片轮播
 │   │   │   ├── ModelViewer.vue   # 3D 模型渲染（Three.js）
 │   │   │   ├── ModelCard.vue     # 模型卡片

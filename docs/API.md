@@ -19,7 +19,7 @@
 | **登录** | 用户通过邮箱/用户名登录 | `LoginPage.vue` 表单 | `POST /api/auth/login` 返回 `{token, username, email, avatar}` | `users` | Token 存入 LocalStorage |
 | **找回密码** | 用户忘记密码可通过邮箱重置 | <!TODO-FE: 创建 ForgotPassword.vue> | `POST /api/auth/forgot` (发送码) <br> `POST /api/auth/reset` (重置) | `users`, `verification_codes` | 通过邮箱验证身份 |
 | **用户主页** | 查看自己或他人主页作品与资料 | `UserPage.vue`，包含 `UserCard.vue` | `GET /api/users/:id` (获取资料) <br> `GET /api/models?authorId=` (获取作品) | `users`, `models` | 资料包含粉丝数与关注数统计 |
-| **关注系统** | 登录用户可关注他人 | <!TODO-FE: 创建 FollowButton.vue 或集成在 UserCard 中> | `POST /api/users/:id/follow` (关注) <br> `DELETE /api/users/:id/follow` (取消) | `followers` | 需 Header 携带 Token |
+| **关注系统** | 登录用户可关注他人 | 集成在 UserCard 中 | `POST /api/users/:id/follow` (关注) <br> `DELETE /api/users/:id/follow` (取消) | `followers` | 需 Header 携带 Token |
 | **用户设置** | 用户修改个人资料、头像、密码 | `UserSettings.vue` | `PATCH /api/settings/user` (全量更新) <br> `PATCH /api/settings/user/avatar` (仅改头像URL) <br> `POST /api/settings/user/password` (改密码) | `users` | 支持细粒度更新接口 |
 
 ---
@@ -39,9 +39,9 @@
 | 模块 | 用户故事 | 前端任务 | 后端任务                                                                                                                                                      | 数据库设计 | 说明                                                      |
 | :-- | :-- | :-- |:----------------------------------------------------------------------------------------------------------------------------------------------------------| :-- |:--------------------------------------------------------|
 | **模型详情** | 点击模型进入详情页 | `ModelDetail.vue` + `ModelViewer.vue` 渲染 (依赖 `utils/threejs.js`) | `GET /api/models/:id`                                                                                                                                     | `models` | 返回详情及 `likedByUser`, `collectedByUser` 状态               |
-| **点赞** | 登录用户可点赞 | <!TODO-FE> | `POST /api/models/:id/like`                                                                                                                               | `model_like` | **Toggle模式**：重复调用即为取消点赞                                 |
-| **收藏** | 登录用户可收藏模型 | <!TODO-FE> | `POST /api/models/:id/collect`                                                                                                                            | `model_collect` | **Toggle模式**：重复调用即为取消收藏                                 |
-| **评论** | 登录用户可评论模型 | <!TODO-FE: 创建 CommentSection.vue> | `POST /api/comments：创建评论 / 回复；  DELETE /api/comments/{id}：删除评论 / 回复；  GET /api/comments?modelId={modelId}&page={page}&size={size}：查询模型评论列表### 评论功能后端开发实现` | - | 创建/删除 评论 / 回复；生成评论页面表                                   |
+| **点赞** | 登录用户可点赞 | `ModelDetail.vue` 中的 `handleLike()` | `POST /api/models/:id/like`                                                                                                                               | `model_like` | **Toggle模式**：重复调用即为取消点赞                                 |
+| **收藏** | 登录用户可收藏模型 | `ModelDetail.vue` 中的 `handleCollect()` | `POST /api/models/:id/collect`                                                                                                                            | `model_collect` | **Toggle模式**：重复调用即为取消收藏                                 |
+| **评论** | 登录用户可评论模型 | CommentSection.vue | `POST /api/comments：创建评论 / 回复；  DELETE /api/comments/{id}：删除评论 / 回复；  GET /api/comments?modelId={modelId}&page={page}&size={size}：查询模型评论列表### 评论功能后端开发实现` | - | 创建/删除 评论 / 回复；生成评论页面表                                   |
 | **下载模型** | 登录用户可下载模型文件 | <!TODO-FE> | 直接访问静态资源 `/uploads/models/xxx.glb`                                                                                                                        | - | <!TODO-BE: 带权限校验的下载接口 GET /api/models/:id/download 待开发> |
 
 ---

@@ -1,7 +1,7 @@
 <template>
   <div
     class="bg-white rounded shadow cursor-pointer hover:shadow-lg transition flex flex-col h-full"
-    @click="emit('click', model.id)"
+    @click="handleClick"
   >
     <img :src="model.thumbnailUrl" alt="thumbnail" class="w-full h-40 sm:h-48 lg:h-56 object-cover rounded-t">
     <div class="p-4">
@@ -13,11 +13,17 @@
 </template>
 
 <script setup>
-defineProps({
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const props = defineProps({
   model: {
     type: Object,
     required: true
   }
 })
-const emit = defineEmits(['click'])
+
+const handleClick = () => {
+  router.push(`/model/${props.model.id}`)
+}
 </script>

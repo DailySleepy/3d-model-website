@@ -3,28 +3,29 @@
     <div class="flex w-full max-w-[1600px] min-w-[1000px]">
 
       <div class="flex-1">
+        <!-- 模型基础信息 -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">{{ model.title }}</h1>
+        <div class="flex items-center text-sm text-gray-500 mb-4 gap-4">
+          <span>分类: {{ model.category || '未分类' }}</span>
+          <span>发布于: {{ formatDate(model.createdAt) }}</span>
+        </div>
+
         <!-- 预览/3D模型渲染 -->
         <div class="relative">
-          <button @click="toggleRender" class="absolute top-2 left-2 z-10 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 transition">
+          <button @click="toggleRender"
+            class="absolute top-2 left-2 z-10 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 transition">
             {{ isRendering ? '停止渲染' : '播放3D' }}
           </button>
-
           <div class="w-full aspect-[16/9] bg-gray-100 rounded overflow-hidden">
             <ModelViewer v-if="isRendering" :model-url="model.fileUrl" class="w-full h-full" />
             <img v-else :src="model.thumbnailUrl" alt="thumbnail" class="w-full h-full object-cover" />
           </div>
         </div>
 
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mt-4">
-          <!-- 模型基础信息 -->
-          <h1 class="text-2xl font-bold text-gray-800 mb-2">{{ model.title }}</h1>
-          <div class="flex items-center text-sm text-gray-500 mb-4 gap-4">
-            <span>分类: {{ model.category || '未分类' }}</span>
-            <span>发布于: {{ formatDate(model.createdAt) }}</span>
-          </div>
-
-          <!-- 点赞 -->
+        <!-- 互动按钮与简介 -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <div class="flex flex-wrap gap-3 border-t pt-4">
+            <!-- 点赞 -->
             <button @click="handleLike" :class="[
               'flex items-center gap-2 px-6 py-2 rounded-full transition-colors font-medium border',
               model.likedByUser
@@ -54,14 +55,13 @@
 
             <!-- 下载 -->
             <button @click="handleDownload"
-              class="ml-auto bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2 disabled:bg-gray-400"
-            >
+              class="ml-auto bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2 disabled:bg-gray-400">
               <span>📥 下载模型</span>
             </button>
           </div>
 
           <!-- 模型简介 -->
-          <div class="mt-6 text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-md">
+          <div class="mt-6 text-gray-700 leading-relaxed p-4 rounded-md">
             <h3 class="font-semibold mb-2 text-gray-900">模型简介</h3>
             <p>{{ model.description || '作者很懒，没有留下描述。' }}</p>
           </div>
@@ -75,25 +75,21 @@
       <!-- TODO -->
       <div class="w-[250px] ml-6 flex flex-col gap-4 flex-shrink-0">
         <!-- 作者信息 -->
-        <div class="bg-white p-4 rounded shadow flex items-center gap-4">
-          <img :src="model.author.avatarUrl" class="w-16 h-16 rounded-full object-cover border" />
-          <div class="overflow-hidden">
-            <p class="font-medium truncate" :title="model.author.username">{{ model.author.username }}</p>
-            <button class="bg-green-500 text-white px-4 py-2 rounded mt-1 text-sm hover:bg-green-600 w-full">关注</button>
-          </div>
-        </div>
+        <UserCard :user="model.author" layout="horizontal" :show-action="true" />
 
         <!-- 作者其他作品 -->
         <div class="bg-white p-4 rounded shadow">
           <h3 class="font-semibold mb-2">作者的其他作品</h3>
           <div class="grid grid-cols-1 gap-3">
-            <div v-for="other in model.author.otherModels || []" :key="other.id" class="cursor-pointer hover:opacity-80">
+            <div v-for="other in model.author.otherModels || []" :key="other.id"
+              class="cursor-pointer hover:opacity-80">
               <img :src="other.thumbnailUrl" class="w-full h-[120px] object-cover rounded mb-1" />
               <p class="text-sm truncate">{{ other.title }}</p>
             </div>
             <div v-if="!model.author.otherModels?.length" class="text-gray-400 text-sm">暂无其他作品</div>
           </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -103,9 +99,9 @@
 import api from '@/api';
 import CommentSection from '@/components/CommentSection.vue';
 import ModelViewer from '@/components/ModelViewer.vue';
+import UserCard from '@/components/UserCard.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useModelsStore } from '@/stores/models';
-import { storeToRefs } from 'pinia';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -115,7 +111,6 @@ const modelsStore = useModelsStore()
 const authStore = useAuthStore()
 
 const isRendering = ref(false)
-const { isLoggedIn } = storeToRefs(authStore)
 
 const model = ref({
   id: '',
@@ -130,17 +125,17 @@ const model = ref({
   collectCount: 0,
   likedByUser: false,
   collectedByUser: false,
-  // comments
   author: {
     id: 0,
     username: 'Unknown',
     avatarUrl: '',
     bio: '',
+    followedByUser: false,
     otherModels: []
   }
 })
 
-import { mockModels } from '@/mock/model.js' // MOCK
+import { mockModels } from '@/mock/model.js'; // MOCK
 const loadModelData = async (id) => {
   try {
     let data = await modelsStore.fetchModelById(id)
@@ -171,7 +166,7 @@ const formatDate = (dateStr) => {
 }
 
 const handleLike = async () => {
-  if (!checkLogin()) return
+  if (!authStore.checkLogin()) return
 
   const previousState = model.value.likedByUser
   model.value.likedByUser = !previousState
@@ -187,7 +182,7 @@ const handleLike = async () => {
 }
 
 const handleCollect = async () => {
-  if (!checkLogin()) return
+  if (!authStore.checkLogin()) return
 
   const previousState = model.value.collectedByUser
   model.value.collectedByUser = !previousState
@@ -203,15 +198,7 @@ const handleCollect = async () => {
 }
 
 const handleDownload = () => {
-  if (!checkLogin()) return
+  if (!authStore.checkLogin()) return
   // TODO
-}
-
-const checkLogin = () => {
-  if (!isLoggedIn.value) {
-    if (confirm('请先登录')) router.push('/login')
-    return false
-  }
-  return true
 }
 </script>
