@@ -15,9 +15,9 @@ export const mockModels = [
       avatarUrl: "https://i.pravatar.cc/150?img=1",
       followedByUser: false,
       otherModels: [
-        { id: 101, title: "未来街区", thumbnailUrl: "https://picsum.photos/200/150?random=4" },
-        { id: 102, title: "飞行车道", thumbnailUrl: "https://picsum.photos/200/150?random=5" },
-        { id: 103, title: "霓虹塔楼", thumbnailUrl: "https://picsum.photos/200/150?random=6" }
+        { id: 901, title: "未来街区", thumbnailUrl: "https://picsum.photos/200/150?random=4" },
+        { id: 902, title: "飞行车道", thumbnailUrl: "https://picsum.photos/200/150?random=5" },
+        { id: 903, title: "霓虹塔楼", thumbnailUrl: "https://picsum.photos/200/150?random=6" }
       ]
     },
     likeCount: 128,

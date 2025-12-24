@@ -1,7 +1,7 @@
 <template>
   <!-- 主容器布局：垂直模式为卡片样式(带hover位移)，水平模式为列表项样式 -->
   <div @click="handleClick"
-    class="bg-white rounded shadow hover:shadow-md transition-shadow cursor-pointer border border-gray-100 overflow-hidden"
+    class="group bg-white rounded shadow hover:shadow-md transition-shadow cursor-pointer border border-gray-100 overflow-hidden"
     :class="layoutClasses">
 
     <!-- 头像容器：垂直模式下添加底部间距 -->
@@ -13,7 +13,7 @@
 
     <!-- 信息区容器：垂直模式文字居中，水平模式自动填充剩余空间 -->
     <div :class="infoContainerClasses">
-      <p class="font-medium text-gray-800 truncate" :title="user.username">
+      <p class="font-medium text-gray-800 truncate group-hover:text-blue-600" :title="user.username">
         {{ user.username }}
       </p>
       <!-- 只在垂直模式(主页推荐创作者)展示bio -->
@@ -35,10 +35,10 @@
 </template>
 
 <script setup>
+import api from '@/api'
+import { useAuthStore } from '@/stores/auth'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import api from '@/api'
 
 const props = defineProps({
   user: {
