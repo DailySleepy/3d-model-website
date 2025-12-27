@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/threed_model_db #先创建你的数据库 createdb xx_db
     username: postgres
-    password: Yw040925 #记得改
+    password: YOURPASSPORT #记得改
     driver-class-name: org.postgresql.Driver
     
   web:
