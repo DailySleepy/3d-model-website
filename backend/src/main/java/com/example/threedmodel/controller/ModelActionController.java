@@ -1,14 +1,19 @@
 package com.example.threedmodel.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.threedmodel.dto.ModelDetailDTO;
 import com.example.threedmodel.entity.Model;
+import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.mapper.ModelMapper;
-import com.example.threedmodel.service.ModelLikeService;
 import com.example.threedmodel.service.ModelCollectService;
+import com.example.threedmodel.service.ModelLikeService;
+import com.example.threedmodel.service.UserService;
+import com.example.threedmodel.utils.JwtUtil;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 
 @RestController
 @RequestMapping("/api/models")
@@ -23,49 +28,99 @@ public class ModelActionController {
     @Autowired
     private ModelMapper modelMapper;
 
-    private Long getFakeUserId() {
-        return 1001L;
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private UserService userService;
+
+    /**
+     * 从 JWT 中解析 userId（与 CommentController 保持一致）
+     */
+    private Long getUserIdFromRequest(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.toLowerCase().startsWith("bearer ")) {
+            return null;
+        }
+
+        String token = authHeader.substring(7).trim();
+        String username = jwtUtil.extractUsername(token);
+
+        User user = userService.getOne(
+                new QueryWrapper<User>().eq("username", username)
+        );
+
+        return user == null ? null : user.getId();
     }
 
-    // 获取模型信息（带点赞/收藏状态）
+    /**
+     * 获取模型详情（含点赞 / 收藏状态）
+     */
     @GetMapping("/{id}")
-public ModelDetailDTO getModel(@PathVariable Long id) {
-    Model model = modelMapper.selectById(id);
-    if (model == null) return null;
+    public ResponseEntity<?> getModel(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Model model = modelMapper.selectById(id);
+        if (model == null) {
+            return ResponseEntity.badRequest().body("模型不存在");
+        }
 
-    ModelDetailDTO dto = new ModelDetailDTO();
-    dto.setId(model.getId());
-    dto.setTitle(model.getTitle());
-    dto.setDescription(model.getDescription());
-    dto.setCategory(model.getCategory());
+        Long userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+        }
 
-    // 直接映射 PostgreSQL character varying[] 到 String[]
-    dto.setTags(model.getTags());               // model.tags 类型为 String[]
-    dto.setPreviewUrls(model.getPreviewUrls());// model.previewUrls 类型为 String[]
+        ModelDetailDTO dto = new ModelDetailDTO();
+        dto.setId(model.getId());
+        dto.setTitle(model.getTitle());
+        dto.setDescription(model.getDescription());
+        dto.setCategory(model.getCategory());
+        dto.setTags(model.getTags());
+        dto.setPreviewUrls(model.getPreviewUrls());
+        dto.setFileUrl(model.getFileUrl());
+        dto.setThumbnailUrl(model.getThumbnailUrl());
 
-    dto.setFileUrl(model.getFileUrl());
-    dto.setThumbnailUrl(model.getThumbnailUrl());
+        dto.setLikeCount(model.getLikeCount() == null ? 0 : model.getLikeCount());
+        dto.setCollectCount(model.getCollectCount() == null ? 0 : model.getCollectCount());
 
-    dto.setLikeCount(model.getLikeCount() == null ? 0 : model.getLikeCount());
-    dto.setCollectCount(model.getCollectCount() == null ? 0 : model.getCollectCount());
-    dto.setLikedByUser(modelLikeService.isLiked(id, getFakeUserId()));
-    dto.setCollectedByUser(modelCollectService.isCollected(id, getFakeUserId()));
+        dto.setLikedByUser(modelLikeService.isLiked(id, userId));
+        dto.setCollectedByUser(modelCollectService.isCollected(id, userId));
 
-    return dto;
-}
-
-
-    // 切换点赞状态
-    @PostMapping("/{id}/like")
-    public ModelDetailDTO toggleLike(@PathVariable Long id) {
-        modelLikeService.toggleLike(id, getFakeUserId());
-        return getModel(id);
+        return ResponseEntity.ok(dto);
     }
 
-    // 切换收藏状态
+    /**
+     * 点赞 / 取消点赞
+     */
+    @PostMapping("/{id}/like")
+    public ResponseEntity<?> toggleLike(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+        }
+
+        modelLikeService.toggleLike(id, userId);
+        return ResponseEntity.ok(getModel(id, request).getBody());
+    }
+
+    /**
+     * 收藏 / 取消收藏
+     */
     @PostMapping("/{id}/collect")
-    public ModelDetailDTO toggleCollect(@PathVariable Long id) {
-        modelCollectService.toggleCollect(id, getFakeUserId());
-        return getModel(id);
+    public ResponseEntity<?> toggleCollect(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+        }
+
+        modelCollectService.toggleCollect(id, userId);
+        return ResponseEntity.ok(getModel(id, request).getBody());
     }
 }
