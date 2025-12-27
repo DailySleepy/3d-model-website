@@ -5,10 +5,12 @@ import com.example.threedmodel.event.*;
 import com.example.threedmodel.service.NotificationService;
 import com.example.threedmodel.service.FollowerService;
 import com.example.threedmodel.service.CommentService;
+
 import jakarta.annotation.Resource;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +28,24 @@ public class NotificationEventListener {
     private FollowerService followerService;
 
     
+
+    /**
+     * 监听关注事件
+     */
+    @EventListener
+    public void handleFollow(FollowEvent event) {
+
+        Long followerId = event.getFollowerId(); // 谁关注的
+        Long userId = event.getUserId();         // 被关注者
+
+        // 给被关注者发通知
+        notificationService.create(
+                userId,         // 接收人
+                followerId,     // 触发人
+                null,           // modelId（关注无模型）
+                "follow"
+        );
+    }
 
     /**
      * 点赞 / 收藏通知
