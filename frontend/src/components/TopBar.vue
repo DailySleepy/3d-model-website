@@ -20,8 +20,8 @@
       </div>
       <!-- 登录前样式-->
       <div v-if="!authStore.isLoggedIn" class="flex items-center space-x-6 md:space-x-10 whitespace-nowrap">
-        <router-link to="/login" class="text-gray-600 hover:text-gray-800 whitespace-nowrap">登录</router-link>
-        <router-link to="/register" class="text-blue-600 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 whitespace-nowrap">注册</router-link>
+        <router-link to="/login" class="btn-text-blue">登录</router-link>
+        <router-link to="/register" class="btn-text-white">注册</router-link>
       </div>
       <!-- 登录后样式-->
       <div v-else class="flex items-center space-x-6 md:space-x-10 whitespace-nowrap">
@@ -36,7 +36,7 @@
         <!-- 退出登录按钮-->
         <button
           @click="handleLogout"
-          class="text-gray-600 hover:text-gray-800 px-3 py-1 border rounded hover:bg-gray-50 whitespace-nowrap"
+          class="btn-text-white"
         >
           退出       
         </button>

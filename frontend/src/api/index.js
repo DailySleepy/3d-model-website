@@ -34,7 +34,22 @@ export const userApi = {
 // 关注
 export const followApi = {
   follow: (userId) => api.post(`/api/users/${userId}/follow`),
-  unfollow: (userId) => api.delete(`/api/users/${userId}/follow`)
+  unfollow: (userId) => api.delete(`/api/users/${userId}/follow`),
+  checkStatus: (userId) => api.get(`/api/users/${userId}/is-following`)
+}
+
+//点赞
+export const likeApi = {
+  like: (modelId) => api.post(`/api/models/${modelId}/like`),
+  unlike: (modelId) => api.delete(`/api/models/${modelId}/like`),
+  checkStatus: (modelId) => api.get(`/api/models/${modelId}/is-liked`)
+}
+
+//收藏
+export const collectApi = {
+  collect: (modelId) => api.post(`/api/models/${modelId}/collect`),
+  uncollect: (modelId) => api.delete(`/api/models/${modelId}/collect`),
+  checkStatus: (modelId) => api.get(`/api/models/${modelId}/is-collected`)
 }
 
 // 用户设置
@@ -63,10 +78,8 @@ export const userSettingsApi = {
 // 模型
 export const modelsApi = {
   publish: (payload) => api.post('/api/models', payload),
-  listByAuthor: (authorId) => api.get('/api/models', { params: { authorId } }),
+  getByAuthor: (authorId) => api.get('/api/models', { params: { authorId } }),
   getById: (id) => api.get(`/api/models/${id}`),
-  toggleLike: (id) => api.post(`/api/models/${id}/like`),
-  toggleCollect: (id) => api.post(`/api/models/${id}/collect`),
   search: (params) => api.get('/api/search', { params })
 }
 
@@ -93,4 +106,11 @@ export const uploadApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   }
+}
+
+// 评论
+export const commentsApi = {
+  list: (modelId, page = 1, size = 10) => api.get('/api/comments', { params: { modelId, page, size } }),
+  create: (payload) => api.post('/api/comments', payload), // { modelId, content, parentId }
+  delete: (id) => api.delete(`/api/comments/${id}`)
 }

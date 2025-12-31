@@ -68,17 +68,28 @@ public class ModelController {
     }
 
     /**
-     * 获取当前用户发布的模型
+     * 获取模型列表（支持按作者筛选）
      */
     @GetMapping
-    public ResponseEntity<?> getMyModels(HttpServletRequest request) {
-        Long userId = getUserId(request);
-        if (userId == null) {
-            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+    public ResponseEntity<?> getModels(
+            @RequestParam(required = false) Long authorId,
+            HttpServletRequest request
+    ) {
+        // 1. 如果指定了 authorId，直接查询该作者的模型
+        if (authorId != null) {
+            List<Model> models = modelService.getModelsByAuthor(authorId);
+            return ResponseEntity.ok(models);
         }
 
-        List<Model> models = modelService.getModelsByAuthor(userId);
-        return ResponseEntity.ok(models);
+        // 2. 如果没指定 authorId，尝试获取当前登录用户的模型
+        Long userId = getUserId(request);
+        if (userId != null) {
+            List<Model> models = modelService.getModelsByAuthor(userId);
+            return ResponseEntity.ok(models);
+        }
+
+        // 3. 既没指定作者，也没登录，返回错误或空列表
+        return ResponseEntity.badRequest().body("请指定 authorId 或先登录");
     }
 
     record Response(Long id, String message) {}

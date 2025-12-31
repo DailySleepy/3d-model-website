@@ -77,11 +77,6 @@
                 <div class="mt-2 flex flex-wrap gap-2">
                   <input v-model="tagInput" @keydown.enter.prevent="handleTagEnter" placeholder="请输入标签，按Enter添加"
                     class="input-modern" />
-                  <button type="button"
-                    class="px-4 py-2 rounded-2xl border border-blue-500 text-blue-600 hover:bg-blue-50"
-                    @click="addTag(tagInput)">
-                    添加
-                  </button>
                 </div>
                 <div v-if="form.tags.length" class="mt-3 flex flex-wrap gap-2">
                   <span v-for="(tag, index) in form.tags" :key="`${tag}-${index}`"

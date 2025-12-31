@@ -72,7 +72,8 @@ public class ModelActionController {
         }
 
         ModelDetailDTO dto = new ModelDetailDTO();
-        dto.setId(model.getId());
+        dto.setId(model.getId());   
+        dto.setAuthorId(model.getAuthorId());
         dto.setTitle(model.getTitle());
         dto.setDescription(model.getDescription());
         dto.setCategory(model.getCategory());
@@ -91,10 +92,10 @@ public class ModelActionController {
     }
 
     /**
-     * 点赞 / 取消点赞
+     * 点赞
      */
     @PostMapping("/{id}/like")
-    public ResponseEntity<?> toggleLike(
+    public ResponseEntity<?> likeModel(
             @PathVariable Long id,
             HttpServletRequest request
     ) {
@@ -103,15 +104,17 @@ public class ModelActionController {
             return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
         }
 
-        modelLikeService.toggleLike(id, userId);
-        return ResponseEntity.ok(getModel(id, request).getBody());
+        if (!modelLikeService.isLiked(id, userId)) {
+            modelLikeService.like(id, userId);
+        }
+        return ResponseEntity.ok("点赞成功");
     }
 
     /**
-     * 收藏 / 取消收藏
+     * 取消点赞
      */
-    @PostMapping("/{id}/collect")
-    public ResponseEntity<?> toggleCollect(
+    @DeleteMapping("/{id}/like")
+    public ResponseEntity<?> unlikeModel(
             @PathVariable Long id,
             HttpServletRequest request
     ) {
@@ -120,7 +123,77 @@ public class ModelActionController {
             return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
         }
 
-        modelCollectService.toggleCollect(id, userId);
-        return ResponseEntity.ok(getModel(id, request).getBody());
+        if (modelLikeService.isLiked(id, userId)) {
+            modelLikeService.unlike(id, userId);
+        }
+        return ResponseEntity.ok("取消点赞成功");
+    }
+
+    /**
+     * 检查点赞状态
+     */
+    @GetMapping("/{id}/is-liked")
+    public ResponseEntity<?> checkLikeStatus(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            return ResponseEntity.ok(false);
+        }
+        return ResponseEntity.ok(modelLikeService.isLiked(id, userId));
+    }
+
+    /**
+     * 收藏
+     */
+    @PostMapping("/{id}/collect")
+    public ResponseEntity<?> collectModel(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+        }
+
+        if (!modelCollectService.isCollected(id, userId)) {
+            modelCollectService.collect(id, userId);
+        }
+        return ResponseEntity.ok("收藏成功");
+    }
+
+    /**
+     * 取消收藏
+     */
+    @DeleteMapping("/{id}/collect")
+    public ResponseEntity<?> uncollectModel(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+        }
+
+        if (modelCollectService.isCollected(id, userId)) {
+            modelCollectService.uncollect(id, userId);
+        }
+        return ResponseEntity.ok("取消收藏成功");
+    }
+
+    /**
+     * 检查收藏状态
+     */
+    @GetMapping("/{id}/is-collected")
+    public ResponseEntity<?> checkCollectStatus(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            return ResponseEntity.ok(false);
+        }
+        return ResponseEntity.ok(modelCollectService.isCollected(id, userId));
     }
 }

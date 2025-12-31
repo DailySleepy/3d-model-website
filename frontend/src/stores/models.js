@@ -18,6 +18,32 @@ export const useModelsStore = defineStore('models', {
       this.users = res.data.users
       return this.users
     },
+    async fetchLatestModels(limit = 20) {
+      const res = await api.get('/api/search', {
+        params: {
+          q: '',
+          type: 'model',
+          sort: 'time',
+          page: 1,
+          pageSize: limit
+        }
+      })
+      this.models = res.data?.items || []
+      return this.models
+    },
+    async fetchLatestUsers(limit = 5) {
+      const res = await api.get('/api/search', {
+        params: {
+          q: '',
+          type: 'author',
+          sort: 'time',
+          page: 1,
+          pageSize: limit
+        }
+      })
+      this.users = res.data?.items || []
+      return this.users
+    },
     async searchModels(params) {
       const res = await api.get('/api/search', { params })
       return res.data // { models, totalPages }

@@ -152,4 +152,44 @@ public class FollowController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
         }
     }
+
+    /**
+     * 检查是否关注了指定ID的用户
+     * GET /api/users/:id/is-following
+     */
+    @GetMapping("/{id}/is-following")
+    public ResponseEntity<Map<String, Object>> checkFollowStatus(
+            @PathVariable("id") Long targetUserId,
+            HttpServletRequest request
+    ) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                result.put("isFollowing", false);
+                return ResponseEntity.ok(result);
+            }
+            String token = authHeader.replace("Bearer ", "").trim();
+            if (!jwtUtil.validateToken(token)) {
+                result.put("isFollowing", false);
+                return ResponseEntity.ok(result);
+            }
+            String username = jwtUtil.extractUsername(token);
+            User currentUser = userService.getUserByUsername(username);
+            if (currentUser == null) {
+                result.put("isFollowing", false);
+                return ResponseEntity.ok(result);
+            }
+            Long currentUserId = currentUser.getId();
+            
+            boolean isFollowing = followerService.isFollowing(targetUserId, currentUserId);
+            result.put("isFollowing", isFollowing);
+            result.put("success", true);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
 }
