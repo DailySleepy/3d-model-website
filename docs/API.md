@@ -36,13 +36,13 @@
 
 ## 4. 模型浏览与互动
 
-| 模块 | 用户故事 | 前端任务 | 后端任务                                                                                                                                                      | 数据库设计 | 说明                                                      |
-| :-- | :-- | :-- |:----------------------------------------------------------------------------------------------------------------------------------------------------------| :-- |:--------------------------------------------------------|
-| **模型详情** | 点击模型进入详情页 | `ModelDetail.vue` + `ModelViewer.vue` 渲染 (依赖 `utils/threejs.js`) | `GET /api/models/:id`                                                                                                                                     | `models` | 返回详情及 `likedByUser`, `collectedByUser` 状态               |
-| **点赞** | 登录用户可点赞 | `ModelDetail.vue` 中的 `handleLike()` | `POST /api/models/:id/like`                                                                                                                               | `model_like` | **Toggle模式**：重复调用即为取消点赞                                 |
-| **收藏** | 登录用户可收藏模型 | `ModelDetail.vue` 中的 `handleCollect()` | `POST /api/models/:id/collect`                                                                                                                            | `model_collect` | **Toggle模式**：重复调用即为取消收藏                                 |
-| **评论** | 登录用户可评论模型 | CommentSection.vue | `POST /api/comments：创建评论 / 回复；  DELETE /api/comments/{id}：删除评论 / 回复；  GET /api/comments?modelId={modelId}&page={page}&size={size}：查询模型评论列表### 评论功能后端开发实现` | - | 创建/删除 评论 / 回复；生成评论页面表                                   |
-| **下载模型** | 登录用户可下载模型文件 | <!TODO-FE> | 直接访问静态资源 `/uploads/models/xxx.glb`                                                                                                                        | - | <!TODO-BE: 带权限校验的下载接口 GET /api/models/:id/download 待开发> |
+| 模块 | 用户故事 | 前端任务 | 后端任务 | 数据库设计 | 说明 |
+| :-- | :-- | :-- | :-- | :-- | :-- |
+| **模型详情** | 点击模型进入详情页 | `ModelDetail.vue` + `ModelViewer.vue` | `GET /api/models/:id` | `models` | 接口需返回详情及 `isLiked`, `isCollected` 状态 |
+| **点赞** | 登录用户可点赞 | `ModelDetail.vue` 中的 `handleLike()` | `POST /api/models/:id/like` | `model_likes` | **Toggle模式**：重复调用即为取消点赞 |
+| **收藏** | 登录用户可收藏模型 | `ModelDetail.vue` 中的 `handleCollect()` | `POST /api/models/:id/collect` | `model_collects` | **Toggle模式**：重复调用即为取消收藏 |
+| **评论** | 登录用户发表评论、回复他人 | `CommentSection.vue`<br>`CommentItem.vue` | 1. `GET /api/comments` (返回包含 `children` 数组的二级结构)<br>2. `POST /api/comments` (创建评论/回复)<br>3. `DELETE /api/comments/:id` (删除) | `comments` | 采用 **二级扁平结构** (Bilibili风格)，子评论平铺显示 |
+| **下载模型** | 登录用户可下载模型文件 | - | - | - |
 
 ---
 
@@ -50,8 +50,8 @@
 
 | 模块 | 用户故事 | 前端任务 | 后端任务 | 数据库设计 | 说明 |
 | :-- | :-- | :-- | :-- | :-- | :-- |
-| **通知中心** | 用户查看收到的赞、评论、系统消息 | <!TODO-FE: 创建 NotificationDropdown.vue> | 'GET api/notifications' + 'POST api/notifications/:id/read' | notifications | 暂未实现 |
-| **私信** | 用户之间私聊（可选） | <!TODO-FE: 创建 ChatModal.vue> | <!TODO-BE: 私信模块待开发> | - | 暂未实现 |
+| **通知中心** | 用户查看收到的赞、评论、系统消息 | 1. `NotificationDropdown.vue`<br>2. Pinia `useNotificationStore` (轮询红点) | 1. `GET /api/notifications` (需联表查询发送者详情)<br>2. `GET /api/notifications/unread-count`<br>3. `PUT /api/notifications/:id/read` | `notifications` | 后端需在点赞/评论/关注成功后**自动触发**插入通知记录 |
+| **私信** | 用户之间私聊 | `ChatModal.vue` (含左侧会话列表，右侧聊天框) | 1. `POST /api/messages` (发送)<br>2. `GET /api/messages/conversations` (最近会话列表)<br>3. `GET /api/messages/history` (特定用户的聊天记录) | `messages` | 独立于通知系统，前端轮询或 WebSocket |
 
 ---
 
@@ -132,27 +132,40 @@ CREATE TABLE verification_codes (
 );
 ```
 
-### comments <!TODO-BE>
+### comments
 ```sql
 CREATE TABLE comments (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL,        -- 评论发布者
   model_id BIGINT NOT NULL,       -- 评论所属模型
   parent_id BIGINT DEFAULT NULL,  -- 父评论ID (若为NULL则表示是一级评论，不为NULL表示是回复)
+  reply_to_user_id BIGINT DEFAULT NULL; -- 被回复的用户ID [新增]
   content TEXT NOT NULL,          -- 评论内容
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-### notification <!TODO-BE>
+### notification
 ```sql
 CREATE TABLE notifications (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL,        -- 接收通知的用户 ID
-  type VARCHAR(20) NOT NULL,      -- 通知类型: 'LIKE', 'COLLECT', 'COMMENT', 'FOLLOW(to do)', 'SYSTEM'
+  type VARCHAR(20) NOT NULL,      -- 通知类型: 'LIKE', 'COLLECT', 'COMMENT', 'FOLLOW', 'SYSTEM'
   from_id BIGINT,               -- 触发者 ID (如谁给你点了赞)，系统消息可为 NULL
   model_id BIGINT,                -- 相关联的模型 ID (如点赞/评论了哪个模型)，关注通知可为 NULL
   is_read BOOLEAN DEFAULT FALSE,  -- 是否已读
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### messages
+```sql
+CREATE TABLE messages (
+  id BIGSERIAL PRIMARY KEY,
+  sender_id BIGINT NOT NULL,      -- 发送者 ID
+  receiver_id BIGINT NOT NULL,    -- 接收者 ID
+  content TEXT NOT NULL,          -- 私信内容
+  is_read BOOLEAN DEFAULT FALSE,  -- 接收者是否已读
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
