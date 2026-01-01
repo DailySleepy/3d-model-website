@@ -9,11 +9,12 @@
         <img :src="user?.avatar" class="w-full h-full object-cover" />
       </div>
       <div class="flex-1">
-        <textarea v-model="content" placeholder="分享你的想法..."
-          class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none min-h-[80px]"></textarea>
+        <textarea v-model="content" placeholder="分享你的想法..." class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500
+            focus:border-blue-500 outline-none resize-none min-h-[80px]
+            text-gray-900 placeholder:text-gray-400"></textarea>
         <div class="flex justify-end mt-2">
-          <button @click="handleSubmit" :disabled="submitting || !content.trim()"
-            class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition-colors">
+          <button @click="handleSubmit" :disabled="submitting || !content.trim()" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700
+              disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition-colors">
             {{ isLoggedIn ? (submitting ? '发送中...' : '发布评论') : '请先登录' }}
           </button>
         </div>
@@ -24,19 +25,26 @@
       <div v-if="loading && comments.length === 0" class="text-center text-gray-400 py-4">加载中...</div>
       <div v-else-if="comments.length === 0" class="text-center text-gray-400 py-8">暂无评论，快来抢沙发吧~</div>
 
-      <div v-for="comment in comments" :key="comment.id" class="flex gap-4 group">
+      <div v-for="comment in comments" :key="comment.id"
+        class="flex gap-4 group border-b border-gray-200 pb-4 mb-4 items-start text-left">
         <router-link :to="`/user/${comment.userId}`"
           class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-          <img :src="comment.userAvatar" class="w-full h-full object-cover" />
+          <img :src="comment.avatarUrl" class="w-full h-full object-cover" />
         </router-link>
 
-        <div class="flex-1 border-b border-gray-100 pb-4">
+        <div class="flex-1">
           <div class="flex justify-between items-baseline mb-1">
-            <router-link :to="`/user/${comment.userId}`"
-              class="font-semibold text-gray-800">{{ comment.username }}</router-link>
-            <span class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</span>
+            <router-link :to="`/user/${comment.userId}`" class="font-semibold text-blue-600">
+              {{ comment.username }}
+            </router-link>
+            <span class="text-xs text-gray-400">
+              {{ formatDate(comment.createdAt) }}
+            </span>
           </div>
-          <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">{{ comment.content }}</p>
+
+          <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">
+            {{ comment.content }}
+          </p>
 
           <div class="mt-2 flex gap-4 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
             <button v-if="isCurrentUser(comment.userId)" @click="handleDelete(comment.id)"
@@ -55,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
@@ -93,12 +101,7 @@ const fetchComments = async (currentPage = 1, append = false) => {
       }
     })
 
-    // TODO: 适配后端返回结构
-    let newItems = res.data.content || []
-    newItems = [
-      { id: 1, userid: 66, username: "Bob", content: "这个模型太棒了！", createdAt: "2025" },
-      { id: 2, userid: 99, username: "Charlie", content: "希望能下载使用。", createdAt: "2024" } // TODO
-    ]
+    let newItems = res.data.items || []
     total.value = res.data.totalElements || 0
 
     if (append) {
@@ -114,6 +117,8 @@ const fetchComments = async (currentPage = 1, append = false) => {
     loading.value = false
   }
 }
+
+const showToast = inject('showToast')
 
 const handleSubmit = async () => {
   if (!checkLogin()) return
@@ -131,7 +136,7 @@ const handleSubmit = async () => {
     total.value++
     content.value = ''
   } catch (error) {
-    alert('评论失败: ' + (error.response?.data || error.message))
+    showToast('评论失败: ' + (error.response?.data || error.message), 'error')
   } finally {
     submitting.value = false
   }
@@ -144,9 +149,10 @@ const handleDelete = async (commentId) => {
     await api.delete(`/api/comments/${commentId}`)
     comments.value = comments.value.filter(c => c.id !== commentId)
     total.value--
+    showToast('删除成功', 'success')
   } catch (error) {
     console.log(error)
-    alert('删除失败')
+    showToast('删除失败', 'error')
   }
 }
 

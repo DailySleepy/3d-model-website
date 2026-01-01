@@ -159,7 +159,7 @@
           </section>
         </div>
 
-        <!-- Author Info Tab -->
+        <!-- 用户信息 -->
         <div v-if="activeTab === 'author'" class="space-y-8">
           <section class="bg-white rounded-[20px] p-8 shadow-sm">
             <div class="flex items-center justify-between mb-8">
@@ -204,7 +204,7 @@
           资源链接功能开发中...
         </div>
         <div v-if="activeTab === 'discuss'" class="bg-white rounded-[20px] p-12 text-center text-gray-400 shadow-sm">
-          完善中
+          <CommentSection :modelId="model.id" />
         </div>
 
       </div>
@@ -213,7 +213,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { modelsApi, followApi, userApi, likeApi, collectApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
@@ -280,6 +280,11 @@ const normalizeModel = (data) => ({
   isLiked: data?.likedByUser ?? data?.isLiked ?? false,
   isCollected: data?.collectedByUser ?? data?.isCollected ?? false
 })
+
+const showToast = (message, type = 'success') => {
+  toastRef.value?.show(message, type)
+}
+provide('showToast', showToast)
 
 const handleDownload = () => {
   if (!model.value.fileUrl) {
