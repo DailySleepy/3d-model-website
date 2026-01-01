@@ -16,15 +16,15 @@
         </where>
         <!-- 排序逻辑 -->
         <choose>
+            <when test="sort == 'hot'">
+                <!-- 热门排序：点赞数+收藏数权重 -->
+                ORDER BY (like_count + collect_count * 3) DESC
+            </when>
             <when test="sort == 'time'">
                 ORDER BY created_at DESC
             </when>
-            <when test="sort == 'hot'">
-                <!-- 热门排序：点赞数+收藏数权重 -->
-                ORDER BY (like_count + collect_count) DESC
-            </when>
             <otherwise>
-                ORDER BY (like_count + collect_count) DESC
+                ORDER BY created_at DESC
             </otherwise>
         </choose>
     </select>
@@ -38,8 +38,12 @@
                 AND username LIKE CONCAT('%', #{q}, '%')
             </if>
         </where>
-        <!-- 用户排序：按创建时间（热门排序可根据实际需求调整） -->
+        <!-- 排序逻辑 -->
         <choose>
+            <when test="sort == 'hot'">
+                <!-- 热门排序：粉丝数 -->
+                ORDER BY followers_count DESC
+            </when>
             <when test="sort == 'time'">
                 ORDER BY created_at DESC
             </when>

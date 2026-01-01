@@ -191,7 +191,7 @@
               更多作品
             </h3>
             <div v-if="authorModels.length" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <ModelCard v-for="item in authorModels" :key="item.id" :model="item" @click="goToDetail(item.id)" />
+              <ModelCard v-for="item in authorModels" :key="item.id" :model="item" />
             </div>
             <div v-else class="text-center py-12 text-gray-400 bg-gray-50 rounded-xl">
               暂无其他作品
@@ -370,10 +370,6 @@ const handleFollow = async () => {
     console.error(e)
     toastRef.value?.show('操作失败', 'error')
   }
-}
-
-const goToDetail = (id) => {
-  router.push(`/model/${id}`)
 }
 
 const loadAuthor = async (authorId) => {

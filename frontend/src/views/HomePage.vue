@@ -11,7 +11,7 @@
       <div class="container mx-auto px-8 py-4 max-w-6xl">
         <h2 class="text-2xl font-semibold mb-4">最新注册的用户</h2>
         <div class="flex flex-nowrap overflow-hidden -mx-2">
-          <UserCard v-for="user in recommendedUsers" :key="user.id" :user="user" layout="vertical"
+          <UserCard v-for="user in recommendedUsers" :key="user.id" :user="user"
             class="flex-none w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 px-2" />
         </div>
       </div>

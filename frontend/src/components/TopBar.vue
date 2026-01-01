@@ -7,7 +7,7 @@
       <div class="flex-1 flex justify-center">
         <div class="hidden md:flex items-center mx-4 lg:mx-10">
         <input
-          v-model="query"
+          v-model="searchInput"
           type="text"
           placeholder="搜索模型或作者..."
           class="w-72 lg:w-96 border rounded-l px-4 py-2 focus:outline-none focus:border-blue-500"
@@ -38,7 +38,7 @@
           @click="handleLogout"
           class="btn-text-white"
         >
-          退出       
+          退出
         </button>
       </div>
     </nav>
@@ -46,23 +46,31 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth';
+import { computed, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const router = useRouter()
-const query = ref('')
+const route = useRoute();
+const searchInput = ref('')
 const authStore = useAuthStore()
 const userLink = computed(() => `/user/${authStore.userId || ''}`)
 const userInitial = computed(() => (authStore.username || 'U').charAt(0).toUpperCase())
 const userAvatar = computed(() => authStore.avatar || '')
 
-const emit = defineEmits(['search'])
-
 const handleSearch = () => {
-  if (query.value) {
-    router.push({ path: '/search', query: { q: query.value } })
-    emit('search', query.value) // UNUSED: 把搜索的内容传递到 App.vue
+  if (searchInput.value) {
+    let newQuery = {
+      q: searchInput.value,
+      page: 1
+    }
+    if(route.path === '/search') { // 当前就在搜索页的话, 保留搜索选项(models/users, hot/time)
+      newQuery = {
+        ...route.query,
+        ...newQuery
+      }
+    }
+    router.push({ path: '/search', query: newQuery })
   }
 }
 

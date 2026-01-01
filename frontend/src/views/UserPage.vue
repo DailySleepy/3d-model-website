@@ -54,7 +54,7 @@
                 </router-link>
               </template>
               <template v-else>
-                <button 
+                <button
                   class="w-full gap-1"
                   :class="isFollowing ? 'btn-base bg-gray-100 text-gray-500 hover:bg-gray-200 border border-transparent' : 'btn-text-blue'"
                   @click="handleFollow"
@@ -97,7 +97,7 @@
               </div>
               <div v-if="activeTab === 'models'" class="p-6">
                 <div v-if="models.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  <ModelCard v-for="item in models" :key="item.id" :model="item" @click="goToDetail(item.id)" />
+                  <ModelCard v-for="item in models" :key="item.id" :model="item" />
                 </div>
                 <div v-else class="p-12 flex flex-col items-center justify-center text-center text-sm text-gray-500 space-y-4">
                   <div class="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center text-4xl text-blue-400">
@@ -137,15 +137,15 @@ const user = ref(null)
 const followersCount = ref(0)
 const followingCount = ref(0)
 const charmPoints = ref({ current: 2, total: 5 })
-const activeTab = ref('comments')
+const activeTab = ref('models')
 const models = ref([])
 const isFollowing = ref(false)
 const toastRef = ref(null)
 
 const tabs = [
-  { label: '评论', value: 'comments' },
+  { label: '发布模型', value: 'models' },
   { label: '收藏夹', value: 'favorites' },
-  { label: '发布模型', value: 'models' }
+  { label: '评论', value: 'comments' },
 ]
 
 const quickStats = ref([
@@ -168,22 +168,22 @@ const isCurrentUser = computed(() => {
 const CreatedAt = computed(() => {
   const dateStr = user.value?.createdAt || authStore.user?.createdAt
   if (!dateStr) return '加入于未知时间'
-  
+
   const createdDate = new Date(dateStr)
   const now = new Date()
-  
+
   // 计算月份差
   let months = (now.getFullYear() - createdDate.getFullYear()) * 12
   months -= createdDate.getMonth()
   months += now.getMonth()
-  
+
   if (months < 1) {
     // 不足一个月，计算天数
     const diffTime = Math.abs(now - createdDate)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) 
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return `加入于 ${diffDays} 天前`
   }
-  
+
   return `加入于 ${months} 个月前`
 })
 
@@ -230,7 +230,7 @@ const checkFollowStatus = async () => {
 const handleFollow = async () => {
   const id = route.params.id
   if (!id) return
-  
+
   if (!authStore.isLoggedIn) {
     toastRef.value?.show('请先登录', 'error')
     router.push('/login')
@@ -265,10 +265,6 @@ const loadModels = async () => {
     console.error('加载模型列表失败', e)
     models.value = []
   }
-}
-
-const goToDetail = (id) => {
-  router.push(`/model/${id}`)
 }
 
 onMounted(() => {

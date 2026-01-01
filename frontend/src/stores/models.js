@@ -1,6 +1,6 @@
 // stores/models.js
-import { defineStore } from 'pinia'
-import api from '@/api' // Axios实例
+import api from '@/api';
+import { defineStore } from 'pinia';
 
 export const useModelsStore = defineStore('models', {
   state: () => ({
@@ -44,7 +44,7 @@ export const useModelsStore = defineStore('models', {
       this.users = res.data?.items || []
       return this.users
     },
-    async searchModels(params) {
+    async fetchSearchResults(params) {
       const res = await api.get('/api/search', { params })
       return res.data // { models, totalPages }
     },
