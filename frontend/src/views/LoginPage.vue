@@ -48,7 +48,7 @@
                 </label>
                 <router-link to="/forget" class="text-sm text-blue-600">忘记密码</router-link>
               </div>
-              <button type="submit" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+              <button type="submit" class="btn-text-white w-full">
                 登录
               </button>
             </form>

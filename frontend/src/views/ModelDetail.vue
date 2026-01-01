@@ -42,8 +42,6 @@
               <div class="flex items-start justify-between mb-4">
                 <h1 class="text-3xl font-bold text-gray-900 leading-tight">
                   {{ model.title }}
-                  <span
-                    class="inline-block align-middle ml-2 px-2.5 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium tracking-wide">SFW</span>
                 </h1>
               </div>
               <div class="flex flex-wrap gap-2 mb-8 mt-4">
