@@ -224,7 +224,7 @@ import ToastMessage from '@/components/ToastMessage.vue'
 import ModelCard from '@/components/ModelCard.vue'
 import CommentSection from '@/components/CommentSection.vue'
 
-const backendBase = import.meta.env.VITE_API_BASE_URL
+const backendBase = import.meta.env.VITE_API_BASE_URL || ''
 
 const route = useRoute()
 const router = useRouter()
@@ -309,6 +309,7 @@ const handleLike = async () => {
       toastRef.value?.show('点赞成功', 'success')
     }
   } catch (e) {
+    console.error(e)
     toastRef.value?.show('操作失败', 'error')
   }
 }
@@ -331,6 +332,7 @@ const handleCollect = async () => {
       toastRef.value?.show('收藏成功', 'success')
     }
   } catch (e) {
+    console.error(e)
     toastRef.value?.show('操作失败', 'error')
   }
 }
@@ -367,6 +369,7 @@ const handleFollow = async () => {
       toastRef.value?.show('关注成功', 'success')
     }
   } catch (e) {
+    console.error(e)
     toastRef.value?.show('操作失败', 'error')
   }
 }
