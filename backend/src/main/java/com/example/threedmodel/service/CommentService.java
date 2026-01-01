@@ -14,6 +14,6 @@ public interface CommentService extends IService<Comment> {
     // 删除评论/回复（只能删除自己的）
     void deleteComment(Long commentId, Long currentUserId);
 
-    // 分页查询模型的评论列表（含子回复）
+    // 分页查询模型的评论列表（含子回复，优化为B站二级扁平结构）
     PageResultDTO<CommentDTO> getCommentsByModelId(Long modelId, int page, int size);
 }

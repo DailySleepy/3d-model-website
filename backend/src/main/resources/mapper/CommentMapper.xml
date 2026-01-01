@@ -1,45 +1,86 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.threedmodel.mapper.CommentMapper">
 
-    <!-- 基础字段映射 -->
-    <sql id="commentFields">
-        c.id,
-        c.user_id as userId,
-        c.model_id as modelId,
-        c.parent_id as parentId,
-        c.content,
-        c.created_at as createdAt,
-        u.username,
-        u.avatar as avatarUrl
+    <!-- 通用查询列（含新增的reply_to_user_id） -->
+    <sql id="Base_Column_List">
+        c.id, c.user_id, c.model_id, c.parent_id, c.reply_to_user_id, c.content, c.created_at
     </sql>
 
-    <!-- 查询一级评论 -->
-    <select id="selectRootCommentsByModelId" resultType="com.example.threedmodel.dto.CommentDTO">
+    <!-- 新增：CommentDTO的ResultMap，支持嵌套UserBriefDTO -->
+    <resultMap id="CommentDTOResultMap" type="com.example.threedmodel.dto.CommentDTO">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="model_id" property="modelId"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="reply_to_user_id" property="replyToUserId"/>
+        <result column="content" property="content"/>
+        <result column="created_at" property="createdAt"/>
+
+        <!-- 映射评论发布者信息到user字段 -->
+        <association property="user" javaType="com.example.threedmodel.dto.UserBriefDTO">
+            <id column="u_id" property="id"/>
+            <result column="u_username" property="username"/>
+            <result column="u_avatar" property="avatar"/>
+        </association>
+
+        <!-- 映射被回复用户信息到replyToUser字段 -->
+        <association property="replyToUser" javaType="com.example.threedmodel.dto.UserBriefDTO">
+            <id column="ru_id" property="id"/>
+            <result column="ru_username" property="username"/>
+            <result column="ru_avatar" property="avatar"/>
+        </association>
+    </resultMap>
+
+    <!-- 修改：分页查询一级评论，使用ResultMap映射，调整字段别名适配嵌套对象 -->
+    <select id="selectRootCommentsByModelId" resultMap="CommentDTOResultMap">
         SELECT
-        <include refid="commentFields"/>
+            c.id, c.user_id, c.model_id, c.parent_id, c.reply_to_user_id, c.content, c.created_at,
+            u.id as u_id, u.username as u_username, u.avatar as u_avatar,
+            ru.id as ru_id, ru.username as ru_username, ru.avatar as ru_avatar
         FROM comments c
-        LEFT JOIN users u ON c.user_id = u.id
+                 LEFT JOIN users u ON c.user_id = u.id
+                 LEFT JOIN users ru ON c.reply_to_user_id = ru.id
         WHERE c.model_id = #{modelId}
-        AND c.parent_id IS NULL
+          AND c.parent_id IS NULL
         ORDER BY c.created_at DESC
-        LIMIT #{size} OFFSET #{offset}
+        LIMIT #{offset}, #{size}
     </select>
 
-    <!-- 查询子回复 -->
-    <select id="selectChildCommentsByParentId" resultType="com.example.threedmodel.dto.CommentDTO">
+    <!-- 修改：批量查询二级评论，使用ResultMap，调整字段别名 -->
+    <select id="selectBatchChildCommentsByParentIds" resultMap="CommentDTOResultMap">
         SELECT
-        <include refid="commentFields"/>
+        c.id, c.user_id, c.model_id, c.parent_id, c.reply_to_user_id, c.content, c.created_at,
+        u.id as u_id, u.username as u_username, u.avatar as u_avatar,
+        ru.id as ru_id, ru.username as ru_username, ru.avatar as ru_avatar
         FROM comments c
         LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN users ru ON c.reply_to_user_id = ru.id
+        WHERE c.parent_id IN
+        <foreach collection="parentIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY c.created_at ASC
+    </select>
+
+    <!-- 原有方法：查询单个父评论的子回复，同步修改 -->
+    <select id="selectChildCommentsByParentId" resultMap="CommentDTOResultMap">
+        SELECT
+            c.id, c.user_id, c.model_id, c.parent_id, c.reply_to_user_id, c.content, c.created_at,
+            u.id as u_id, u.username as u_username, u.avatar as u_avatar,
+            ru.id as ru_id, ru.username as ru_username, ru.avatar as ru_avatar
+        FROM comments c
+                 LEFT JOIN users u ON c.user_id = u.id
+                 LEFT JOIN users ru ON c.reply_to_user_id = ru.id
         WHERE c.parent_id = #{parentId}
         ORDER BY c.created_at ASC
     </select>
 
-    <!-- 查询评论总数 -->
+    <!-- 一级评论总数查询（无需修改） -->
     <select id="selectTotalCommentsByModelId" resultType="java.lang.Long">
         SELECT COUNT(*) FROM comments
-        WHERE model_id = #{modelId}
-          AND parent_id IS NULL
+        WHERE model_id = #{modelId} AND parent_id IS NULL
     </select>
+
 </mapper>

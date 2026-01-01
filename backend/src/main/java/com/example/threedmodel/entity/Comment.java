@@ -25,4 +25,7 @@ public class Comment {
 
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt; // 创建时间
+
+    @TableField("reply_to_user_id")
+    private Long replyToUserId; // 新增：被回复的用户ID
 }

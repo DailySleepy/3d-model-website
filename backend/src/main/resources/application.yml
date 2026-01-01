@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/threed_model_db #先创建你的数据库 createdb xx_db
+    url: jdbc:postgresql://localhost:5432/threed_model #先创建你的数据库 createdb xx_db
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:123456} 
+    password: ${DB_PASSWORD:z3j1m4}
     driver-class-name: org.postgresql.Driver
     
   web:

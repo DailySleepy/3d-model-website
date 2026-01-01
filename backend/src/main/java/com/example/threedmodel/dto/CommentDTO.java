@@ -9,11 +9,14 @@ import java.util.List;
 public class CommentDTO {
     private Long id;
     private Long userId;
-    private String username; // 评论者用户名
-    private String avatarUrl; // 评论者头像
     private Long modelId;
     private Long parentId;
+    private Long replyToUserId; // 被回复用户ID
     private String content;
     private LocalDateTime createdAt;
-    private List<CommentDTO> children; // 子回复列表
+    // 关联用户信息
+    private UserBriefDTO user;          // 评论发布者信息
+    private UserBriefDTO replyToUser;   // 被回复的用户信息
+
+    private List<CommentDTO> children; // 二级结构：子评论列表（B站风格平铺）
 }

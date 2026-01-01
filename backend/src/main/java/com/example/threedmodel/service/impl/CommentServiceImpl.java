@@ -1,23 +1,24 @@
 package com.example.threedmodel.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.threedmodel.dto.CommentCreateDTO;
 import com.example.threedmodel.dto.CommentDTO;
 import com.example.threedmodel.dto.PageResultDTO;
 import com.example.threedmodel.entity.Comment;
 import com.example.threedmodel.entity.Model;
-import com.example.threedmodel.entity.Notification;
 import com.example.threedmodel.event.ModelCommentEvent;
 import com.example.threedmodel.mapper.CommentMapper;
 import com.example.threedmodel.mapper.ModelMapper;
 import com.example.threedmodel.service.CommentService;
-import com.example.threedmodel.service.ModelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,26 +32,31 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Override
     @Transactional
     public CommentDTO createComment(CommentCreateDTO dto, Long currentUserId) {
-        // 1. 验证模型是否存在
+        // 1. 验证模型是否存在（原有逻辑不变）
         Model model = modelMapper.selectById(dto.getModelId());
         if (model == null) {
             throw new RuntimeException("模型不存在");
         }
 
-        // 2. 保存评论
+        // 2. 保存评论（补充：设置新增的replyToUserId字段）
         Comment comment = new Comment();
         comment.setUserId(currentUserId);
         comment.setModelId(dto.getModelId());
         comment.setParentId(dto.getParentId());
+        comment.setReplyToUserId(dto.getReplyToUserId()); // 新增：绑定被回复用户ID（兼容原有逻辑）
         comment.setContent(dto.getContent());
         baseMapper.insert(comment);
 
-        // 3. 构建返回DTO（查询完整信息）
+        // 原代码：
+        // CommentDTO result = commentMapper.selectRootCommentsByModelId(dto.getModelId(), 0, 1).stream().findFirst()
+        //        .orElseThrow(() -> new RuntimeException("评论创建失败"));
+// 修复后：
         CommentDTO result = commentMapper.selectRootCommentsByModelId(
-                        dto.getModelId(), 0, 1).stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("评论创建失败"));
-
-        // 4. 发布评论事件（触发通知）
+                dto.getModelId(),
+                (int) (commentMapper.selectTotalCommentsByModelId(dto.getModelId()) - 1),
+                1
+        ).stream().findFirst().orElseThrow(() -> new RuntimeException("评论创建失败"));
+        // 4. 发布评论事件（触发通知，原有逻辑不变）
         Long receiverId = dto.getParentId() == null
                 ? model.getAuthorId()  // 一级评论：通知模型作者
                 : baseMapper.selectById(dto.getParentId()).getUserId(); // 回复：通知被回复的评论作者
@@ -69,21 +75,21 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Override
     @Transactional
     public void deleteComment(Long commentId, Long currentUserId) {
-        // 1. 验证评论是否存在
+        // 1. 验证评论是否存在（原有逻辑不变）
         Comment comment = baseMapper.selectById(commentId);
         if (comment == null) {
             throw new RuntimeException("评论不存在");
         }
 
-        // 2. 验证权限（只能删除自己的评论）
+        // 2. 验证权限（只能删除自己的评论，原有逻辑不变）
         if (!comment.getUserId().equals(currentUserId)) {
             throw new RuntimeException("没有权限删除此评论");
         }
 
-        // 3. 级联删除子回复
+        // 3. 级联删除子回复（原有逻辑不变，符合二级扁平结构要求）
         List<Comment> childComments = baseMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Comment>()
-                        .eq(Comment::getParentId, commentId) // 直接使用Lambda表达式，无需手动绑定
+                new LambdaQueryWrapper<Comment>()
+                        .eq(Comment::getParentId, commentId)
         );
         if (!childComments.isEmpty()) {
             baseMapper.deleteBatchIds(childComments.stream()
@@ -91,37 +97,54 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                     .collect(Collectors.toList()));
         }
 
-        // 4. 删除当前评论
+        // 4. 删除当前评论（原有逻辑不变）
         baseMapper.deleteById(commentId);
     }
 
     @Override
     public PageResultDTO<CommentDTO> getCommentsByModelId(Long modelId, int page, int size) {
-        // 1. 计算分页参数
+        // 1. 计算分页参数（原有逻辑不变）
         int offset = (page - 1) * size;
 
-        // 2. 查询一级评论
+        // 2. 查询一级评论（parent_id=null，原有逻辑不变）
         List<CommentDTO> rootComments = commentMapper.selectRootCommentsByModelId(modelId, offset, size);
 
-        // 3. 为每个一级评论查询子回复
-        rootComments.forEach(comment -> {
-            List<CommentDTO> children = commentMapper.selectChildCommentsByParentId(comment.getId());
-            comment.setChildren(children);
-        });
+        // 3. 优化：批量查询所有一级评论的子回复（解决N+1问题，实现B站二级扁平结构）
+        if (!rootComments.isEmpty()) {
+            // 3.1 提取所有一级评论ID
+            List<Long> rootCommentIds = rootComments.stream()
+                    .map(CommentDTO::getId)
+                    .collect(Collectors.toList());
 
-        // 4. 查询总条数（用于分页）
+            // 3.2 修复：调用自定义的批量查询方法（替代BaseMapper的selectList）
+            List<CommentDTO> allChildComments = commentMapper.selectBatchChildCommentsByParentIds(rootCommentIds);
+
+            // 3.3 子回复按parentId分组（便于快速绑定到对应一级评论）
+            Map<Long, List<CommentDTO>> childCommentMap = new HashMap<>();
+            for (CommentDTO child : allChildComments) {
+                childCommentMap.computeIfAbsent(child.getParentId(), k -> new java.util.ArrayList<>())
+                        .add(child);
+            }
+
+            // 3.4 为每个一级评论绑定子回复（平铺显示，B站风格，原有逻辑优化）
+            rootComments.forEach(comment -> {
+                comment.setChildren(childCommentMap.getOrDefault(comment.getId(), java.util.Collections.emptyList()));
+            });
+        }
+
+        // 4. 查询总条数（用于分页，原有逻辑不变）
         Long total = commentMapper.selectTotalCommentsByModelId(modelId);
 
-        // 5. 计算总页数（补充：PageResultDTO 包含 totalPages 字段，建议赋值）
+        // 5. 计算总页数（原有逻辑不变）
         Integer totalPages = (total == 0) ? 1 : (int) Math.ceil((double) total / size);
 
-        // 6. 修正核心：使用 PageResultDTO 实际字段对应的 setter 方法
+        // 6. 封装分页结果（原有赋值逻辑完全不变，保证兼容性）
         PageResultDTO<CommentDTO> pageResult = new PageResultDTO<>();
-        pageResult.setItems(rootComments); // 替换 setData() → setItems()（对应字段 items）
-        pageResult.setTotal(total); // 总条数（字段名一致，无需修改）
-        pageResult.setPage(page); // 当前页（字段名一致，无需修改）
-        pageResult.setPageSize(size); // 替换 setSize() → setPageSize()（对应字段 pageSize）
-        pageResult.setTotalPages(totalPages); // 补充赋值总页数（保证数据完整）
+        pageResult.setItems(rootComments);
+        pageResult.setTotal(total);
+        pageResult.setPage(page);
+        pageResult.setPageSize(size);
+        pageResult.setTotalPages(totalPages);
 
         return pageResult;
     }

@@ -10,6 +10,7 @@ public class CommentCreateDTO {
     private Long modelId; // 评论所属模型ID
 
     private Long parentId; // 父评论ID（回复时传递）
+    private Long replyToUserId; // 新增：被回复的用户ID
 
     @NotBlank(message = "评论内容不能为空")
     private String content; // 评论内容
