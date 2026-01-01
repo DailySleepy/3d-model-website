@@ -1,6 +1,7 @@
 package com.example.threedmodel.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.threedmodel.dto.*;
 import com.example.threedmodel.entity.Notification;
 import com.example.threedmodel.entity.Model; // ⚠️ 若你的 Model 包名不同请改
@@ -17,7 +18,7 @@ import java.util.List;
  * 通知服务（接口 + 实现）
  */
 @Service
-public class NotificationService {
+public class NotificationService extends ServiceImpl<NotificationMapper, Notification>{
 
     @Resource
     private NotificationMapper notificationMapper;
@@ -119,5 +120,18 @@ public class NotificationService {
 
         n.setIsRead(true);
         notificationMapper.updateById(n);
+    }
+
+
+/**
+     * 获取未读通知数量
+     * 给 /api/notifications/unread-count 使用
+     */
+    public int getUnreadCount(Long userId) {
+        return (int) this.count(
+                new QueryWrapper<Notification>()
+                        .eq("user_id", userId)
+                        .eq("is_read", false)
+        );
     }
 }

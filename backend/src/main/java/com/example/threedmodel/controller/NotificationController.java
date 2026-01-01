@@ -19,7 +19,6 @@ import java.util.Map;
  * 通知接口控制器
  * 鉴权方式与 FollowController 保持一致（JWT → username → userId）
  */
-/*
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {
@@ -83,6 +82,27 @@ public class NotificationController {
         }
     }
 
+    /**
+     * ✅ 获取未读通知数量
+     * GET /api/notifications/unread-count
+     */
+    @GetMapping("/unread-count")
+    public ResponseEntity<?> getUnreadCount(HttpServletRequest request) {
+
+        Long currentUserId = getCurrentUserId(request);
+        if (currentUserId == null) {
+            return unauthorizedResponse("请先登录");
+        }
+
+        int count = notificationService.getUnreadCount(currentUserId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("count", count);
+
+        return ResponseEntity.ok(result);
+    }
+
     // ==== 上面两个私有方法复制进来 ====
     private Long getCurrentUserId(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
@@ -102,8 +122,8 @@ public class NotificationController {
         result.put("message", message);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
     }
-}*/
-
+}
+/* 
 @RestController
 @RequestMapping("/api/notifications")  // 路径不同，避免和正式接口冲突
 public class NotificationController {
@@ -111,10 +131,10 @@ public class NotificationController {
     @Autowired
     private NotificationService notificationService;
 
-    /**
+    
      * 测试用：直接传 userId，不需要任何登录
      * GET /api/test-notifications?userId=1
-     */
+     
     @GetMapping
     public ResponseEntity<?> getNotifications(@RequestParam Long userId) {
         if (userId == null || userId < 0) {
@@ -130,10 +150,7 @@ public class NotificationController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * 测试用：标记已读
-     * POST /api/test-notifications/5/read?userId=1
-     */
+    
     @PostMapping("/{id}/read")
     public ResponseEntity<?> markAsRead(
             @PathVariable Long id,
@@ -151,3 +168,4 @@ public class NotificationController {
         return ResponseEntity.ok(result);
     }
 }
+*/
