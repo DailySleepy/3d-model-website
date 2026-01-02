@@ -20,7 +20,7 @@
             {{ model.description ? model.description.slice(0, 50) + (model.description.length > 50 ? '...' : '') :
               '暂无简介' }}
           </p>
-          <p class="text-sm text-gray-500"> 作者: {{ model.author?.username || 'Unknown' }}</p>
+          <p class="text-sm text-gray-500"> 作者: {{ authorName || 'Unknown' }}</p>
         </div>
       </div>
     </div>
@@ -28,7 +28,9 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { userApi } from '@/api'
 
 const router = useRouter()
 const props = defineProps({
@@ -43,7 +45,24 @@ const props = defineProps({
   }
 })
 
+const authorName = ref()
+
 const handleClick = () => {
   router.push(`/model/${props.model.id}`)
 }
+
+const loadAuthor = async (authorId) => {
+  if (!authorId) return
+  try {
+    const res = await userApi.getById(authorId)
+    authorName.value = res.data.username
+  } catch (e) {
+    console.error('failed to load author', e)
+  }
+}
+
+onMounted(() => {
+  loadAuthor(props.model.authorId)
+})
+
 </script>
