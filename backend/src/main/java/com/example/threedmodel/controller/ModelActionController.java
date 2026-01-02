@@ -67,9 +67,10 @@ public class ModelActionController {
         }
 
         Long userId = getUserIdFromRequest(request);
-        if (userId == null) {
-            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
-        }
+        // if (userId == null) {
+        //     return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+        // }
+        // 查看模型不要权限
 
         ModelDetailDTO dto = new ModelDetailDTO();
         dto.setId(model.getId());   

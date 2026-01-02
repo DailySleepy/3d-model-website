@@ -45,7 +45,7 @@
         WHERE c.model_id = #{modelId}
           AND c.parent_id IS NULL
         ORDER BY c.created_at DESC
-        LIMIT #{offset}, #{size}
+        LIMIT #{size} OFFSET #{offset}
     </select>
 
     <!-- 修改：批量查询二级评论，使用ResultMap，调整字段别名 -->
