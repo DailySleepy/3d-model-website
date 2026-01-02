@@ -64,7 +64,7 @@
         ORDER BY c.created_at ASC
     </select>
 
-    <!-- 原有方法：查询单个父评论的子回复，同步修改 -->
+    <!-- 原有方法：查询单个父评论的子回复 -->
     <select id="selectChildCommentsByParentId" resultMap="CommentDTOResultMap">
         SELECT
             c.id, c.user_id, c.model_id, c.parent_id, c.reply_to_user_id, c.content, c.created_at,
@@ -77,10 +77,27 @@
         ORDER BY c.created_at ASC
     </select>
 
-    <!-- 一级评论总数查询（无需修改） -->
+    <!-- 一级评论总数查询 -->
     <select id="selectTotalCommentsByModelId" resultType="java.lang.Long">
         SELECT COUNT(*) FROM comments
         WHERE model_id = #{modelId} AND parent_id IS NULL
+    </select>
+
+    <!-- 查询一级+二级所有评论总数 -->
+    <select id="selectTotalAllCommentsByModelId" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM comments
+        WHERE model_id = #{modelId}
+    </select>
+
+    <select id="selectCommentDTOById" resultMap="CommentDTOResultMap">
+        SELECT
+            c.id, c.user_id, c.model_id, c.parent_id, c.reply_to_user_id, c.content, c.created_at,
+            u.id as u_id, u.username as u_username, u.avatar as u_avatar,
+            ru.id as ru_id, ru.username as ru_username, ru.avatar as ru_avatar
+        FROM comments c
+                 LEFT JOIN users u ON c.user_id = u.id
+                 LEFT JOIN users ru ON c.reply_to_user_id = ru.id
+        WHERE c.id = #{commentId}
     </select>
 
 </mapper>

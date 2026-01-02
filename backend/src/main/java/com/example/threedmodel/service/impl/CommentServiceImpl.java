@@ -32,7 +32,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Override
     @Transactional
     public CommentDTO createComment(CommentCreateDTO dto, Long currentUserId) {
-        // 1. 验证模型是否存在（原有逻辑不变）
+        // 1. 验证模型是否存在
         Model model = modelMapper.selectById(dto.getModelId());
         if (model == null) {
             throw new RuntimeException("模型不存在");
@@ -47,16 +47,13 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         comment.setContent(dto.getContent());
         baseMapper.insert(comment);
 
-        // 我为了方便这里是手动构造而不是从数据库取, 但是这样会缺少时间戳
-        CommentDTO result = new CommentDTO();
-        result.setId(comment.getId());
-        result.setUserId(currentUserId);
-        result.setModelId(dto.getModelId());
-        result.setParentId(dto.getParentId());
-        result.setReplyToUserId(dto.getReplyToUserId());
-        result.setContent(dto.getContent());
+        // 3. 根据刚创建的评论ID，精准查询CommentDTO
+        CommentDTO result = commentMapper.selectCommentDTOById(comment.getId());
+        if (result == null) {
+            throw new RuntimeException("评论创建失败（无法查询到刚创建的评论）");
+        }
 
-        // 4. 发布评论事件（触发通知，原有逻辑不变）
+        // 4. 发布评论事件（触发通知
         Long receiverId = dto.getParentId() == null
                 ? model.getAuthorId()  // 一级评论：通知模型作者
                 : baseMapper.selectById(dto.getParentId()).getUserId(); // 回复：通知被回复的评论作者
@@ -75,18 +72,18 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Override
     @Transactional
     public void deleteComment(Long commentId, Long currentUserId) {
-        // 1. 验证评论是否存在（原有逻辑不变）
+        // 1. 验证评论是否存在
         Comment comment = baseMapper.selectById(commentId);
         if (comment == null) {
             throw new RuntimeException("评论不存在");
         }
 
-        // 2. 验证权限（只能删除自己的评论，原有逻辑不变）
+        // 2. 验证权限（只能删除自己的评论）
         if (!comment.getUserId().equals(currentUserId)) {
             throw new RuntimeException("没有权限删除此评论");
         }
 
-        // 3. 级联删除子回复（原有逻辑不变，符合二级扁平结构要求）
+        // 3. 级联删除子回复
         List<Comment> childComments = baseMapper.selectList(
                 new LambdaQueryWrapper<Comment>()
                         .eq(Comment::getParentId, commentId)
@@ -97,16 +94,16 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                     .collect(Collectors.toList()));
         }
 
-        // 4. 删除当前评论（原有逻辑不变）
+        // 4. 删除当前评论
         baseMapper.deleteById(commentId);
     }
 
     @Override
     public PageResultDTO<CommentDTO> getCommentsByModelId(Long modelId, int page, int size) {
-        // 1. 计算分页参数（原有逻辑不变）
+        // 1. 计算分页参数
         int offset = (page - 1) * size;
 
-        // 2. 查询一级评论（parent_id=null，原有逻辑不变）
+        // 2. 查询一级评论（parent_id=null）
         List<CommentDTO> rootComments = commentMapper.selectRootCommentsByModelId(modelId, offset, size);
 
         // 3. 优化：批量查询所有一级评论的子回复（解决N+1问题，实现B站二级扁平结构）
@@ -116,7 +113,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                     .map(CommentDTO::getId)
                     .collect(Collectors.toList());
 
-            // 3.2 修复：调用自定义的批量查询方法（替代BaseMapper的selectList）
+            // 3.2 调用自定义的批量查询方法（替代BaseMapper的selectList）
             List<CommentDTO> allChildComments = commentMapper.selectBatchChildCommentsByParentIds(rootCommentIds);
 
             // 3.3 子回复按parentId分组（便于快速绑定到对应一级评论）
@@ -126,19 +123,20 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                         .add(child);
             }
 
-            // 3.4 为每个一级评论绑定子回复（平铺显示，B站风格，原有逻辑优化）
+            // 3.4 为每个一级评论绑定子回复（平铺显示，B站风格，
             rootComments.forEach(comment -> {
                 comment.setChildren(childCommentMap.getOrDefault(comment.getId(), java.util.Collections.emptyList()));
             });
         }
 
-        // 4. 查询总条数（用于分页，原有逻辑不变）
-        Long total = commentMapper.selectTotalCommentsByModelId(modelId);
+        // 4. 查询总条数（用于分页）
+        //Long total = commentMapper.selectTotalCommentsByModelId(modelId);
+        Long total = commentMapper.selectTotalAllCommentsByModelId(modelId); // 新逻辑（所有评论）
 
-        // 5. 计算总页数（原有逻辑不变）
+        // 5. 计算总页数
         Integer totalPages = (total == 0) ? 1 : (int) Math.ceil((double) total / size);
 
-        // 6. 封装分页结果（原有赋值逻辑完全不变，保证兼容性）
+        // 6. 封装分页结果
         PageResultDTO<CommentDTO> pageResult = new PageResultDTO<>();
         pageResult.setItems(rootComments);
         pageResult.setTotal(total);

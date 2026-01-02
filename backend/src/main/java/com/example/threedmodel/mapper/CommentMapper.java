@@ -44,4 +44,15 @@ public interface CommentMapper extends BaseMapper<Comment> {
      * @return 所有匹配的子回复DTO列表
      */
     List<CommentDTO> selectBatchChildCommentsByParentIds(@Param("parentIds") List<Long> parentIds);
+
+    /**
+     * 根据评论ID查询完整信息（含发布者、被回复用户信息）
+     * @param commentId 评论ID
+     * @return 评论DTO（精准匹配，无错位）
+     */
+    CommentDTO selectCommentDTOById(@Param("commentId") Long commentId);
+    /**
+     * 查询模型下所有评论（一级+二级）总数
+     */
+    Long selectTotalAllCommentsByModelId(@Param("modelId") Long modelId);
 }
