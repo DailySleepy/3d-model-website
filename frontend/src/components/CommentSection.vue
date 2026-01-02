@@ -4,54 +4,63 @@
       评论 <span class="text-sm font-normal text-gray-500">({{ total }})</span>
     </h2>
 
-    <div class="flex gap-4 mb-8">
-      <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-        <img :src="user?.avatar" class="w-full h-full object-cover" />
-      </div>
-      <div class="flex-1">
-        <textarea v-model="content" placeholder="分享你的想法..." class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500
-            focus:border-blue-500 outline-none resize-none min-h-[80px]
-            text-gray-900 placeholder:text-gray-400"></textarea>
-        <div class="flex justify-end mt-2">
-          <button @click="handleSubmit" :disabled="submitting || !content.trim()" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700
-              disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition-colors">
-            {{ isLoggedIn ? (submitting ? '发送中...' : '发布评论') : '请先登录' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <CommentInput ref="mainInputRef" :userAvatar="user?.avatar" placeholder="分享你的想法..." buttonText="发布评论"
+      :loading="submitting" @submit="handleMainSubmit" />
 
     <div class="space-y-6">
       <div v-if="loading && comments.length === 0" class="text-center text-gray-400 py-4">加载中...</div>
       <div v-else-if="comments.length === 0" class="text-center text-gray-400 py-8">暂无评论，快来抢沙发吧~</div>
 
       <div v-for="comment in comments" :key="comment.id"
-        class="flex gap-4 group border-b border-gray-200 pb-4 mb-4 items-start text-left">
-        <router-link :to="`/user/${comment.userId}`"
-          class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-          <img :src="comment.avatarUrl" class="w-full h-full object-cover" />
-        </router-link>
+        class="flex-col gap-4 group border-b border-gray-200 pb-4 mb-4 items-start text-left">
+        <CommentItem :comment="comment" @reply="openReplyBox(comment.id, comment.user, comment.id)"
+          @delete="handleDelete(comment.id, true)" />
 
-        <div class="flex-1">
-          <div class="flex justify-between items-baseline mb-1">
-            <router-link :to="`/user/${comment.userId}`" class="font-semibold text-blue-600">
-              {{ comment.username }}
-            </router-link>
-            <span class="text-xs text-gray-400">
-              {{ formatDate(comment.createdAt) }}
-            </span>
+        <div v-if="currentReplyToId === comment.id" class="mt-4 pl-12 animate-fade-in">
+          <CommentInput :userAvatar="user?.avatar" :placeholder="replyPlaceholder" buttonText="回复" :loading="submitting"
+            :showCancel="true" :autoFocus="true" @submit="(content) => handleReplySubmit(content, comment)"
+            @cancel="closeReplyBox" />
+        </div>
+
+        <div v-if="comment.children?.length > 0" class="p-4 mt-3 ml-12">
+
+          <div class="space-y-4">
+            <div v-for="reply in (comment.isExpanded ? comment.children : comment.children.slice(0, 3))"
+              :key="reply.id">
+              <CommentItem :comment="reply" @reply="openReplyBox(comment.id, reply.user, reply.id)"
+                @delete="handleDelete(reply.id, false, comment.id)" />
+
+              <div v-if="currentReplyToId === reply.id" class="mt-4 pl-10 animate-fade-in">
+                <CommentInput :userAvatar="user?.avatar" :placeholder="replyPlaceholder" buttonText="回复"
+                  :loading="submitting" :showCancel="true" :autoFocus="true"
+                  @submit="(content) => handleReplySubmit(content, comment)" @cancel="closeReplyBox" />
+              </div>
+            </div>
           </div>
 
-          <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">
-            {{ comment.content }}
-          </p>
-
-          <div class="mt-2 flex gap-4 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button v-if="isCurrentUser(comment.userId)" @click="handleDelete(comment.id)"
-              class="hover:text-red-600 cursor-pointer text-red-400">
-              删除
+          <div v-if="comment.children.length > 3 && !comment.isExpanded" class="mt-3">
+            <button @click="comment.isExpanded = true"
+              class="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-2 group transition-colors">
+              <span>展开剩余 {{ comment.children.length - 3 }} 条回复</span>
+              <svg xmlns="http://www.w3.org/2000/svg"
+                class="h-3 w-3 transition-transform duration-200 group-hover:translate-y-0.5" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
           </div>
+
+          <div v-if="comment.children.length > 3 && comment.isExpanded" class="mt-3">
+            <button @click="comment.isExpanded = false"
+              class="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-2 group ml-8">
+              <span>收起</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 rotate-180"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
@@ -63,11 +72,12 @@
 </template>
 
 <script setup>
-import { ref, watch, inject } from 'vue'
+import { commentsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
+import { inject, ref, watch } from 'vue'
+import CommentInput from './CommentInput.vue'
+import CommentItem from './CommentItem.vue'
 import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
-import api from '@/api'
 
 const props = defineProps({
   modelId: {
@@ -76,24 +86,124 @@ const props = defineProps({
   }
 })
 
-const router = useRouter()
 const authStore = useAuthStore()
-const { isLoggedIn, user } = storeToRefs(authStore)
+const showToast = inject('showToast')
 
+const { user } = storeToRefs(authStore)
 const comments = ref([])
-const content = ref('')
 const loading = ref(false)
 const submitting = ref(false)
 const page = ref(1)
 const total = ref(0)
 const hasMore = ref(false)
 
+const currentReplyToId = ref(null)
+const currentReplyToUser = ref(null)
+const replyPlaceholder = ref('')
+const mainInputRef = ref(null)
+
+const openReplyBox = (rootId, targetUser, targetId) => {
+  if (!authStore.checkLogin()) return
+
+  currentReplyToId.value = targetId
+  currentReplyToUser.value = targetUser
+  replyPlaceholder.value = `回复 @${targetUser?.username}...`
+}
+
+const closeReplyBox = () => {
+  currentReplyToId.value = null
+  currentReplyToUser.value = null
+}
+
+const handleMainSubmit = async (content) => {
+  if (!authStore.checkLogin()) return
+
+  await submitComment({
+    content,
+    parentId: null,
+    replyToUserId: null
+  }, true)
+  mainInputRef.value?.clear()
+}
+
+const handleReplySubmit = async (content, rootComment) => {
+  if (!authStore.checkLogin()) return
+
+  let targetUserId = null
+  if (currentReplyToId.value != rootComment.id) {
+    targetUserId = currentReplyToUser.value?.id
+  }
+
+  await submitComment({
+    content,
+    parentId: rootComment.id,
+    replyToUserId: targetUserId
+  }, false, rootComment)
+
+  closeReplyBox()
+}
+
+const submitComment = async (params, isRoot, rootComment = null) => {
+  submitting.value = true
+  try {
+    const res = await commentsApi.create({
+      modelId: props.modelId,
+      content: params.content,
+      parentId: params.parentId,
+      replyToUserId: params.replyToUserId
+    })
+
+    const newComment = {
+      ...res.data,
+      user: authStore.user,
+      replyToUser: isRoot ? null : currentReplyToUser.value,
+      isExpanded: false,
+      children: []
+    }
+
+    if (isRoot) {
+      comments.value.unshift(newComment)
+    } else {
+      if (!rootComment.children) rootComment.children = []
+      rootComment.children.push(newComment)
+    }
+
+    total.value++
+    showToast('发布成功', 'success')
+  } catch (error) {
+    console.error(error)
+    showToast('发布失败', 'error')
+  } finally {
+    submitting.value = false
+  }
+}
+
+const handleDelete = async (id, isRoot, rootId = null) => {
+  if (!confirm('确认删除这条评论吗？')) return
+
+  try {
+    await commentsApi.delete(id)
+    if (isRoot) {
+      comments.value = comments.value.filter(c => c.id !== id)
+    } else {
+      const root = comments.value.find(c => c.id === rootId)
+      if (root && root.children) root.children = root.children.filter(c => c.id !== id)
+    }
+    total.value--
+    showToast('删除成功', 'success')
+  }
+  catch (error) {
+    console.error(error)
+    showToast('删除失败', 'error')
+  }
+}
+
 const fetchComments = async (currentPage = 1, append = false) => {
   if (!props.modelId) return
 
   loading.value = true
   try {
-    const res = await api.get('/api/comments', {
+    const res = await commentsApi.list({
       params: {
         modelId: props.modelId,
         page: currentPage,
@@ -101,8 +211,11 @@ const fetchComments = async (currentPage = 1, append = false) => {
       }
     })
 
-    let newItems = res.data.items || []
-    total.value = res.data.totalElements || 0
+    const newItems = res.data.items || []
+    newItems.forEach(item => {
+      item.isExpanded = false
+    })
+    total.value = res.data.total || 0
 
     if (append) {
       comments.value = [...comments.value, ...newItems]
@@ -113,69 +226,15 @@ const fetchComments = async (currentPage = 1, append = false) => {
     hasMore.value = comments.value.length < total.value
   } catch (error) {
     console.error('Fetch comments failed:', error)
+    showToast('评论获取失败', 'error')
   } finally {
     loading.value = false
-  }
-}
-
-const showToast = inject('showToast')
-
-const handleSubmit = async () => {
-  if (!checkLogin()) return
-  if (!content.value.trim()) return
-
-  submitting.value = true
-  try {
-    const res = await api.post('/api/comments', {
-      modelId: props.modelId,
-      content: content.value
-    })
-
-    const newComment = res.data
-    comments.value.unshift(newComment)
-    total.value++
-    content.value = ''
-  } catch (error) {
-    showToast('评论失败: ' + (error.response?.data || error.message), 'error')
-  } finally {
-    submitting.value = false
-  }
-}
-
-const handleDelete = async (commentId) => {
-  if (!confirm('确认删除这条评论吗？')) return
-
-  try {
-    await api.delete(`/api/comments/${commentId}`)
-    comments.value = comments.value.filter(c => c.id !== commentId)
-    total.value--
-    showToast('删除成功', 'success')
-  } catch (error) {
-    console.log(error)
-    showToast('删除失败', 'error')
   }
 }
 
 const loadMore = () => {
   page.value++
   fetchComments(page.value, true)
-}
-
-const checkLogin = () => {
-  if (!isLoggedIn.value) {
-    if (confirm('请先登录')) router.push('/login')
-    return false
-  }
-  return true
-}
-
-const isCurrentUser = (uid) => {
-  return isLoggedIn.value && user.value?.id === uid
-}
-
-const formatDate = (str) => {
-  if (!str) return ''
-  return new Date(str).toLocaleString()
 }
 
 watch(() => props.modelId, (newId) => {

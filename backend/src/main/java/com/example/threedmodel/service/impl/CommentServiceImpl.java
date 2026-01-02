@@ -47,15 +47,15 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         comment.setContent(dto.getContent());
         baseMapper.insert(comment);
 
-        // 原代码：
-        // CommentDTO result = commentMapper.selectRootCommentsByModelId(dto.getModelId(), 0, 1).stream().findFirst()
-        //        .orElseThrow(() -> new RuntimeException("评论创建失败"));
-// 修复后：
-        CommentDTO result = commentMapper.selectRootCommentsByModelId(
-                dto.getModelId(),
-                (int) (commentMapper.selectTotalCommentsByModelId(dto.getModelId()) - 1),
-                1
-        ).stream().findFirst().orElseThrow(() -> new RuntimeException("评论创建失败"));
+        // 我为了方便这里是手动构造而不是从数据库取, 但是这样会缺少时间戳
+        CommentDTO result = new CommentDTO();
+        result.setId(comment.getId());
+        result.setUserId(currentUserId);
+        result.setModelId(dto.getModelId());
+        result.setParentId(dto.getParentId());
+        result.setReplyToUserId(dto.getReplyToUserId());
+        result.setContent(dto.getContent());
+
         // 4. 发布评论事件（触发通知，原有逻辑不变）
         Long receiverId = dto.getParentId() == null
                 ? model.getAuthorId()  // 一级评论：通知模型作者

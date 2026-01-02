@@ -110,7 +110,7 @@ export const uploadApi = {
 
 // 评论
 export const commentsApi = {
-  list: (modelId, page = 1, size = 10) => api.get('/api/comments', { params: { modelId, page, size } }),
-  create: (payload) => api.post('/api/comments', payload), // { modelId, content, parentId }
+  list: (params) => api.get('/api/comments', params), // { modelId, page, size }
+  create: (payload) => api.post('/api/comments', payload), // { modelId, content, parentId, replyToUserId }
   delete: (id) => api.delete(`/api/comments/${id}`)
 }

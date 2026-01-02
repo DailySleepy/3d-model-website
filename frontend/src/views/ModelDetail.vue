@@ -213,14 +213,14 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, provide } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { modelsApi, followApi, userApi, likeApi, collectApi } from '@/api'
-import { useAuthStore } from '@/stores/auth'
+import { collectApi, followApi, likeApi, modelsApi, userApi } from '@/api'
+import CommentSection from '@/components/CommentSection.vue'
+import ModelCard from '@/components/ModelCard.vue'
 import ModelViewer from '@/components/ModelViewer.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
-import ModelCard from '@/components/ModelCard.vue'
-import CommentSection from '@/components/CommentSection.vue'
+import { useAuthStore } from '@/stores/auth'
+import { computed, onMounted, provide, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 const backendBase = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -287,56 +287,54 @@ const showToast = (message, type = 'success') => {
 provide('showToast', showToast)
 
 const handleDownload = () => {
+  if (!authStore.checkLogin()) return
+
   if (!model.value.fileUrl) {
-    toastRef.value?.show('暂无下载链接', 'error')
+    showToast('暂无下载链接', 'error')
     return
   }
   window.open(model.value.fileUrl, '_blank')
 }
 
 const handleLike = async () => {
-  if (!authStore.isLoggedIn) {
-    toastRef.value?.show('请先登录', 'error')
-    return
-  }
+  if (!authStore.checkLogin()) return
+
   try {
     if (model.value.isLiked) {
       await likeApi.unlike(model.value.id)
       model.value.isLiked = false
       model.value.likeCount = Math.max(0, model.value.likeCount - 1)
-      toastRef.value?.show('已取消点赞', 'success')
+      showToast('已取消点赞', 'success')
     } else {
       await likeApi.like(model.value.id)
       model.value.isLiked = true
       model.value.likeCount++
-      toastRef.value?.show('点赞成功', 'success')
+      showToast('点赞成功', 'success')
     }
   } catch (e) {
     console.error(e)
-    toastRef.value?.show('操作失败', 'error')
+    showToast('操作失败', 'error')
   }
 }
 
 const handleCollect = async () => {
-  if (!authStore.isLoggedIn) {
-    toastRef.value?.show('请先登录', 'error')
-    return
-  }
+  if (!authStore.checkLogin()) return
+
   try {
     if (model.value.isCollected) {
       await collectApi.uncollect(model.value.id)
       model.value.isCollected = false
       model.value.collectCount = Math.max(0, model.value.collectCount - 1)
-      toastRef.value?.show('已取消收藏', 'success')
+      showToast('已取消收藏', 'success')
     } else {
       await collectApi.collect(model.value.id)
       model.value.isCollected = true
       model.value.collectCount++
-      toastRef.value?.show('收藏成功', 'success')
+      showToast('收藏成功', 'success')
     }
   } catch (e) {
     console.error(e)
-    toastRef.value?.show('操作失败', 'error')
+    showToast('操作失败', 'error')
   }
 }
 
@@ -353,11 +351,8 @@ const checkFollowStatus = async (authorId) => {
 }
 
 const handleFollow = async () => {
-  if (!authStore.isLoggedIn) {
-    toastRef.value?.show('请先登录', 'error')
-    router.push('/login')
-    return
-  }
+  if (!authStore.checkLogin()) return
+
   const authorId = model.value.author?.id
   if (!authorId) return
 
@@ -365,15 +360,15 @@ const handleFollow = async () => {
     if (isFollowing.value) {
       await followApi.unfollow(authorId)
       isFollowing.value = false
-      toastRef.value?.show('已取消关注', 'success')
+      showToast('已取消关注', 'success')
     } else {
       await followApi.follow(authorId)
       isFollowing.value = true
-      toastRef.value?.show('关注成功', 'success')
+      showToast('关注成功', 'success')
     }
   } catch (e) {
     console.error(e)
-    toastRef.value?.show('操作失败', 'error')
+    showToast('操作失败', 'error')
   }
 }
 
@@ -412,7 +407,7 @@ const loadModel = async () => {
     }
   } catch (err) {
     console.error('get model detail failed', err)
-    toastRef.value?.show('获取模型详情失败', 'error')
+    showToast('获取模型详情失败', 'error')
   }
 }
 
