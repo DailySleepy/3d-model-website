@@ -114,3 +114,10 @@ export const commentsApi = {
   create: (payload) => api.post('/api/comments', payload), // { modelId, content, parentId, replyToUserId }
   delete: (id) => api.delete(`/api/comments/${id}`)
 }
+
+// 消息
+export const notificationApi = {
+  getAll: () => api.get('/api/notifications'),
+  markAsRead: (id) => api.put(`/api/notifications/${id}/read`),
+  markAllAsRead: () => api.put(`/api/notifications/read-all`),
+}

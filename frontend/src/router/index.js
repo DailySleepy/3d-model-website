@@ -8,6 +8,7 @@ import RegisterPage from '@/views/RegisterPage.vue'
 import UserSettings from '@/views/UserSettings.vue'
 import UserPage from '@/views/UserPage.vue'
 import UploadPage from '@/views/UploadPage.vue'
+import NotificationPage from '@/views/NotificationPage.vue'
 // TODO: 添加其他路由
 
 const routes = [
@@ -19,7 +20,8 @@ const routes = [
   { path: '/user/:id', component: UserPage },
   { path: '/user/settings', component: UserSettings },
   { path: '/forget', component: ForgetPage },
-  { path: '/upload', component: UploadPage }
+  { path: '/upload', component: UploadPage },
+  { path: '/notification', component: NotificationPage}
 ]
 
 const router = createRouter({

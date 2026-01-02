@@ -50,8 +50,8 @@
 
 | 模块 | 用户故事 | 前端任务 | 后端任务 | 数据库设计 | 说明 |
 | :-- | :-- | :-- | :-- | :-- | :-- |
-| **通知中心** | 用户查看收到的赞、评论、系统消息 | 1. `NotificationDropdown.vue`<br>2. Pinia `useNotificationStore` (轮询红点) | 1. `GET /api/notifications` (需联表查询发送者详情)<br>2. `GET /api/notifications/unread-count`<br>3. `PUT /api/notifications/:id/read` | `notifications` | 后端需在点赞/评论/关注成功后**自动触发**插入通知记录 |
-| **私信** | 用户之间私聊 | `ChatModal.vue` (含左侧会话列表，右侧聊天框) | 1. `POST /api/messages` (发送)<br>2. `GET /api/messages/conversations` (最近会话列表)<br>3. `GET /api/messages/history` (特定用户的聊天记录) | `messages` | 独立于通知系统，前端轮询或 WebSocket |
+| **通知中心** | 用户查看收到的赞、评论、系统消息 | 1. `NotificationPage.vue`<br>2. Pinia `useNotificationStore` (轮询红点) | 1. `GET /api/notifications` (需联表查询发送者详情)<br>2. `GET /api/notifications/unread-count`<br>3. `PUT /api/notifications/:id/read`<br>4. `PUT /api/notifications/read-all` | `notifications` | 后端需在点赞/收藏/评论/关注成功后**自动触发**插入通知记录 |
+| **私信** | 用户之间私聊 | `ChatPage.vue` (含左侧会话列表，右侧聊天框) | 1. `POST /api/messages` (发送)<br>2. `GET /api/messages/conversations` (最近会话列表)<br>3. `GET /api/messages/history` (特定用户的聊天记录) | `messages` | 独立于通知系统，前端轮询或 WebSocket |
 
 ---
 
@@ -151,8 +151,9 @@ CREATE TABLE notifications (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL,        -- 接收通知的用户 ID
   type VARCHAR(20) NOT NULL,      -- 通知类型: 'LIKE', 'COLLECT', 'COMMENT', 'FOLLOW', 'SYSTEM'
-  from_id BIGINT,               -- 触发者 ID (如谁给你点了赞)，系统消息可为 NULL
+  from_id BIGINT,                 -- 触发者 ID (如谁给你点了赞)，系统消息可为 NULL
   model_id BIGINT,                -- 相关联的模型 ID (如点赞/评论了哪个模型)，关注通知可为 NULL
+  comment_id BIGINT,              -- 如果类型为评论则不为 NULL
   is_read BOOLEAN DEFAULT FALSE,  -- 是否已读
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
