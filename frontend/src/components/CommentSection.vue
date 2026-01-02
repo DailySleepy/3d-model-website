@@ -4,8 +4,10 @@
       评论 <span class="text-sm font-normal text-gray-500">({{ total }})</span>
     </h2>
 
-    <CommentInput ref="mainInputRef" :userAvatar="user?.avatar" placeholder="分享你的想法..." buttonText="发布评论"
-      :loading="submitting" @submit="handleMainSubmit" />
+    <div v-if="authStore.user!=null">
+      <CommentInput ref="mainInputRef" :userAvatar="user?.avatar" placeholder="分享你的想法..." buttonText="发布评论"
+        :loading="submitting" @submit="handleMainSubmit" />
+    </div>
 
     <div class="space-y-6">
       <div v-if="loading && comments.length === 0" class="text-center text-gray-400 py-4">加载中...</div>
