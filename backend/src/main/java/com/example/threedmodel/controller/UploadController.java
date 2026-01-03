@@ -2,6 +2,7 @@ package com.example.threedmodel.controller;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 
 import java.io.File;
@@ -12,6 +13,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/upload")
 public class UploadController {
+
+    // 从application.yml中注入路径
+    @Value("${app.file-root-path}")
+    private String fileRootPath;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     /** 上传封面图 */
     @PostMapping("/thumbnail")
@@ -47,9 +55,8 @@ public class UploadController {
             String suffix = originalName.substring(originalName.lastIndexOf("."));
             String fileName = UUID.randomUUID() + suffix;
 
-            // 2. 本地磁盘路径
-            String basePath = System.getProperty("user.dir");
-            String fullDirPath = basePath + relativeDir;
+            // 2. 拼接路径
+            String fullDirPath = fileRootPath + relativeDir;
 
             File dir = new File(fullDirPath);
             if (!dir.exists()) {
@@ -61,7 +68,7 @@ public class UploadController {
             file.transferTo(dest);
 
             // 4. 返回访问 URL（前端可直接用）
-            return "http://localhost:8080" + relativeDir + fileName;
+            return baseUrl + relativeDir + fileName;
 
         } catch (Exception e) {
             throw new RuntimeException("文件上传失败：" + e.getMessage());

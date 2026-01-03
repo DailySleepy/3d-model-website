@@ -217,7 +217,6 @@ const fetchComments = async (currentPage = 1, append = false) => {
     newItems.forEach(item => {
       item.isExpanded = false
     })
-    console.log(res.data)
     total.value = res.data.total || 0
 
     if (append) {

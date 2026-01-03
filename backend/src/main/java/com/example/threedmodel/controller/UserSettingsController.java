@@ -7,6 +7,7 @@ import jakarta.annotation.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.File;
 import java.util.UUID;
@@ -15,6 +16,13 @@ import java.util.UUID;
 @RequestMapping("/api/settings/user")
 @CrossOrigin
 public class UserSettingsController {
+
+    // 从application.yml中注入路径
+    @Value("${app.file-root-path}")
+    private String fileRootPath;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     @Resource
     private UserSettingsService userSettingsService;
@@ -89,7 +97,8 @@ public class UserSettingsController {
         String ext = originalName.substring(originalName.lastIndexOf("."));
         String fileName = UUID.randomUUID() + ext;
 
-        String uploadBasePath = System.getProperty("user.dir") + relativePath;
+        // 2. 拼接路径
+        String uploadBasePath = fileRootPath + relativePath;
 
         File dir = new File(uploadBasePath);
         if (!dir.exists()) {
@@ -106,6 +115,6 @@ public class UserSettingsController {
             throw new RuntimeException("File upload failed: " + e.getMessage());
         }
 
-        return "http://localhost:8080" + relativePath + fileName;
+        return baseUrl + relativePath + fileName;
     }
 }
