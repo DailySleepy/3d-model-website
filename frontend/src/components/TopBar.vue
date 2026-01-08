@@ -2,7 +2,10 @@
   <div class="container mx-auto px-8 py-4 max-w-6xl flex justify-center items-center w-full h-20">
     <nav class="flex items-center w-full flex-nowrap whitespace-nowrap gap-4 md:gap-8">
       <div class="whitespace-nowrap">
-        <router-link to="/" class="text-2xl font-bold whitespace-nowrap">ModelCraft</router-link>
+        <router-link to="/" class="flex font-bold whitespace-nowrap items-center">
+          <img src="/favicon.png" class="w-16" alt="ModelCraft">
+          <span class="text-blue-400 text-2xl">ModelCraft</span>
+        </router-link>
       </div>
       <div class="flex-1 flex justify-center">
         <div class="hidden md:flex items-center mx-4 lg:mx-10">
