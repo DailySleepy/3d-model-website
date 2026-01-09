@@ -1,5 +1,5 @@
 <template>
-  <div class="container mx-auto px-4 py-8 max-w-5xl">
+  <div class="container mx-auto px-8 py-8 max-w-6xl">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">消息中心</h1>
       <button @click="notificationStore.markAllAsRead"
@@ -25,55 +25,62 @@
     </div>
 
     <div class="min-h-[400px] bg-white rounded-lg shadow-sm border border-gray-100 relative">
-      <div v-if="currentList.length === 0" class="flex flex-col items-center justify-center h-64 text-gray-400">
-        <p>暂无消息</p>
+      <div v-if="currentTab === 'chat'" class="h-[600px]">
+        <!-- <ChatBox /> -->
       </div>
 
-      <ul v-else>
-        <li v-for="note in currentList" :key="note.id" @click="handleItemClick(note)"
-          class="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-          :class="{ 'bg-blue-50/40': !note.is_read }">
-          <div class="flex items-center gap-4">
-            <div v-if="note.from_user" class="flex-shrink-0 w-10 h-10">
-              <router-link :to="`/user/${note.from_user.id}`" @click.stop>
-                <img :src="note.from_user.avatar"
-                  class="w-full h-full object-cover rounded-full bg-gray-200 transition-opacity hover:opacity-80" />
-              </router-link>
-            </div>
+      <template v-else>
+        <div v-if="currentList.length === 0" class="flex flex-col items-center justify-center h-64 text-gray-400">
+          <p>暂无消息</p>
+        </div>
 
-            <div class="text-sm">
-              <div v-if="note.type != 'SYSTEM'">
-                <div>
-                  <span class="font-bold">{{ note.from_user.username }}</span>
-                  <span class="text-gray-500 mx-1">
-                    {{ getActionText(note.type) }}
-                  </span>
-                  <span v-if="note.model" class="text-blue-600">{{ note.model.title }}</span>
+        <ul v-else>
+          <li v-for="note in currentList" :key="note.id" @click="handleItemClick(note)"
+            class="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+            :class="{ 'bg-blue-50/40': !note.isRead }">
+            <div class="flex items-center gap-4">
+              <div v-if="note.fromUser" class="flex-shrink-0 w-10 h-10">
+                <router-link :to="`/user/${note.fromUser.id}`" @click.stop>
+                  <img :src="note.fromUser.avatar"
+                    class="w-full h-full object-cover rounded-full bg-gray-200 transition-opacity hover:opacity-80" />
+                </router-link>
+              </div>
+
+              <div class="text-sm">
+                <template v-if="note.type != 'SYSTEM'">
+                  <div>
+                    <span class="font-bold">{{ note.fromUser.username }}</span>
+                    <span class="text-gray-500 mx-1">
+                      {{ getActionText(note.type) }}
+                    </span>
+                    <span v-if="note.model" class="text-blue-600">{{ note.model.title }}</span>
+                  </div>
+                  <div v-if="note.comment" class="text-gray-600 text-sm mt-1">{{ note.comment.content }}</div>
+                </template>
+                <div v-else>
+                  系统通知
                 </div>
-                <div v-if="note.comment" class="text-gray-600 text-sm mt-1">{{ note.comment.content }}</div>
+                <div class="text-xs text-gray-400 mt-1">{{ formatTime(note.createdAt) }}</div>
               </div>
-              <div v-else>
-                系统通知
-              </div>
-              <div class="text-xs text-gray-400 mt-1">{{ formatTime(note.created_at) }}</div>
             </div>
-          </div>
 
-          <div v-if="!note.is_read" class="w-2 h-2 bg-red-500 rounded-full"></div>
-        </li>
-      </ul>
+            <div v-if="!note.isRead" class="w-2 h-2 bg-red-500 rounded-full"></div>
+          </li>
+        </ul>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useNotificationStore } from '@/stores/notification';
+import { computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useNotificationStore } from '@/stores/notification'
+import ChatBox from '@/components/ChatBox.vue'
 
-const route = useRoute();
-const router = useRouter();
-const notificationStore = useNotificationStore();
+const route = useRoute()
+const router = useRouter()
+const notificationStore = useNotificationStore()
 
 const tabs = [
   { key: 'reply', label: '回复我的' },
@@ -81,48 +88,48 @@ const tabs = [
   { key: 'follow', label: '新增关注' },
   { key: 'system', label: '系统通知' },
   { key: 'chat', label: '我的私信' },
-];
+]
 
-const currentTab = computed(() => route.query.tab || 'reply');
+const currentTab = computed(() => route.query.tab || 'reply')
 
 const currentList = computed(() => {
   switch (currentTab.value) {
-    case 'reply': return notificationStore.replyList;
-    case 'like': return notificationStore.likeList;
-    case 'follow': return notificationStore.followList;
-    case 'system': return notificationStore.systemList;
-    default: return [];
+    case 'reply': return notificationStore.replyList
+    case 'like': return notificationStore.likeList
+    case 'follow': return notificationStore.followList
+    case 'system': return notificationStore.systemList
+    default: return []
   }
-});
+})
 
 const getUnreadCount = (key) => {
   switch (key) {
-    case 'reply': return notificationStore.unreadCountReply;
-    case 'like': return notificationStore.unreadCountLike;
-    case 'follow': return notificationStore.unreadCountFollow;
-    case 'system': return notificationStore.unreadCountSystem;
-    case 'chat': return 0; // TODO: 私信未读数
-    default: return 0;
+    case 'reply': return notificationStore.unreadCountReply
+    case 'like': return notificationStore.unreadCountLike
+    case 'follow': return notificationStore.unreadCountFollow
+    case 'system': return notificationStore.unreadCountSystem
+    case 'chat': return notificationStore.unreadCountChat
+    default: return 0
   }
-};
+}
 
 const switchTab = (key) => {
-  router.replace({ query: { ...route.query, tab: key } });
-};
+  router.replace({ query: { ...route.query, tab: key } })
+}
 
 const markAsRead = (noteid) => {
-  notificationStore.markAsRead(noteid);
+  notificationStore.markAsRead(noteid)
 }
 
 const handleItemClick = (note) => {
-  markAsRead(note.id);
+  markAsRead(note.id)
   if (note.model != null) {
     router.push(`/model/${note.model.id}`) // 有模型就跳转模型
   }
-  else if (note.from_user != null) {
-    router.push(`/user/${note.from_user.id}`) // 没模型有用户就跳转用户
+  else if (note.fromUser != null) {
+    router.push(`/user/${note.fromUser.id}`) // 没模型有用户就跳转用户
   }
-};
+}
 
 const getActionText = (type) => {
   const map = {
@@ -130,14 +137,14 @@ const getActionText = (type) => {
     'LIKE': '赞了',
     'COLLECT': '收藏了',
     'FOLLOW': '关注了你'
-  };
-  return map[type] || '';
-};
+  }
+  return map[type] || ''
+}
 
 // mock
-const formatTime = (t) => t ? t.split('T')[0] : '';
+const formatTime = (t) => t ? t.split('T')[0] : ''
 
 onMounted(() => {
-  notificationStore.fetchNotifications();
-});
+  notificationStore.fetchNotifications()
+})
 </script>

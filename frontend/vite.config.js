@@ -12,6 +12,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  define: {
+    '__API_URL__': JSON.stringify(targetUrl) // vue 中使用这个作为后端地址
+  },
   server: {
     proxy: {
       '/api': {
@@ -20,6 +23,11 @@ export default defineConfig({
       },
       '/uploads': {
         target: targetUrl,
+        changeOrigin: true
+      },
+      '/ws': {
+        target: targetUrl,
+        ws: true,
         changeOrigin: true
       }
     }

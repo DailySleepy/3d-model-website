@@ -55,7 +55,7 @@ public class ModelCollectService {
         event.setOperatorId(userId);
         event.setTargetUserId(authorId);
         event.setModelId(modelId);
-        event.setType("collect");
+        event.setType("COLLECT");
 
         eventPublisher.publishEvent(event);
     }

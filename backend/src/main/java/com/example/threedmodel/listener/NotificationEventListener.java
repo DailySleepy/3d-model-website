@@ -43,7 +43,7 @@ public class NotificationEventListener {
                 userId,         // 接收人
                 followerId,     // 触发人
                 null,           // modelId（关注无模型）
-                "follow"
+                "FOLLOW"
         );
     }
 
@@ -99,7 +99,7 @@ public class NotificationEventListener {
                     followerId,     // 接收通知的人
                     authorId,       // 触发者（作者）
                     modelId,        // 模型
-                    "publish"       // 类型
+                    "PUBLISH"       // 类型
             );
         }
     }

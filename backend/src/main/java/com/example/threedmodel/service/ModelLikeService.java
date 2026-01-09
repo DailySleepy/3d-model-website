@@ -52,7 +52,7 @@ public class ModelLikeService {
         event.setOperatorId(userId);
         event.setTargetUserId(authorId);
         event.setModelId(modelId);
-        event.setType("like");
+        event.setType("LIKE");
 
         eventPublisher.publishEvent(event);
     }

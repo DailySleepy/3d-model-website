@@ -57,7 +57,7 @@ public class NotificationController {
     }
 
     // 标记已读
-    @PostMapping("/{id}/read")
+    @PutMapping("/{id}/read")
     public ResponseEntity<?> markAsRead(
             @PathVariable("id") Long notificationId,
             HttpServletRequest request) {
