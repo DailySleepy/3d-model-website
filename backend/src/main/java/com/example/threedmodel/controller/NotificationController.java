@@ -102,7 +102,35 @@ public class NotificationController {
 
         return ResponseEntity.ok(result);
     }
+    
+    /**
+     * 一键标记全部通知为已读
+     * PUT /api/notifications/read-all
+     */
+    @PutMapping("/read-all")
+    public ResponseEntity<?> readAll(HttpServletRequest request) {
 
+        Long currentUserId = getCurrentUserId(request);
+        if (currentUserId == null) {
+            return unauthorizedResponse("请先登录");
+        }
+
+        try {
+            notificationService.markAllAsRead(currentUserId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("message", "已全部标记为已读");
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "操作失败：" + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+    
     // ==== 上面两个私有方法复制进来 ====
     private Long getCurrentUserId(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");

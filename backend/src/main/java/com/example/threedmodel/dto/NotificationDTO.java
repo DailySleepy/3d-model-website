@@ -13,9 +13,11 @@ public class NotificationDTO {
 
     private Long id;
     private String type;
-    private Boolean isRead;
-    private LocalDateTime createdAt;
 
     private UserBriefDTO fromUser;
     private ModelBriefDTO model;
+    private CommentDTO comment; 
+
+    private Boolean isRead;
+    private LocalDateTime createdAt;
 }

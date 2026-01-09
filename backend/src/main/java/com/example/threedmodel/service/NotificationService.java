@@ -4,7 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.threedmodel.dto.*;
 import com.example.threedmodel.entity.Notification;
-import com.example.threedmodel.entity.Model; // ⚠️ 若你的 Model 包名不同请改
+import com.example.threedmodel.entity.Model;
+import com.example.threedmodel.entity.Comment; // ===== 新增：用于查询评论 =====
 import com.example.threedmodel.mapper.NotificationMapper;
 import com.example.threedmodel.model.entity.User;
 import jakarta.annotation.Resource;
@@ -27,7 +28,10 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
     private UserService userService;
 
     @Resource
-    private ModelService modelService; 
+    private ModelService modelService;
+
+    @Resource
+    private CommentService commentService; // ===== 新增：用于查评论 =====
 
     /* ================== 写入通知（被监听器调用） ================== */
 
@@ -46,6 +50,33 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
         notification.setUserId(userId);
         notification.setFromId(fromId);
         notification.setModelId(modelId);
+        notification.setType(type);
+        notification.setIsRead(false);
+        notification.setCreatedAt(LocalDateTime.now());
+
+        // ⚠️ 如果是评论通知，commentId 由重载方法或后续 set
+        notificationMapper.insert(notification);
+    }
+
+    /**
+     * ===== 新增：用于评论通知的 create 方法 =====
+     * 仅 COMMENT 类型会用到 commentId
+     */
+    public void create(Long userId,
+                       Long fromId,
+                       Long modelId,
+                       Long commentId,
+                       String type) {
+
+        if (userId.equals(fromId)) {
+            return;
+        }
+
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setFromId(fromId);
+        notification.setModelId(modelId);
+        notification.setCommentId(commentId); // ===== 新增 =====
         notification.setType(type);
         notification.setIsRead(false);
         notification.setCreatedAt(LocalDateTime.now());
@@ -75,7 +106,7 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
             dto.setIsRead(n.getIsRead());
             dto.setCreatedAt(n.getCreatedAt());
 
-            // fromUser
+            // ================= fromUser =================
             if (n.getFromId() != null) {
                 User u = userService.getById(n.getFromId());
                 if (u != null) {
@@ -87,7 +118,7 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
                 }
             }
 
-            // model
+            // ================= model =================
             if (n.getModelId() != null) {
                 Model m = modelService.getById(n.getModelId());
                 if (m != null) {
@@ -96,6 +127,22 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
                     mb.setTitle(m.getTitle());
                     mb.setCoverUrl(m.getThumbnailUrl());
                     dto.setModel(mb);
+                }
+            }
+
+            // ================= comment =================
+            // 只有 COMMENT 类型才返回 comment
+            if ("COMMENT".equals(n.getType()) && n.getCommentId() != null) {
+
+                Comment c = commentService.getById(n.getCommentId());//根据id找评论，获取content
+                if (c != null) {
+                    CommentDTO cd = new CommentDTO();
+
+                    // ===== 关键点：只 set 需要的字段 =====
+                    cd.setId(c.getId());
+                    cd.setContent(c.getContent());
+
+                    dto.setComment(cd);
                 }
             }
 
@@ -122,10 +169,8 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
         notificationMapper.updateById(n);
     }
 
-
-/**
+    /**
      * 获取未读通知数量
-     * 给 /api/notifications/unread-count 使用
      */
     public int getUnreadCount(Long userId) {
         return (int) this.count(
@@ -133,5 +178,27 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
                         .eq("user_id", userId)
                         .eq("is_read", false)
         );
+    }
+
+    /**
+     * 将该用户的所有通知标记为已读
+     */
+    public void markAllAsRead(Long userId) {
+
+        List<Notification> list = this.list(
+                new QueryWrapper<Notification>()
+                        .eq("user_id", userId)
+                        .eq("is_read", false)
+        );
+
+        if (list.isEmpty()) {
+            return;
+        }
+
+        for (Notification n : list) {
+            n.setIsRead(true);
+        }
+
+        this.updateBatchById(list);
     }
 }
