@@ -81,6 +81,8 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
         notification.setIsRead(false);
         notification.setCreatedAt(LocalDateTime.now());
 
+        // System.out.println("成功生成通知");
+
         notificationMapper.insert(notification);
     }
 
@@ -136,6 +138,7 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
 
                 Comment c = commentService.getById(n.getCommentId());//根据id找评论，获取content
                 if (c != null) {
+                    // 可能需要 CommentBriefDTO
                     CommentDTO cd = new CommentDTO();
 
                     // ===== 关键点：只 set 需要的字段 =====

@@ -56,7 +56,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         // 4. 发布评论事件（触发通知
         Long receiverId = dto.getParentId() == null
                 ? model.getAuthorId()  // 一级评论：通知模型作者
-                : baseMapper.selectById(dto.getParentId()).getUserId(); // 回复：通知被回复的评论作者
+                : dto.getReplyToUserId(); // 回复：通知被回复的评论作者
 
         eventPublisher.publishEvent(new ModelCommentEvent(
                 this,

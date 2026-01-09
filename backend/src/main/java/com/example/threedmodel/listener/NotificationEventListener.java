@@ -69,12 +69,19 @@ public class NotificationEventListener {
         // 直接复用队友封装的 notificationService.create() 方法
         // 参数对应关系：接收通知用户ID → 触发者ID → 模型ID → 通知类型
         // 完全匹配 handleModelAction 方法的参数格式，兼容现有逻辑
+        
+        // System.out.println("监听到评论事件并尝试生成通知: " + 
+        //     "接收者ID=" + event.getToUserId() + 
+        //     ", 触发者ID=" + event.getFromUserId() + 
+        //     ", 模型ID=" + event.getModelId() + 
+        //     ", 评论ID=" + event.getCommentId()
+        // );
         notificationService.create(
-                event.getToUserId(),    // 接收通知的用户ID（模型作者/被回复者）
-                event.getFromUserId(),  // 触发者ID（评论者）
-                event.getModelId(),     // 关联模型ID
-                event.getCommentId(),   // 关联评论ID
-                "COMMENT"               // 通知类型（与数据库定义一致）
+            event.getToUserId(),    // 接收通知的用户ID（模型作者/被回复者）
+            event.getFromUserId(),  // 触发者ID（评论者）
+            event.getModelId(),     // 关联模型ID
+            event.getCommentId(),   // 关联评论ID
+            "COMMENT"         // 通知类型（与数据库定义一致）
         );
     }
 
