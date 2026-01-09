@@ -143,6 +143,7 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
 
                     // ===== 关键点：只 set 需要的字段 =====
                     cd.setId(c.getId());
+                    cd.setParentId(c.getParentId());
                     cd.setContent(c.getContent());
 
                     dto.setComment(cd);

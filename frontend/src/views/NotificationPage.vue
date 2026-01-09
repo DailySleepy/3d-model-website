@@ -51,9 +51,15 @@
                   <div>
                     <span class="font-bold">{{ note.fromUser.username }}</span>
                     <span class="text-gray-500 mx-1">
-                      {{ getActionText(note.type) }}
+                      {{ getActionText(note) }}
                     </span>
-                    <span v-if="note.model" class="text-blue-600">{{ note.model.title }}</span>
+                    <span v-if="note.model && (!note.comment || !note.comment.parentId)" class="text-blue-600">
+                      {{ note.model.title }}
+                    </span>
+                    <span v-else-if="note.model && note.comment && note.comment.parentId"
+                      class="text-gray-400 text-xs ml-1">
+                      (在 {{ note.model.title }} 中)
+                    </span>
                   </div>
                   <div v-if="note.comment" class="text-gray-600 text-sm mt-1">{{ note.comment.content }}</div>
                 </template>
@@ -131,14 +137,20 @@ const handleItemClick = (note) => {
   }
 }
 
-const getActionText = (type) => {
+const getActionText = (note) => {
+  if (note.type === 'COMMENT') {
+    if (note.comment && note.comment.parentId)
+      return '回复了你的评论'
+    else
+      return '评论了你的模型'
+  }
+
   const map = {
-    'COMMENT': '评论了',
     'LIKE': '赞了',
     'COLLECT': '收藏了',
     'FOLLOW': '关注了你'
   }
-  return map[type] || ''
+  return map[note.type] || ''
 }
 
 // mock

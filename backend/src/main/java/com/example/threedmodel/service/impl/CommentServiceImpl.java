@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,8 +56,10 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
         // 4. 发布评论事件（触发通知
         Long receiverId = dto.getParentId() == null
-                ? model.getAuthorId()  // 一级评论：通知模型作者
-                : dto.getReplyToUserId(); // 回复：通知被回复的评论作者
+                ? model.getAuthorId()   // 一级评论：通知模型作者
+                                        // 回复：通知被回复的评论作者
+                : Optional.ofNullable(dto.getReplyToUserId()) // 回复一级评论的二级评论, 回复对象是null; 回复二级评论的二级评论, 回复对象非null
+                    .orElseGet(() -> baseMapper.selectById(dto.getParentId()).getUserId());
 
         eventPublisher.publishEvent(new ModelCommentEvent(
                 this,
