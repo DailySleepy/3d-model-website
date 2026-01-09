@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
+import process from 'node:process'
+
+const targetUrl = process.env.BASE_URL || 'http://localhost:8080'
 
 export default defineConfig({
   plugins: [vue()],
@@ -12,11 +15,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: targetUrl,
         changeOrigin: true
       },
       '/uploads': {
-        target: 'http://localhost:8080',
+        target: targetUrl,
         changeOrigin: true
       }
     }

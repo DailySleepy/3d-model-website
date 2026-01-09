@@ -1,9 +1,7 @@
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: '',
   timeout: 10000
 })
 
@@ -121,3 +119,13 @@ export const notificationApi = {
   markAsRead: (id) => api.put(`/api/notifications/${id}/read`),
   markAllAsRead: () => api.put(`/api/notifications/read-all`),
 }
+
+// 私信
+export const chatApi = {
+  // 获取最近会话列表 (包含每个人的未读数, 最新一条消息等)
+  getConversations: () => axios.get('/api/messages/conversations'),
+  // 获取与特定用户的历史记录
+  getHistory: (targetUserId) => axios.get(`/api/messages/history`, { params: { target_id: targetUserId } }),
+  sendMessage: (data) => axios.post('/api/messages', data),
+  markRead: (senderId) => axios.post('/api/messages/read', { sender_id: senderId })
+};
