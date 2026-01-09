@@ -73,6 +73,7 @@ public class NotificationEventListener {
                 event.getToUserId(),    // 接收通知的用户ID（模型作者/被回复者）
                 event.getFromUserId(),  // 触发者ID（评论者）
                 event.getModelId(),     // 关联模型ID
+                event.getCommentId(),   // 关联评论ID
                 "COMMENT"               // 通知类型（与数据库定义一致）
         );
     }

@@ -30,6 +30,8 @@ public class Notification {
     /** 关联模型（系统通知可为 null） */
     private Long modelId;
 
+    private Long commentId; 
+
     private LocalDateTime createdAt;
 
     private Boolean isRead;
