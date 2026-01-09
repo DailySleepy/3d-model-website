@@ -13,17 +13,12 @@
       <div class="container mx-auto px-8">
         <div class="min-h-[700px] flex items-center justify-center">
           <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
-            <!--提示信息-->
-            <div v-if="errorMessage" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{{ errorMessage }}</div>
-            <div v-if="successMessage" class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">{{ successMessage }}</div>
-            <!-- Logo部分 -->
+            <ToastMessage ref="toastRef" />
             <div class="flex justify-center mb-4">
               <router-link to="/" class="flex items-center space-x-2 text-blue-600">
-              <span class="text-xl font-semibold">3D Model Website</span>
+                <span class="text-xl font-semibold">ModelCraft</span>
               </router-link>
             </div>
-
-            <!-- 表单部分 -->
             <h2 class="text-2xl sm:text-3xl font-bold text-center mb-6">登录</h2>
             <form @submit.prevent="handleLogin">
               <div class="mb-4">
@@ -31,40 +26,35 @@
                   type="text"
                   id="identifier"
                   v-model="identifier"
-                  class="w-full p-3 border rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="请输入用户名或电话"
+                  class="input-modern"
+                  placeholder="请输入用户名或邮箱"
+                  required
                 />
               </div>
-
               <div class="mb-6">
                 <input
                   type="password"
                   id="password"
                   v-model="password"
-                  class="w-full p-3 border rounded-lg focus:outline-none focus:border-blue-500"
+                  class="input-modern"
                   placeholder="请输入密码"
+                  required
                 />
               </div>
-
-              <!-- 记住密码 -->
               <div class="flex items-center justify-between mb-4">
                 <label class="inline-flex items-center text-sm">
                   <input type="checkbox" v-model="rememberMe" class="form-checkbox text-blue-600" />
                   <span class="ml-2">记住密码</span>
                 </label>
-                <router-link to="/forgot-password" class="text-sm text-blue-600">忘记密码</router-link>
+                <router-link to="/forget" class="text-sm text-blue-600">忘记密码</router-link>
               </div>
-
-              <!-- 登录按钮 -->
-              <button type="submit" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+              <button type="submit" class="btn-text-white w-full">
                 登录
               </button>
             </form>
-
-            <!-- 注册链接 -->
             <div class="mt-4 text-center">
               <span class="text-sm text-gray-600">没有账户？</span>
-                <router-link to="/register" class="text-sm text-blue-600">注册账户</router-link>
+              <router-link to="/register" class="text-sm text-blue-600">注册账户</router-link>
             </div>
           </div>
         </div>
@@ -74,39 +64,48 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import ToastMessage from '@/components/ToastMessage.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const identifier = ref('')
 const password = ref('')
 const rememberMe = ref(false)
-const errorMessage = ref('')
-const successMessage = ref('')
+const toastRef = ref(null)
 
-const handleLogin = async () => {
-  errorMessage.value = ''
-  successMessage.value = ''
-  // 前端验证：输入项
-  if (!identifier.value || !password.value) {
-    errorMessage.value = '请填写所有必填项'
-    return
-  }
-
-  const res = await authStore.loginAccount(
-    identifier.value,
-    password.value,
-  )
-  if (res.success) {
-    successMessage.value = '登录成功'
-    router.push('/')
-  } else {
-    errorMessage.value = res.message
+const showToast = (msg, type = 'error') => {
+  if (toastRef.value) {
+    toastRef.value.show(msg, type, 5000)
   }
 }
 
-</script>
+const handleLogin = async () => {
+  const errs = []
+  if (!identifier.value) errs.push('请输入用户名或邮箱')
+  if (!password.value) errs.push('请输入密码')
+  if (errs.length) {
+    showToast(errs.join('\n'))
+    return
+  }
+  const res = await authStore.login(identifier.value, password.value)
+  if (res.success) {
+    if (rememberMe.value) {
+      localStorage.setItem('remember_identifier', identifier.value)
+    } else {
+      localStorage.removeItem('remember_identifier')
+    }
+    showToast('登录成功', 'success')
+    const redirectPath = route.query.redirect || '/'
+    router.push(redirectPath)
+  } else {
+    showToast('账号或密码错误', 'error')
+  }
+}
 
+
+</script>

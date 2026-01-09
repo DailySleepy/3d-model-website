@@ -1,13 +1,41 @@
 server:
   port: 8080 #default port, 可以改
 
+app:
+  file-root-path: ${FILE_PATH:${user.dir}} #TODO: docker配置注入环境变量, 使用docker挂载卷
+  base-url: ${BASE_URL:http://localhost:8080}
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
+    #TODO: docker配置时加上生产环境域名和前端IP
+
 spring:
   datasource:
+<<<<<<< HEAD
     url: jdbc:postgresql://localhost:5432/threed_model_db #先创建你的数据库 createdb xx_db
     username: postgres
     password: Yw040925 #记得改
+=======
+    url: jdbc:postgresql://${DB_URL:localhost:5432/threed_model_db} #先创建你的数据库 createdb xx_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:z3j1m4}
+>>>>>>> 8ef69a68dc3124886378ee487ae930042ef5343a
     driver-class-name: org.postgresql.Driver
+    
+  web:
+    resources:
+      static-locations:
+        # - file:uploads/
+        - classpath:/META-INF/resources/
+        - classpath:/resources/
+        - classpath:/static/
+        - classpath:/public/
 
-mybatis-plus: #not necessary
+
+mybatis-plus:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 打印 SQL
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+
+      db-type: postgresql  # 指定数据库类型

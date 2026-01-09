@@ -15,6 +15,8 @@ coverage
 *.local
 
 target
+backend/uploads/*/*
+!backend/uploads/*/.gitkeep
 
 # Editor directories and files
 .vscode/*
@@ -36,3 +38,7 @@ target
 
 # Vitest
 __screenshots__/
+
+# env
+.env
+.env.local

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace 必须与 FollowerMapper 接口的全类名一致 -->
+<mapper namespace="com.example.threedmodel.mapper.FollowerMapper">
+
+    <!-- 实现 selectCountByUserAndFollower 方法：查询关注关系是否存在 -->
+    <select id="selectCountByUserAndFollower" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM followers
+        WHERE user_id = #{userId}  -- 被关注者ID
+          AND follower_id = #{followerId}  -- 关注者ID
+    </select>
+
+</mapper>

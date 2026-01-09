@@ -1,13 +1,14 @@
 package com.example.threedmodel.service;
 
 import com.example.threedmodel.entity.ModelLike;
+import com.example.threedmodel.event.ModelActionEvent;
 import com.example.threedmodel.mapper.ModelLikeMapper;
 import com.example.threedmodel.mapper.ModelMapper;
 import com.example.threedmodel.entity.Model;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
@@ -19,6 +20,9 @@ public class ModelLikeService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public boolean toggleLike(Long modelId, Long userId) {
@@ -42,6 +46,15 @@ public class ModelLikeService {
         Model model = modelMapper.selectById(modelId);
         model.setLikeCount((model.getLikeCount() == null ? 0 : model.getLikeCount()) + 1);
         modelMapper.updateById(model);
+
+        Long authorId = model.getAuthorId();
+        ModelActionEvent event = new ModelActionEvent();
+        event.setOperatorId(userId);
+        event.setTargetUserId(authorId);
+        event.setModelId(modelId);
+        event.setType("like");
+
+        eventPublisher.publishEvent(event);
     }
 
     @Transactional

@@ -1,90 +1,417 @@
 <template>
-<div class="flex justify-center min-h-screen p-4">
-  <div class="flex w-full max-w-[1600px] min-w-[1000px]">
-    <div class="flex-1">
-      <!-- 预览/3D模型渲染 -->
-      <div class="relative">
-        <button @click="toggleRender" class="absolute top-2 left-2 bg-blue-500 text-white px-4 py-2 rounded">
-          {{ isRendering ? '停止渲染' : '播放3D' }}
-        </button>
-        <ModelViewer v-if="isRendering" :model-url="model.fileUrl" class=" w-full aspect-[16/9]" />
-        <img v-else :src="model.thumbnailUrl" alt="thumbnail" class="w-full aspect-[16/9] object-cover" />
+  <div class="flex flex-col">
+    <ToastMessage ref="toastRef" />
+    <section>
+      <div class="container mx-auto px-8 py-4 max-w-6xl">
+        <nav class="text-1xl text-gray-600">
+          <router-link to="/" class="hover:underline">主页</router-link>
+          <span class="mx-2">></span>
+          <span class="cursor-pointer hover:text-blue-500 transition-colors">模型</span>
+          <span class="mx-2">></span>
+          <span class="text-gray-900">{{ model.title }}</span>
+        </nav>
       </div>
+    </section>
+    <section>
+      <!--信息卡-->
+      <div class="container mx-auto px-8 py-4 max-w-6xl space-y-6">
+        <div class="bg-white rounded-md shadow-sm">
+          <div class="flex flex-col lg:flex-row gap-8">
+            <div class="w-full lg:w-2/3 relative group">
+              <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
+                <ModelViewer v-if="isRendering" :model-url="model.fileUrl" class="w-full h-full" />
+                <img v-else :src="model.thumbnailUrl || '/placeholder.png'" alt="cover"
+                  class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <button @click="toggleRender"
+                  class="absolute top-4 left-4 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2">
+                  <svg v-if="!isRendering" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {{ isRendering ? '关闭3D预览' : '预览3D模型' }}
+                </button>
+              </div>
+            </div>
 
-      <!-- 模型互动按钮 -->
-      <div class="mt-4 bg-white p-4 rounded shadow flex gap-2">
-        <button>点赞 ({{ model.likeCount }})</button>
-        <button>收藏 ({{ model.collectCount }})</button>
-        <button v-if="isLoggedIn" class="bg-blue-500 text-white px-4 py-2 rounded">下载</button>
-      </div>
+            <div class="flex-1 flex flex-col">
+              <div class="flex items-start justify-between mb-4">
+                <h1 class="text-3xl font-bold text-gray-900 leading-tight">
+                  {{ model.title }}
+                </h1>
+              </div>
+              <div class="flex flex-wrap gap-2 mb-8 mt-4">
+                <span v-for="tag in (model.tags || ['Windows', '3D Asset', 'Character'])" :key="tag"
+                  class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors cursor-pointer">
+                  {{ tag }}
+                </span>
+              </div>
+              <div class="flex flex-wrap gap-3 mb-6">
+                <button class="btn-text-white w-1/2" @click="handleDownload">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  下载
+                </button>
+                <button
+                  class="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-red-500 transition-colors"
+                  @click="handleLike" :title="model.isLiked ? '取消点赞' : '点赞'">
+                  <svg class="w-6 h-6" :class="{ 'fill-current text-red-500': model.isLiked }" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </button>
+                <button
+                  class="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-yellow-500 transition-colors"
+                  @click="handleCollect" :title="model.isCollected ? '取消收藏' : '收藏'">
+                  <svg class="w-6 h-6" :class="{ 'fill-current text-yellow-500': model.isCollected }" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                </button>
+              </div>
+              <p class="text-xs text-gray-400 mb-8">您的点赞和收藏是对作者最大的支持</p>
 
-      <!-- 评论区 -->
-      <div class="mt-4 bg-white p-4 rounded shadow">
-        <h2 class="font-semibold mb-2">评论</h2>
-        <div v-for="comment in model.comments || []" :key="comment.id" class="mb-2">
-          <p class="font-medium">{{ comment.user }}</p>
-          <p>{{ comment.content }}</p>
-        </div>
-      </div>
-    </div>
+              <div class="mt-auto pt-3 pb-1 px-4 border-t border-gray-100 flex items-center justify-between">
 
-    <div class="w-[250px] ml-4 flex flex-col gap-4">
-      <!-- 作者信息 -->
-      <div class="bg-white p-4 rounded shadow flex items-center gap-4">
-        <img :src="model.author.avatarUrl" class="w-16 h-16 rounded-full" />
-        <div>
-          <p class="font-medium">{{ model.author.username }}</p>
-          <button class="bg-green-500 text-white px-4 py-2 rounded mt-1">关注</button>
-        </div>
-      </div>
+                <div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                  @click="router.push(`/user/${model.author?.id}`)">
+                  <img :src="model.author?.avatar || '/default-avatar.png'"
+                    class="w-8 h-8 rounded-full object-cover ring-2 ring-white shadow-sm" />
+                  <div>
+                    <p class="text-sm font-bold text-gray-900 leading-none">{{ model.author?.username || 'Unknown' }}
+                    </p>
+                  </div>
+                </div>
 
-      <!-- 作者其他作品 -->
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold mb-2">作者的其他作品</h3>
-        <div class="grid grid-cols-1 gap-2">
-          <div v-for="other in model.author.otherModels || []" :key="other.id">
-            <img :src="other.thumbnailUrl" class="w-full h-[100px] object-cover rounded" />
-            <p class="text-sm">{{ other.title }}</p>
+                <div class="flex items-center gap-4 text-xs text-gray-400 font-medium">
+                  <span class="flex items-center gap-1 hover:text-gray-600 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    {{ model.likeCount || 0 }}
+                  </span>
+                  <span class="flex items-center gap-1 hover:text-gray-600 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    {{ model.collectCount || 0 }}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
+    </section>
 
+    <!--导航栏-->
+    <section>
+      <div class="container mx-auto px-8 py-4 max-w-6xl space-y-6">
+        <div class="space-y-6 bg-white rounded-md shadow-sm">
+          <div class="flex p-1 space-x-1 bg-gray-100 rounded-xl">
+            <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
+              class="w-full rounded-lg py-2.5 text-sm font-medium leading-5 transition-all duration-200 focus:outline-none"
+              :class="[
+                activeTab === tab.id
+                  ? 'bg-white text-gray-900 shadow'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+              ]">
+              {{ tab.label }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <!--内容区-->
+      <div class="container mx-auto px-8 py-4 max-w-6xl space-y-6">
+        <!--模型信息-->
+        <div v-if="activeTab === 'info'" class="space-y-8">
+          <section class="bg-white rounded-[20px] p-8 shadow-sm">
+            <h2 class="text-xl font-bold text-gray-900 mb-6 border-l-4 border-blue-500 pl-4">模型介绍</h2>
+            <div class="prose max-w-none text-gray-600 leading-relaxed">
+              <p>{{ model.description || '暂无介绍' }}</p>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-[20px] p-8 shadow-sm">
+            <h2 class="text-xl font-bold text-gray-900 mb-6 border-l-4 border-blue-500 pl-4">模型截图</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div v-for="(url, index) in (model.previewUrls || [])" :key="index"
+                class="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-zoom-in">
+                <img :src="url" class="w-full h-48 object-cover hover:scale-105 transition-transform duration-500" />
+              </div>
+              <div v-if="!model.previewUrls?.length"
+                class="col-span-full text-center py-12 text-gray-400 bg-gray-50 rounded-xl">
+                暂无截图
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- 用户信息 -->
+        <div v-if="activeTab === 'author'" class="space-y-8">
+          <section class="bg-white rounded-[20px] p-8 shadow-sm">
+            <div class="flex items-center justify-between mb-8">
+              <div class="flex items-center gap-6">
+                <img :src="model.author?.avatar || '/default-avatar.png'"
+                  class="w-24 h-24 rounded-full object-cover ring-4 ring-blue-50" />
+                <div>
+                  <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ model.author?.username || 'Unknown' }}</h2>
+                  <p class="text-gray-500 max-w-2xl">{{ model.author?.bio || '这位作者很懒，什么都没写~' }}</p>
+                </div>
+              </div>
+              <button @click="handleFollow"
+                class="px-8 py-3 rounded-xl font-medium transition-all flex items-center gap-2"
+                :class="isFollowing ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'">
+                <svg v-if="!isFollowing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                {{ isFollowing ? '已关注' : '关注作者' }}
+              </button>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              更多作品
+            </h3>
+            <div v-if="authorModels.length" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <ModelCard v-for="item in authorModels" :key="item.id" :model="item" />
+            </div>
+            <div v-else class="text-center py-12 text-gray-400 bg-gray-50 rounded-xl">
+              暂无其他作品
+            </div>
+          </section>
+        </div>
+
+        <!-- Other Tabs Placeholders -->
+        <div v-if="activeTab === 'links'" class="bg-white rounded-[20px] p-12 text-center text-gray-400 shadow-sm">
+          资源链接功能开发中...
+        </div>
+        <div v-if="activeTab === 'discuss'" class="bg-white rounded-[20px] p-12 text-center text-gray-400 shadow-sm">
+          <CommentSection :modelId="model.id" />
+        </div>
+
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router' // TODO: useRouter 用于跳转到用户界面
-import { useModelsStore } from '@/stores/models'
+import { collectApi, followApi, likeApi, modelsApi, userApi } from '@/api'
+import CommentSection from '@/components/CommentSection.vue'
+import ModelCard from '@/components/ModelCard.vue'
 import ModelViewer from '@/components/ModelViewer.vue'
+import ToastMessage from '@/components/ToastMessage.vue'
+import { useAuthStore } from '@/stores/auth'
+import { computed, onMounted, provide, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-import { mockModels } from '@/mock/model.js' // MOCK
+const backendBase = import.meta.env.VITE_API_BASE_URL || ''
 
 const route = useRoute()
-const modelsStore = useModelsStore()
+const router = useRouter()
+const authStore = useAuthStore()
+const toastRef = ref(null)
+
+const modelId = computed(() => route.params.id)
+
 const model = ref({
-  previewUrls: [],
+  id: null,
+  title: 'Loading...',
+  description: '',
+  category: '',
+  tags: [],
   fileUrl: '',
   thumbnailUrl: '',
-  title: '',
-  description: '',
-  author: { username: '', avatarUrl: '' },
+  previewUrls: [],
+  author: null,
   likeCount: 0,
-  collectCount: 0
+  collectCount: 0,
+  createdAt: new Date().toISOString(),
+  isLiked: false,
+  isCollected: false
 })
 
+const authorModels = ref([])
+const isFollowing = ref(false)
 const isRendering = ref(false)
-const isLoggedIn = ref(false) // TODO: 从auth store获取
+const activeTab = ref('info')
 
-onMounted(async () => {
-  const id = route.params.id
-  //model.value = await modelsStore.fetchModelById(id)
-  model.value = mockModels[0];
-})
+const tabs = [
+  { id: 'info', label: '模型信息' },
+  { id: 'author', label: '作者信息' },
+  { id: 'links', label: '资源链接' },
+  { id: 'discuss', label: '讨论区域' }
+]
 
 const toggleRender = () => {
   isRendering.value = !isRendering.value
 }
+
+const buildUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`
+}
+
+const normalizeModel = (data) => ({
+  ...model.value,
+  ...data,
+  fileUrl: buildUrl(data?.fileUrl),
+  thumbnailUrl: buildUrl(data?.thumbnailUrl),
+  tags: data?.tags || model.value.tags,
+  previewUrls: (data?.previewUrls || []).map(buildUrl),
+  isLiked: data?.likedByUser ?? data?.isLiked ?? false,
+  isCollected: data?.collectedByUser ?? data?.isCollected ?? false
+})
+
+const showToast = (message, type = 'success') => {
+  toastRef.value?.show(message, type)
+}
+provide('showToast', showToast)
+
+const handleDownload = () => {
+  if (!authStore.checkLogin()) return
+
+  if (!model.value.fileUrl) {
+    showToast('暂无下载链接', 'error')
+    return
+  }
+  window.open(model.value.fileUrl, '_blank')
+}
+
+const handleLike = async () => {
+  if (!authStore.checkLogin()) return
+
+  try {
+    if (model.value.isLiked) {
+      await likeApi.unlike(model.value.id)
+      model.value.isLiked = false
+      model.value.likeCount = Math.max(0, model.value.likeCount - 1)
+      showToast('已取消点赞', 'success')
+    } else {
+      await likeApi.like(model.value.id)
+      model.value.isLiked = true
+      model.value.likeCount++
+      showToast('点赞成功', 'success')
+    }
+  } catch (e) {
+    console.error(e)
+    showToast('操作失败', 'error')
+  }
+}
+
+const handleCollect = async () => {
+  if (!authStore.checkLogin()) return
+
+  try {
+    if (model.value.isCollected) {
+      await collectApi.uncollect(model.value.id)
+      model.value.isCollected = false
+      model.value.collectCount = Math.max(0, model.value.collectCount - 1)
+      showToast('已取消收藏', 'success')
+    } else {
+      await collectApi.collect(model.value.id)
+      model.value.isCollected = true
+      model.value.collectCount++
+      showToast('收藏成功', 'success')
+    }
+  } catch (e) {
+    console.error(e)
+    showToast('操作失败', 'error')
+  }
+}
+
+const checkFollowStatus = async (authorId) => {
+  const targetId = authorId || model.value.author?.id
+  if (!authStore.isLoggedIn || !targetId) return
+  if (targetId == authStore.userId) return
+  try {
+    const res = await followApi.checkStatus(targetId)
+    isFollowing.value = res.data.isFollowing
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const handleFollow = async () => {
+  if (!authStore.checkLogin()) return
+
+  const authorId = model.value.author?.id
+  if (!authorId) return
+
+  try {
+    if (isFollowing.value) {
+      await followApi.unfollow(authorId)
+      isFollowing.value = false
+      showToast('已取消关注', 'success')
+    } else {
+      await followApi.follow(authorId)
+      isFollowing.value = true
+      showToast('关注成功', 'success')
+    }
+  } catch (e) {
+    console.error(e)
+    showToast('操作失败', 'error')
+  }
+}
+
+const loadAuthor = async (authorId) => {
+  if (!authorId) return
+  try {
+    const res = await userApi.getById(authorId)
+    model.value.author = res.data
+    await checkFollowStatus(authorId)
+  } catch (e) {
+    console.error('failed to load author', e)
+  }
+}
+
+const loadAuthorModels = async (authorId) => {
+  if (!authorId) return
+  try {
+    const res = await modelsApi.getByAuthor(authorId)
+    authorModels.value = Array.isArray(res.data) ? res.data.filter(m => m.id !== model.value.id).slice(0, 8) : []
+  } catch (e) {
+    console.error(e)
+    authorModels.value = []
+  }
+}
+
+const loadModel = async () => {
+  if (!modelId.value) return
+  try {
+    const { data } = await modelsApi.getById(modelId.value)
+    model.value = normalizeModel(data)
+
+    const authorId = data?.authorId || model.value.author?.id
+    if (authorId) {
+      await loadAuthor(authorId)
+      await loadAuthorModels(authorId)
+    }
+  } catch (err) {
+    console.error('get model detail failed', err)
+    showToast('获取模型详情失败', 'error')
+  }
+}
+
+onMounted(() => {
+  loadModel()
+})
 </script>

@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 public class Model {
 
     @TableId(type = IdType.AUTO)
-    //确定id是int还是long类型？
+
     private Integer id;
     
     private String title;

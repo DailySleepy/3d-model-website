@@ -3,9 +3,12 @@ import HomePage from '@/views/HomePage.vue'
 import SearchResult from '@/views/SearchResult.vue'
 import ModelDetail from '@/views/ModelDetail.vue'
 import LoginPage from '@/views/LoginPage.vue'
+import ForgetPage from '@/views/ForgetPage.vue'
 import RegisterPage from '@/views/RegisterPage.vue'
 import UserSettings from '@/views/UserSettings.vue'
 import UserPage from '@/views/UserPage.vue'
+import UploadPage from '@/views/UploadPage.vue'
+import NotificationPage from '@/views/NotificationPage.vue'
 // TODO: 添加其他路由
 
 const routes = [
@@ -14,8 +17,11 @@ const routes = [
   { path: '/model/:id', component: ModelDetail },
   { path: '/login', component: LoginPage },
   { path: '/register', component: RegisterPage },
-  { path: '/user', component: UserPage },
-  { path: '/user/settings', component: UserSettings }
+  { path: '/user/:id', component: UserPage },
+  { path: '/user/settings', component: UserSettings },
+  { path: '/forget', component: ForgetPage },
+  { path: '/upload', component: UploadPage },
+  { path: '/notification', component: NotificationPage}
 ]
 
 const router = createRouter({
