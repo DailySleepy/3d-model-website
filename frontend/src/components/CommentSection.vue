@@ -218,6 +218,7 @@ const fetchComments = async (currentPage = 1, append = false) => {
       item.isExpanded = false
     })
     total.value = res.data.total || 0
+    // console.log("res.data", res.data)
 
     if (append) {
       comments.value = [...comments.value, ...newItems]
@@ -225,7 +226,7 @@ const fetchComments = async (currentPage = 1, append = false) => {
       comments.value = newItems
     }
 
-    hasMore.value = comments.value.length < total.value
+    hasMore.value = comments.value.length < res.data.totalLevel1 // "查看更多评论"只针对1级评论, 2级评论有自己的方法
   } catch (error) {
     console.error('Fetch comments failed:', error)
     showToast('评论获取失败', 'error')

@@ -130,8 +130,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         }
 
         // 4. 查询总条数（用于分页）
-        //Long total = commentMapper.selectTotalCommentsByModelId(modelId);
         Long total = commentMapper.selectTotalAllCommentsByModelId(modelId); // 新逻辑（所有评论）
+        Long totalLevel1 = commentMapper.selectTotalCommentsByModelId(modelId);
 
         // 5. 计算总页数
         Integer totalPages = (total == 0) ? 1 : (int) Math.ceil((double) total / size);
@@ -140,6 +140,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         PageResultDTO<CommentDTO> pageResult = new PageResultDTO<>();
         pageResult.setItems(rootComments);
         pageResult.setTotal(total);
+        pageResult.setTotalLevel1(totalLevel1);
         pageResult.setPage(page);
         pageResult.setPageSize(size);
         pageResult.setTotalPages(totalPages);

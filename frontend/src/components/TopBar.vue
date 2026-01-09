@@ -143,7 +143,7 @@ const startPolling = () => {
 
   pollingTimer = setInterval(() => {
     notificationStore.fetchNotifications()
-  }, 10000) // 10s
+  }, 30000) // 30s
 }
 
 const stopPolling = () => {
