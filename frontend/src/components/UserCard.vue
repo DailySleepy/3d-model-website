@@ -7,7 +7,7 @@
     <!-- 头像容器：垂直模式下添加底部间距 -->
     <div :class="avatarContainerClasses">
       <!-- 头像尺寸：垂直模式较大(w-20)，水平模式较小(w-16) -->
-      <img :src="user.avatarUrl" alt="Avatar" class="rounded-full object-cover border bg-gray-50"
+      <img :src="user.avatar" alt="Avatar" class="rounded-full object-cover border bg-gray-50"
         :class="avatarSizeClasses" />
     </div>
 

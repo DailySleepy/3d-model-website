@@ -6,7 +6,7 @@
         <!-- 网站图标 -->
         <router-link to="/" class="flex items-center gap-2 group mr-6 lg:mr-10">
           <img src="/favicon.png"
-            class="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 transition-transform group-hover:scale-105" alt="ModelCraft">
+            class="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 transition-transform" alt="ModelCraft">
           <span class="hidden md:block text-blue-500 text-xl md:text-2xl font-bold tracking-tight">
             ModelCraft
           </span>
@@ -157,7 +157,7 @@ const startPolling = () => {
 
   pollingTimer = setInterval(() => {
     notificationStore.fetchNotifications()
-  }, 30000) // 30s
+  }, 3000000) // 3000s
 }
 
 const stopPolling = () => {
