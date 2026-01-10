@@ -9,7 +9,7 @@ public class MessageDTO {
     private Long senderId;
     private Long receiverId;
     private String content;
-    private LocalDateTime sendTime;
+    private LocalDateTime createdAt;
     private Boolean isRead;
 
     // 关联用户信息

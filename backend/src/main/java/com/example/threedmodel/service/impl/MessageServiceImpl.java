@@ -42,7 +42,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     message.setSenderId(senderId);
     message.setReceiverId(receiverId);
     message.setContent(content);
-    message.setSendTime(LocalDateTime.now());
+    message.setCreatedAt(LocalDateTime.now());
     message.setIsRead(false);
     baseMapper.insert(message);
   }
@@ -51,7 +51,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
   public PageResultDTO<MessageDTO> getReceivedMessages(Long userId, int page, int size) {
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.eq(Message::getReceiverId, userId)
-        .orderByDesc(Message::getSendTime);
+        .orderByDesc(Message::getCreatedAt);
 
     IPage<Message> messagePage = baseMapper.selectPage(new Page<>(page, size), wrapper);
     List<MessageDTO> messageDTOs = messagePage.getRecords().stream()
@@ -65,7 +65,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
   public PageResultDTO<MessageDTO> getSentMessages(Long userId, int page, int size) {
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.eq(Message::getSenderId, userId)
-        .orderByDesc(Message::getSendTime);
+        .orderByDesc(Message::getCreatedAt);
 
     IPage<Message> messagePage = baseMapper.selectPage(new Page<>(page, size), wrapper);
     List<MessageDTO> messageDTOs = messagePage.getRecords().stream()
@@ -80,7 +80,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.and(w -> w.eq(Message::getSenderId, userId).eq(Message::getReceiverId, otherUserId))
         .or(w -> w.eq(Message::getSenderId, otherUserId).eq(Message::getReceiverId, userId))
-        .orderByAsc(Message::getSendTime);
+        .orderByAsc(Message::getCreatedAt);
 
     List<Message> messages = baseMapper.selectList(wrapper);
     return messages.stream()
@@ -113,7 +113,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     // 简单实现：获取用户发送和接收的所有消息，按时间排序，取每个对话的最后一条
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.and(w -> w.eq(Message::getSenderId, userId).or().eq(Message::getReceiverId, userId))
-        .orderByDesc(Message::getSendTime);
+        .orderByDesc(Message::getCreatedAt);
 
     List<Message> allMessages = baseMapper.selectList(wrapper);
 
@@ -138,7 +138,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     dto.setSenderId(message.getSenderId());
     dto.setReceiverId(message.getReceiverId());
     dto.setContent(message.getContent());
-    dto.setSendTime(message.getSendTime());
+    dto.setCreatedAt(message.getCreatedAt());
     dto.setIsRead(message.getIsRead());
 
     // 获取发送者信息
