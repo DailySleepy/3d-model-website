@@ -1,13 +1,26 @@
 <template>
-  <div class="container mx-auto px-8 py-4 max-w-6xl flex justify-center items-center w-full h-20">
-    <nav class="flex items-center w-full flex-nowrap whitespace-nowrap gap-4 md:gap-8">
-      <div class="whitespace-nowrap">
-        <router-link to="/" class="flex font-bold whitespace-nowrap items-center">
-          <img src="/favicon.png" class="w-16" alt="ModelCraft">
-          <span class="text-blue-400 text-2xl">ModelCraft</span>
+  <div class="container mx-auto px-8 py-4 flex justify-center items-center w-full h-20">
+    <nav class="relative justify-between flex items-center w-full flex-nowrap whitespace-nowrap gap-4 md:gap-8">
+
+      <div class="flex items-center flex-shrink-0 mr-2 md:mr-4 z-10">
+        <!-- 网站图标 -->
+        <router-link to="/" class="flex items-center gap-2 group mr-6 lg:mr-10">
+          <img src="/favicon.png"
+            class="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 transition-transform group-hover:scale-105" alt="ModelCraft">
+          <span class="hidden md:block text-blue-500 text-xl md:text-2xl font-bold tracking-tight">
+            ModelCraft
+          </span>
         </router-link>
+
+        <!-- 排行榜, Lab -->
+        <div class="flex items-center gap-2 md:gap-4 text-gray-600 font-medium text-base md:text-lg transition-colors">
+          <router-link to="/ranking" class="hover:text-blue-500">热度榜</router-link>
+          <router-link to="/lab" class="hover:text-blue-500">RenderLab</router-link>
+        </div>
       </div>
-      <div class="flex-1 flex justify-center">
+
+      <!-- 搜索框 -->
+      <div class="flex-1 flex justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <div class="hidden md:flex items-center mx-4 lg:mx-10">
           <input v-model="searchInput" type="text" placeholder="搜索模型或作者..."
             class="w-72 lg:w-96 border rounded-l px-4 py-2 focus:outline-none focus:border-blue-500"
@@ -18,6 +31,7 @@
           </button>
         </div>
       </div>
+
       <!-- 登录前样式-->
       <div v-if="!authStore.isLoggedIn" class="flex items-center space-x-6 md:space-x-10 whitespace-nowrap">
         <router-link to="/login" class="btn-text-blue">登录</router-link>

@@ -1,7 +1,7 @@
 // stores/notification.js
 import { notificationApi } from '@/api'
 import { defineStore } from 'pinia'
-import { useChatStore } from '@/stores/chat'
+// import { useChatStore } from '@/stores/chat'
 
 export const useNotificationStore = defineStore('notification', {
   state : () => ({
@@ -17,9 +17,10 @@ export const useNotificationStore = defineStore('notification', {
     systemList : (state) => state.notifications.filter(n => n.type === 'SYSTEM'),
 
     unreadTotal: (state) => {
-      const notificationUnread = state.notifications.filter(n => !n.isRead).length;
-      const chatStore = useChatStore();
-      return notificationUnread + chatStore.totalUnreadCount;
+      const notificationUnread = state.notifications.filter(n => !n.isRead).length
+      // const chatStore = useChatStore()
+      // return notificationUnread + chatStore.totalUnreadCount
+      return notificationUnread
     },
 
     unreadCountReply() { return this.replyList.filter(n => !n.isRead).length },
@@ -27,22 +28,23 @@ export const useNotificationStore = defineStore('notification', {
     unreadCountFollow() { return this.followList.filter(n => !n.isRead).length },
     unreadCountSystem() { return this.systemList.filter(n => !n.isRead).length },
     unreadCountChat: () => {
-        const chatStore = useChatStore();
-        return chatStore.totalUnreadCount;
+        // const chatStore = useChatStore()
+        // return chatStore.totalUnreadCount
+        return 0
     }
   },
 
   actions : {
     async fetchNotifications() {
       this.isLoading = true
-      // const chatStore = useChatStore();
+      // const chatStore = useChatStore()
       try {
         await Promise.all([
             notificationApi.getAll().then(res => this.notifications = res.data.data),
             // chatStore.loadConversations()
-        ]);
-        console.log("notifications", this.notifications)
-        // chatStore.connectWebSocket();
+        ])
+        // console.log("notifications", this.notifications)
+        // chatStore.connectWebSocket()
       }
       catch(e) { console.error('获取消息失败', e) }
       finally { this.isLoading = false }

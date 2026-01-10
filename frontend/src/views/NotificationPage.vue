@@ -82,7 +82,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notification'
-import ChatBox from '@/components/ChatBox.vue'
+// import ChatBox from '@/components/ChatBox.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,7 +153,6 @@ const getActionText = (note) => {
   return map[note.type] || ''
 }
 
-// mock
 const formatTime = (t) => t ? t.split('T')[0] : ''
 
 onMounted(() => {

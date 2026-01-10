@@ -9,6 +9,8 @@ import UserSettings from '@/views/UserSettings.vue'
 import UserPage from '@/views/UserPage.vue'
 import UploadPage from '@/views/UploadPage.vue'
 import NotificationPage from '@/views/NotificationPage.vue'
+import RankingPage from '@/views/RankingPage.vue'
+import RenderLab from '@/views/RenderLab.vue'
 // TODO: 添加其他路由
 
 const routes = [
@@ -21,7 +23,9 @@ const routes = [
   { path: '/user/settings', component: UserSettings },
   { path: '/forget', component: ForgetPage },
   { path: '/upload', component: UploadPage },
-  { path: '/notification', component: NotificationPage}
+  { path: '/notification', component: NotificationPage},
+  { path: '/ranking', component: RankingPage},
+  { path: '/lab', component: RenderLab},
 ]
 
 const router = createRouter({
