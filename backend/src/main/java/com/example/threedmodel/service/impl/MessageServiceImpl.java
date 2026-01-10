@@ -8,16 +8,19 @@ import com.example.threedmodel.dto.MessageDTO;
 import com.example.threedmodel.dto.PageResultDTO;
 import com.example.threedmodel.dto.UserBriefDTO;
 import com.example.threedmodel.entity.Message;
-import com.example.threedmodel.entity.User;
 import com.example.threedmodel.mapper.MessageMapper;
 import com.example.threedmodel.mapper.UserMapper;
+import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +42,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     message.setSenderId(senderId);
     message.setReceiverId(receiverId);
     message.setContent(content);
-    message.setCreatedAt(LocalDateTime.now());
+    message.setSendTime(LocalDateTime.now());
     message.setIsRead(false);
     baseMapper.insert(message);
   }
@@ -48,7 +51,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
   public PageResultDTO<MessageDTO> getReceivedMessages(Long userId, int page, int size) {
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.eq(Message::getReceiverId, userId)
-        .orderByDesc(Message::getCreatedAt);
+        .orderByDesc(Message::getSendTime);
 
     IPage<Message> messagePage = baseMapper.selectPage(new Page<>(page, size), wrapper);
     List<MessageDTO> messageDTOs = messagePage.getRecords().stream()
@@ -62,7 +65,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
   public PageResultDTO<MessageDTO> getSentMessages(Long userId, int page, int size) {
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.eq(Message::getSenderId, userId)
-        .orderByDesc(Message::getCreatedAt);
+        .orderByDesc(Message::getSendTime);
 
     IPage<Message> messagePage = baseMapper.selectPage(new Page<>(page, size), wrapper);
     List<MessageDTO> messageDTOs = messagePage.getRecords().stream()
@@ -77,7 +80,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.and(w -> w.eq(Message::getSenderId, userId).eq(Message::getReceiverId, otherUserId))
         .or(w -> w.eq(Message::getSenderId, otherUserId).eq(Message::getReceiverId, userId))
-        .orderByAsc(Message::getCreatedAt);
+        .orderByAsc(Message::getSendTime);
 
     List<Message> messages = baseMapper.selectList(wrapper);
     return messages.stream()
@@ -110,7 +113,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     // 简单实现：获取用户发送和接收的所有消息，按时间排序，取每个对话的最后一条
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.and(w -> w.eq(Message::getSenderId, userId).or().eq(Message::getReceiverId, userId))
-        .orderByDesc(Message::getCreatedAt);
+        .orderByDesc(Message::getSendTime);
 
     List<Message> allMessages = baseMapper.selectList(wrapper);
 
@@ -135,7 +138,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     dto.setSenderId(message.getSenderId());
     dto.setReceiverId(message.getReceiverId());
     dto.setContent(message.getContent());
-    dto.setCreatedAt(message.getCreatedAt());
+    dto.setSendTime(message.getSendTime());
     dto.setIsRead(message.getIsRead());
 
     // 获取发送者信息

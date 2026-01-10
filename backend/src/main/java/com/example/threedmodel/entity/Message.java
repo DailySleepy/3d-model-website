@@ -28,7 +28,7 @@ public class Message {
   private String content;
 
   /** 发送时间 */
-  private LocalDateTime createdAt;
+  private LocalDateTime sendTime;
 
   /** 是否已读 */
   private Boolean isRead;

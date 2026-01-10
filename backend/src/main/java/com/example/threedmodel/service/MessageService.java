@@ -24,5 +24,8 @@ public interface MessageService extends IService<Message> {
     // 标记消息为已读
     void markAsRead(Long messageId, Long userId);
 
+    int getUnreadCount(Long userId);
+
     // 获取用户最近的对话列表
     List<MessageDTO> getRecentConversations(Long userId);
+}

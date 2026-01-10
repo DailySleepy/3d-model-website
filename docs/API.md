@@ -51,7 +51,7 @@
 | 模块 | 用户故事 | 前端任务 | 后端任务 | 数据库设计 | 说明 |
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | **通知中心** | 用户查看收到的赞、评论、系统消息 | 1. `NotificationPage.vue`<br>2. Pinia `useNotificationStore` (轮询红点) | 1. `GET /api/notifications` (需联表查询发送者详情)<br>2. `GET /api/notifications/unread-count`<br>3. `PUT /api/notifications/:id/read`<br>4. `PUT /api/notifications/read-all` | `notifications` | 后端需在点赞/收藏/评论/关注成功后**自动触发**插入通知记录 |
-| **私信** | 用户之间私聊 | `ChatBox.vue` (含左侧会话列表，右侧聊天框) | 1. `POST /api/messages` (发送)<br>2. `GET /api/messages/conversations` (最近会话列表)<br>3. `GET /api/messages/history` (特定用户的聊天记录) | `messages` | 独立于通知系统，前端轮询或 WebSocket |
+| **私信** | 用户之间私聊 | `ChatBox.vue` (含左侧会话列表，右侧聊天框) | 1. `POST /api/messages` (发送)<br>2. `GET /api/messages/conversations` (最近会话列表)<br>3. `GET /api/messages/history/{userId}` (特定用户的聊天记录)<br>4. `GET /api/messages/received` (收到的私信)<br>5. `GET /api/messages/sent` (发送的私信)<br>6. `POST /api/messages/{id}/read` (标记已读)<br>7. `GET /api/messages/unread-count` (未读数量) | `messages` | 独立于通知系统，前端轮询或 WebSocket |
 
 ---
 
