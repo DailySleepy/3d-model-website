@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: threed_model_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: z3j1m4
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: backend
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: postgres:5432/threed_model_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: z3j1m4
+      BASE_URL: http://121.89.92.133
+      CORS_ALLOWED_ORIGINS: http://121.89.92.133
+      FILE_PATH: /data
+    volumes:
+      - uploads:/data
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  uploads:
