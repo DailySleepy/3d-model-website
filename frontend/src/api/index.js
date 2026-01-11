@@ -122,10 +122,15 @@ export const notificationApi = {
 
 // 私信
 export const chatApi = {
-  // 获取最近会话列表 (包含每个人的未读数, 最新一条消息等)
-  getConversations: () => axios.get('/api/messages/conversations'),
-  // 获取与特定用户的历史记录
-  getHistory: (targetUserId) => axios.get(`/api/messages/history`, { params: { target_id: targetUserId } }),
-  sendMessage: (data) => axios.post('/api/messages', data),
-  markRead: (senderId) => axios.post('/api/messages/read', { sender_id: senderId })
+  sendMessage: (data) => api.post('/api/messages', data),
+  getConversations: () => api.get('/api/messages/conversations'), // 所有对话列表的最新一条消息, 用于初始化对话列表
+  getConversationHistory: (userId) => api.get(`/api/messages/history/${userId}`), // 当前对话列表的所有消息
+  markMessageRead: (messageId) => api.post(`/api/messages/${messageId}/read`),
+  markConversationRead: (targetUserId) => api.put(`/api/messages/conversations/${targetUserId}/read`),
+  markAllRead: () => api.put('/api/messages/read-all'),
+  getTotalUnreadCount: () => api.get('/api/messages/unread-count'),
+
+  // (后端提供的接口, 但暂未用到)
+  getReceived: () => api.get('/api/messages/received'),
+  getSent: () => api.get('/api/messages/sent'),
 };

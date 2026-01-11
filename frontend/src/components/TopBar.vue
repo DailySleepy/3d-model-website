@@ -1,5 +1,5 @@
 <template>
-  <div class="container mx-auto px-8 py-4 flex justify-center items-center w-full h-20">
+  <div class="container mx-auto px-8 py-4 flex justify-center items-center w-full h-full">
     <nav class="relative justify-between flex items-center w-full flex-nowrap whitespace-nowrap gap-4 md:gap-8">
 
       <div class="flex items-center flex-shrink-0 mr-2 md:mr-4 z-10">
@@ -136,7 +136,7 @@ const getUnreadCount = (type) => {
     case 'like': return notificationStore.unreadCountLike
     case 'follow': return notificationStore.unreadCountFollow
     case 'system': return notificationStore.unreadCountSystem
-    case 'chat': return 0 // TODO: 私信未读数
+    case 'chat': return notificationStore.unreadCountChat
     default: return 0
   }
 }

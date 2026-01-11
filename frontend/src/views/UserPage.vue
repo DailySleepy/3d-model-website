@@ -67,6 +67,16 @@
                   </svg>
                   {{ isFollowing ? '已关注' : '关注TA' }}
                 </button>
+
+                <button
+                  class="w-full gap-1 btn-base bg-white text-blue-600 border border-blue-600 hover:bg-blue-50"
+                  @click="handleMessage"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  私信
+                </button>
               </template>
             </div>
           </div>
@@ -125,18 +135,20 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useChatStore } from '@/stores/chat'
 import { userApi, modelsApi, followApi } from '@/api'
 import ModelCard from '@/components/ModelCard.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
 
 const authStore = useAuthStore()
+const chatStore = useChatStore()
 const route = useRoute()
 const router = useRouter()
 
 const user = ref(null)
 const followersCount = ref(0)
 const followingCount = ref(0)
-const charmPoints = ref({ current: 2, total: 5 })
+// const charmPoints = ref({ current: 2, total: 5 })
 const activeTab = ref('models')
 const models = ref([])
 const isFollowing = ref(false)
@@ -252,6 +264,33 @@ const handleFollow = async () => {
   } catch (e) {
     const msg = e.response?.data?.message || (isFollowing.value ? '取消关注失败' : '关注失败')
     toastRef.value?.show(msg, 'error')
+  }
+}
+
+const handleMessage = async () => {
+  if (!authStore.isLoggedIn) {
+    toastRef.value?.show('请先登录', 'error')
+    router.push('/login')
+    return
+  }
+
+  const targetUserId = Number(route.params.id)
+  const targetUser = {
+    id: targetUserId,
+    username: user.value?.username || 'Unknown',
+    avatar: user.value?.avatar || ''
+  }
+
+  try {
+    // 建立/选中会话, 并跳转到通知页面的 chat 标签
+    await chatStore.openConversation(targetUser)
+    router.push({
+        path: '/notification',
+        query: { tab: 'chat' }
+    })
+  } catch (e) {
+    console.error('打开会话失败', e)
+    toastRef.value?.show('无法开始会话', 'error')
   }
 }
 

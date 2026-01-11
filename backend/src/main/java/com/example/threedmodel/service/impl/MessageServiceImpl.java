@@ -1,6 +1,19 @@
 package com.example.threedmodel.service.impl;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -8,19 +21,13 @@ import com.example.threedmodel.dto.MessageDTO;
 import com.example.threedmodel.dto.PageResultDTO;
 import com.example.threedmodel.dto.UserBriefDTO;
 import com.example.threedmodel.entity.Message;
+import com.example.threedmodel.handler.MessageWebSocketHandler;
 import com.example.threedmodel.mapper.MessageMapper;
 import com.example.threedmodel.mapper.UserMapper;
 import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.MessageService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +35,8 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
   private final MessageMapper messageMapper;
   private final UserMapper userMapper;
+
+  private final MessageWebSocketHandler webSocketHandler;
 
   @Override
   @Transactional
@@ -45,6 +54,24 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     message.setCreatedAt(LocalDateTime.now());
     message.setIsRead(false);
     baseMapper.insert(message);
+
+    MessageDTO messageDTO = convertToDTO(message);
+    // 确保ws推送在事务完成后, 防止ws推送速度过快导致用户对单条消息已读的标记失败(因为事务还未完成, DB根本就没有这条信息)
+    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    webSocketHandler.sendPrivateMessage(receiverId, messageDTO);
+                    //webSocketHandler.sendPrivateMessage(senderId, messageDTO); // 给自己也推送, 实现多端同步
+                } catch (Exception e) {
+                    log.error("WebSocket 推送失败", e);
+                }
+            }
+        });
+    } else {
+        webSocketHandler.sendPrivateMessage(receiverId, messageDTO);
+    }
   }
 
   @Override
@@ -99,6 +126,31 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
   }
 
   @Override
+  @Transactional
+  public void markConversationAsRead(Long currentUserId, Long targetUserId) {
+    // UPDATE messages SET is_read = true WHERE receiver_id = me AND sender_id = other AND is_read = false
+    LambdaUpdateWrapper<Message> updateWrapper = new LambdaUpdateWrapper<>();
+    updateWrapper.eq(Message::getReceiverId, currentUserId)
+                    .eq(Message::getSenderId, targetUserId)
+                    .eq(Message::getIsRead, false)
+                    .set(Message::getIsRead, true);
+
+    baseMapper.update(null, updateWrapper);
+  }
+
+  @Override
+  @Transactional
+  public void markAllAsRead(Long currentUserId) {
+    // UPDATE messages SET is_read = true WHERE receiver_id = me AND is_read = false
+    LambdaUpdateWrapper<Message> updateWrapper = new LambdaUpdateWrapper<>();
+    updateWrapper.eq(Message::getReceiverId, currentUserId)
+                    .eq(Message::getIsRead, false)
+                    .set(Message::getIsRead, true);
+
+    baseMapper.update(null, updateWrapper);
+  }
+
+  @Override
   public int getUnreadCount(Long userId) {
     LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
     wrapper.eq(Message::getReceiverId, userId)
@@ -119,16 +171,26 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
     // 使用Map来存储每个对话的最后消息
     Map<Long, Message> conversationMap = new LinkedHashMap<>();
+    Map<Long, Integer> unreadCountMap = new HashMap<>(); // 存储每个对话的未读数
 
     for (Message message : allMessages) {
       Long otherUserId = message.getSenderId().equals(userId) ? message.getReceiverId() : message.getSenderId();
       if (!conversationMap.containsKey(otherUserId)) {
         conversationMap.put(otherUserId, message);
       }
+      if (message.getReceiverId().equals(userId) && !message.getIsRead()) {
+        unreadCountMap.put(otherUserId, unreadCountMap.getOrDefault(otherUserId, 0) + 1);
+      }
     }
 
-    return conversationMap.values().stream()
-        .map(this::convertToDTO)
+    return conversationMap.entrySet().stream()
+        .map(entry -> {
+            Long otherUserId = entry.getKey();
+            Message message = entry.getValue();
+            MessageDTO dto = convertToDTO(message);
+            dto.setUnreadCount(unreadCountMap.getOrDefault(otherUserId, 0));
+            return dto;
+        })
         .collect(Collectors.toList());
   }
 

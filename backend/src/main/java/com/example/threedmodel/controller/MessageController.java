@@ -129,7 +129,7 @@ public class MessageController {
   }
 
   /**
-   * 标记消息为已读
+   * 标记单条消息为已读
    */
   @PostMapping("/{messageId}/read")
   public ResponseEntity<?> markAsRead(@PathVariable Long messageId, HttpServletRequest request) {
@@ -141,6 +141,36 @@ public class MessageController {
     try {
       messageService.markAsRead(messageId, currentUserId);
       return successResponse("标记成功");
+    } catch (Exception e) {
+      return errorResponse("标记失败: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 标记特定会话已读
+   */
+  @PutMapping("/conversations/{targetUserId}/read")
+  public ResponseEntity<?> markConversationRead(@PathVariable Long targetUserId, HttpServletRequest request) {
+    Long currentUserId = getCurrentUserId(request);
+    if (currentUserId == null) return unauthorizedResponse("请先登录");
+    try {
+      messageService.markConversationAsRead(currentUserId, targetUserId);
+      return successResponse("会话已标记为已读");
+    } catch (Exception e) {
+      return errorResponse("标记失败: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 标记所有消息已读
+   */
+  @PutMapping("/read-all")
+  public ResponseEntity<?> markAllRead(HttpServletRequest request) {
+    Long currentUserId = getCurrentUserId(request);
+    if (currentUserId == null) return unauthorizedResponse("请先登录");
+    try {
+      messageService.markAllAsRead(currentUserId);
+      return successResponse("所有消息已标记为已读");
     } catch (Exception e) {
       return errorResponse("标记失败: " + e.getMessage());
     }

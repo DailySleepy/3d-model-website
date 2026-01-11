@@ -1,7 +1,7 @@
 <template>
-  <div class="container mx-auto px-8 py-8 max-w-6xl">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold">消息中心</h1>
+  <div class="container mx-auto px-8 py-4 max-w-6xl">
+    <div class="flex items-center justify-between pb-3">
+      <h1 class="text-3xl font-bold">消息中心</h1>
       <button @click="notificationStore.markAllAsRead"
         class="text-sm text-blue-500 hover:text-blue-700 disabled:text-gray-300"
         :disabled="notificationStore.unreadTotal === 0">
@@ -25,8 +25,8 @@
     </div>
 
     <div class="min-h-[400px] bg-white rounded-lg shadow-sm border border-gray-100 relative">
-      <div v-if="currentTab === 'chat'" class="h-[600px]">
-        <!-- <ChatBox /> -->
+      <div v-if="currentTab === 'chat'" class="h-[650px]">
+        <ChatBox />
       </div>
 
       <template v-else>
@@ -82,7 +82,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notification'
-// import ChatBox from '@/components/ChatBox.vue'
+import ChatBox from '@/components/ChatBox.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -1,5 +1,6 @@
 // store/auth.js
 import { defineStore } from 'pinia'
+import { useChatStore } from './chat'
 import router from '@/router'
 import { authApi } from '@/api'
 
@@ -103,6 +104,8 @@ export const useAuthStore = defineStore('auth', {
     },
 
     logout() {
+      const chatStore = useChatStore()
+      chatStore.disconnect() // 断开 websocket
       this.clearSession()
       router.push('/login')
     }

@@ -11,6 +11,7 @@ public class MessageDTO {
     private String content;
     private LocalDateTime createdAt;
     private Boolean isRead;
+    private Integer unreadCount; // 调用 getRecentConversations 初始化对话列表时才返回每个列表的未读数量
 
     // 关联用户信息
     private UserBriefDTO sender;

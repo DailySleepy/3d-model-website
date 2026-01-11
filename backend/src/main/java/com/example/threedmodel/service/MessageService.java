@@ -21,8 +21,14 @@ public interface MessageService extends IService<Message> {
     // 获取两个用户之间的私信对话
     List<MessageDTO> getConversation(Long userId, Long otherUserId);
 
-    // 标记消息为已读
+    // 标记单条消息为已读
     void markAsRead(Long messageId, Long userId);
+
+    // 标记与某人的会话已读
+    void markConversationAsRead(Long currentUserId, Long targetUserId);
+
+    // 标记所有消息已读
+    void markAllAsRead(Long currentUserId);
 
     int getUnreadCount(Long userId);
 
