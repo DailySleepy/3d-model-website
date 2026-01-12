@@ -1,5 +1,5 @@
 # 1. 升级到 Node 20 以符合 Vite 7 的要求
-FROM docker.m.daocloud.io/library/node:20-alpine AS build
+FROM node:20-alpine AS build
 WORKDIR /app
 
 # 2. 安装依赖
@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 
 # 5. 运行阶段
-FROM docker.m.daocloud.io/library/nginx:alpine
+FROM nginx:alpine
 # 重点：从根目录的 /dist 复制文件
 COPY --from=build /dist /usr/share/nginx/html
 
