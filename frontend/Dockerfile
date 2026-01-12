@@ -39,6 +39,13 @@ RUN echo 'server { \
         proxy_set_header Host $host; \
         proxy_set_header X-Real-IP $remote_addr; \
     } \
+    location /uploads { \
+        root /usr/share/nginx/html; \
+        add_header Access-Control-Allow-Origin * always; \
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always; \
+        add_header Access-Control-Allow-Headers "*" always; \
+        expires 30d; \
+    } \
 }' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

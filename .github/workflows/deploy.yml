@@ -26,6 +26,8 @@ jobs:
           push: false
           tags: backend:latest
           outputs: type=docker,dest=/tmp/backend.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build Frontend Image
         uses: docker/build-push-action@v5
@@ -35,6 +37,8 @@ jobs:
           push: false
           tags: frontend:latest
           outputs: type=docker,dest=/tmp/frontend.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # 3. 将镜像文件和代码传输到服务器
       - name: Copy files to server
