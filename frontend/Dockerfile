@@ -40,7 +40,7 @@ RUN echo 'server { \
         proxy_set_header X-Real-IP $remote_addr; \
     } \
     location /uploads { \
-        root /usr/share/nginx/html; \
+        root /usr/share/nginx/html/uploads; \
         add_header Access-Control-Allow-Origin * always; \
         add_header Access-Control-Allow-Methods "GET, OPTIONS" always; \
         add_header Access-Control-Allow-Headers "*" always; \
