@@ -15,6 +15,11 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:z3j1m4}
     driver-class-name: org.postgresql.Driver
+
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
     
   web:
     resources:
