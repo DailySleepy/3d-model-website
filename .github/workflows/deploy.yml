@@ -21,6 +21,20 @@ jobs:
           password: Ab123456
           port: 22
           script: |
+            sudo mkdir -p /etc/docker
+            sudo tee /etc/docker/daemon.json <<-'EOF'
+            {
+              "registry-mirrors": [
+                "https://docker.m.daocloud.io",
+                "https://dockerproxy.com",
+                "https://docker.1panel.live",
+                "https://hub.rat.dev"
+              ]
+            }
+            EOF
+            sudo systemctl daemon-reload
+            sudo systemctl restart docker
+
             cd /root/3d-model-website
             git pull
             docker compose down
