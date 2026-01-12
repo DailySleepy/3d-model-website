@@ -28,6 +28,7 @@ export const useChatStore = defineStore('chat', {
       const token = authStore.token
       if (!token) return
 
+      // '__API_URL__' 来自 vite.config.js
       // eslint-disable-next-line no-undef
       const baseUrl = typeof __API_URL__ !== 'undefined' ? __API_URL__ : 'http://localhost:8080'
       const wsBase = baseUrl.replace(/^http/, 'ws')
