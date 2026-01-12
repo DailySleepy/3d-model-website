@@ -25,7 +25,7 @@ jobs:
           file: ./backend/Dockerfile
           push: false
           tags: backend:latest
-          outputs: type=docker,dest=/tmp/backend.tar
+          outputs: type=docker,dest=backend.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -36,7 +36,7 @@ jobs:
           file: ./frontend/Dockerfile
           push: false
           tags: frontend:latest
-          outputs: type=docker,dest=/tmp/frontend.tar
+          outputs: type=docker,dest=frontend.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -48,9 +48,8 @@ jobs:
           username: root
           password: Ab123456
           port: 22
-          source: "/tmp/backend.tar,/tmp/frontend.tar,docker-compose.yml"
+          source: "backend.tar,frontend.tar,docker-compose.yml"
           target: "/root/3d-model-website-temp"
-          strip_components: 1 # 去掉路径前缀，确保文件都在同一层级
 
       # 4. SSH 登录服务器进行加载和重启
       - name: SSH Remote Commands
