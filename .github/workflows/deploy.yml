@@ -1,4 +1,4 @@
-name: Deploy to Aliyun (Hardcoded Password)
+name: Build and Deploy to Aliyun via SCP
 
 on:
   push:
@@ -6,14 +6,50 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: SSH deploy with password
+      # 1. 设置 Docker 构建环境
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 2. 构建镜像压缩文件
+      - name: Build Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: backend:latest
+          outputs: type=docker,dest=/tmp/backend.tar
+
+      - name: Build Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: frontend:latest
+          outputs: type=docker,dest=/tmp/frontend.tar
+
+      # 3. 将镜像文件和代码传输到服务器
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 121.89.92.133
+          username: root
+          password: Ab123456
+          port: 22
+          source: "/tmp/backend.tar,/tmp/frontend.tar,docker-compose.yml"
+          target: "/root/3d-model-website-temp"
+          strip_components: 1 # 去掉路径前缀，确保文件都在同一层级
+
+      # 4. SSH 登录服务器进行加载和重启
+      - name: SSH Remote Commands
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: 121.89.92.133
@@ -21,21 +57,10 @@ jobs:
           password: Ab123456
           port: 22
           script: |
-            sudo mkdir -p /etc/docker
-            sudo tee /etc/docker/daemon.json <<-'EOF'
-            {
-              "registry-mirrors": [
-                "https://docker.m.daocloud.io",
-                "https://dockerproxy.com",
-                "https://docker.1panel.live",
-                "https://hub.rat.dev"
-              ]
-            }
-            EOF
-            sudo systemctl daemon-reload
-            sudo systemctl restart docker
-
             cd /root/3d-model-website
-            git pull
-            docker compose down
-            docker compose up -d --build
+            mv /root/3d-model-website-temp/docker-compose.yml .
+            docker load -i /root/3d-model-website-temp/backend.tar
+            docker load -i /root/3d-model-website-temp/frontend.tar
+            rm -rf /root/3d-model-website-temp
+            docker compose up -d
+            docker image prune -f

@@ -13,7 +13,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   backend:
-    build: ./backend
+    image: backend:latest
     container_name: backend
     depends_on:
       - postgres
@@ -30,7 +30,7 @@ services:
       - uploads:/data
 
   frontend:
-    build: ./frontend
+    image: frontend:latest
     container_name: frontend
     ports:
       - "80:80"
