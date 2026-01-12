@@ -21,6 +21,7 @@ COPY --from=build /dist /usr/share/nginx/html
 # 6. 写入 Nginx 配置
 RUN echo 'server { \
     listen 80; \
+    client_max_body_size 200M; \
     location / { \
         root /usr/share/nginx/html; \
         index index.html; \
