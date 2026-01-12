@@ -75,6 +75,7 @@
 
 <script setup>
 import { commentsApi } from '@/api'
+import { confirmDialog } from '@/components/ConfirmDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { inject, ref, watch } from 'vue'
 import CommentInput from './CommentInput.vue'
@@ -104,8 +105,8 @@ const currentReplyToUser = ref(null)
 const replyPlaceholder = ref('')
 const mainInputRef = ref(null)
 
-const openReplyBox = (rootId, targetUser, targetId) => {
-  if (!authStore.checkLogin()) return
+const openReplyBox = async (rootId, targetUser, targetId) => {
+  if (!await authStore.checkLogin()) return
 
   currentReplyToId.value = targetId
   currentReplyToUser.value = targetUser
@@ -118,7 +119,7 @@ const closeReplyBox = () => {
 }
 
 const handleMainSubmit = async (content) => {
-  if (!authStore.checkLogin()) return
+  if (!await authStore.checkLogin()) return
 
   await submitComment({
     content,
@@ -129,7 +130,7 @@ const handleMainSubmit = async (content) => {
 }
 
 const handleReplySubmit = async (content, rootComment) => {
-  if (!authStore.checkLogin()) return
+  if (!await authStore.checkLogin()) return
 
   let targetUserId = null
   if (currentReplyToId.value != rootComment.id) {
@@ -181,7 +182,13 @@ const submitComment = async (params, isRoot, rootComment = null) => {
 }
 
 const handleDelete = async (id, isRoot, rootId = null) => {
-  if (!confirm('确认删除这条评论吗？')) return
+  const shouldDelete = await confirmDialog({
+    title: '确认删除',
+    message: '确认删除这条评论吗？',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!shouldDelete) return
 
   try {
     await commentsApi.delete(id)

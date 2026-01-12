@@ -6,6 +6,8 @@ import com.example.threedmodel.mapper.ModelCollectMapper;
 import com.example.threedmodel.mapper.ModelMapper;
 import com.example.threedmodel.entity.Model;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.threedmodel.dto.PageResultDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -14,6 +16,10 @@ import org.springframework.stereotype.Service;
  
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class ModelCollectService {
@@ -80,5 +86,33 @@ public class ModelCollectService {
     public int getCollectCount(Long modelId) {
         Model model = modelMapper.selectById(modelId);
         return model.getCollectCount() == null ? 0 : model.getCollectCount();
+    }
+
+    public PageResultDTO<Model> getCollectedModels(Long userId, int page, int size) {
+        Page<ModelCollect> collectPage = modelCollectMapper.selectPage(
+                new Page<>(page, size),
+                new QueryWrapper<ModelCollect>()
+                        .eq("user_id", userId)
+                        .orderByDesc("created_at")
+        );
+
+        List<ModelCollect> collects = collectPage.getRecords();
+        if (collects.isEmpty()) {
+            return new PageResultDTO<>(List.of(), collectPage.getTotal(), page, size);
+        }
+
+        List<Long> modelIds = collects.stream()
+                .map(ModelCollect::getModelId)
+                .collect(Collectors.toList());
+
+        Map<Long, Model> modelMap = modelMapper.selectBatchIds(modelIds).stream()
+                .collect(Collectors.toMap(Model::getId, model -> model, (a, b) -> a));
+
+        List<Model> orderedModels = modelIds.stream()
+                .map(modelMap::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return new PageResultDTO<>(orderedModels, collectPage.getTotal(), page, size);
     }
 }

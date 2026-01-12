@@ -1,10 +1,12 @@
 package com.example.threedmodel.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.threedmodel.dto.CommentCreateDTO;
 import com.example.threedmodel.dto.CommentDTO;
 import com.example.threedmodel.dto.PageResultDTO;
+import com.example.threedmodel.dto.UserCommentDTO;
 import com.example.threedmodel.entity.Comment;
 import com.example.threedmodel.entity.Model;
 import com.example.threedmodel.event.ModelCommentEvent;
@@ -20,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -149,5 +152,42 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         pageResult.setTotalPages(totalPages);
 
         return pageResult;
+    }
+
+    @Override
+    public PageResultDTO<UserCommentDTO> getCommentsByUserId(Long userId, int page, int size) {
+        Page<Comment> commentPage = commentMapper.selectPage(
+                new Page<>(page, size),
+                new LambdaQueryWrapper<Comment>()
+                        .eq(Comment::getUserId, userId)
+                        .orderByDesc(Comment::getCreatedAt)
+        );
+
+        List<Comment> comments = commentPage.getRecords();
+        if (comments.isEmpty()) {
+            return new PageResultDTO<>(List.of(), commentPage.getTotal(), page, size);
+        }
+
+        Set<Long> modelIds = comments.stream()
+                .map(Comment::getModelId)
+                .collect(Collectors.toSet());
+        Map<Long, Model> modelMap = modelMapper.selectBatchIds(modelIds).stream()
+                .collect(Collectors.toMap(Model::getId, model -> model));
+
+        List<UserCommentDTO> items = comments.stream()
+                .map(comment -> {
+                    Model model = modelMap.get(comment.getModelId());
+                    UserCommentDTO dto = new UserCommentDTO();
+                    dto.setId(comment.getId());
+                    dto.setModelId(comment.getModelId());
+                    dto.setModelTitle(model != null ? model.getTitle() : null);
+                    dto.setModelThumbnailUrl(model != null ? model.getThumbnailUrl() : null);
+                    dto.setContent(comment.getContent());
+                    dto.setCreatedAt(comment.getCreatedAt());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        return new PageResultDTO<>(items, commentPage.getTotal(), page, size);
     }
 }

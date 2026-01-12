@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { useChatStore } from './chat'
 import router from '@/router'
 import { authApi } from '@/api'
+import { confirmDialog } from '@/components/ConfirmDialog.vue'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -90,11 +91,16 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    checkLogin() {
+    async checkLogin() {
       if (this.isLoggedIn) {
         return true
       }
-      const shouldLogin = window.confirm('此操作需要登录，是否去登录？')
+      const shouldLogin = await confirmDialog({
+        title: '需要登录',
+        message: '此操作需要登录，是否去登录？',
+        confirmText: '去登录',
+        cancelText: '取消'
+      })
       if (shouldLogin) {
         const currentPath = router.currentRoute.value.fullPath
         console.log(currentPath)

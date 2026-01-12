@@ -1,5 +1,10 @@
 package com.example.threedmodel.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.threedmodel.dto.PageResultDTO;
+import com.example.threedmodel.dto.UserRelationDTO;
+import com.example.threedmodel.entity.Follower;
 import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.FollowerService;
 import com.example.threedmodel.service.UserService;
@@ -10,8 +15,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 关注功能控制器（兼容原有JWT逻辑：存储username，解析后转userId）
@@ -191,5 +201,127 @@ public class FollowController {
             result.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
         }
+    }
+
+    @GetMapping("/{id}/followers")
+    public ResponseEntity<PageResultDTO<UserRelationDTO>> getFollowers(
+            @PathVariable("id") Long userId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request
+    ) {
+        if (page < 1 || size < 1 || size > 100) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Page<Follower> followerPage = followerService.page(
+                new Page<>(page, size),
+                new QueryWrapper<Follower>()
+                        .eq("user_id", userId)
+                        .orderByDesc("id")
+        );
+
+        List<Long> followerIds = followerPage.getRecords().stream()
+                .map(Follower::getFollowerId)
+                .collect(Collectors.toList());
+
+        PageResultDTO<UserRelationDTO> result = buildRelationPage(
+                followerIds,
+                followerPage.getTotal(),
+                page,
+                size,
+                getCurrentUserId(request)
+        );
+
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}/following")
+    public ResponseEntity<PageResultDTO<UserRelationDTO>> getFollowing(
+            @PathVariable("id") Long userId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request
+    ) {
+        if (page < 1 || size < 1 || size > 100) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Page<Follower> followingPage = followerService.page(
+                new Page<>(page, size),
+                new QueryWrapper<Follower>()
+                        .eq("follower_id", userId)
+                        .orderByDesc("id")
+        );
+
+        List<Long> followingIds = followingPage.getRecords().stream()
+                .map(Follower::getUserId)
+                .collect(Collectors.toList());
+
+        PageResultDTO<UserRelationDTO> result = buildRelationPage(
+                followingIds,
+                followingPage.getTotal(),
+                page,
+                size,
+                getCurrentUserId(request)
+        );
+
+        return ResponseEntity.ok(result);
+    }
+
+    private Long getCurrentUserId(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+
+        String token = authHeader.replace("Bearer ", "").trim();
+        if (!jwtUtil.validateToken(token)) {
+            return null;
+        }
+
+        String username = jwtUtil.extractUsername(token);
+        User currentUser = userService.getUserByUsername(username);
+        return currentUser != null ? currentUser.getId() : null;
+    }
+
+    private PageResultDTO<UserRelationDTO> buildRelationPage(
+            List<Long> userIds,
+            long total,
+            int page,
+            int size,
+            Long currentUserId
+    ) {
+        if (userIds.isEmpty()) {
+            return new PageResultDTO<>(List.of(), total, page, size);
+        }
+
+        Map<Long, User> userMap = userService.listByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user, (a, b) -> a));
+
+        final Set<Long> followingIds = currentUserId == null
+                ? Collections.emptySet()
+                : followerService.list(
+                        new QueryWrapper<Follower>()
+                                .eq("follower_id", currentUserId)
+                                .in("user_id", userIds)
+                ).stream()
+                .map(Follower::getUserId)
+                .collect(Collectors.toSet());
+
+        List<UserRelationDTO> items = userIds.stream()
+                .map(userMap::get)
+                .filter(Objects::nonNull)
+                .map(user -> {
+                    UserRelationDTO dto = new UserRelationDTO();
+                    dto.setId(user.getId());
+                    dto.setUsername(user.getUsername());
+                    dto.setAvatar(user.getAvatar());
+                    dto.setFollowing(followingIds.contains(user.getId()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        return new PageResultDTO<>(items, total, page, size);
     }
 }

@@ -28,8 +28,12 @@
 
             <div class="text-center text-sm text-gray-500">
               <div class="flex flex-col space-y-1">
-                <span>{{ followersCount }} 人关注 TA</span>
-                <span>{{ followingCount }} 正在关注</span>
+                <button type="button" class="hover:text-blue-600 transition" @click="openFollowModal('followers')">
+                  {{ followersCount }}人正在关注{{ followTargetLabel }}
+                </button>
+                <button type="button" class="hover:text-blue-600 transition" @click="openFollowModal('following')">
+                  {{ followTargetLabel }}正在关注{{ followingCount }}人
+                </button>
               </div>
             </div>
 
@@ -69,7 +73,7 @@
                 </button>
 
                 <button
-                  class="w-full gap-1 btn-base bg-white text-blue-600 border border-blue-600 hover:bg-blue-50"
+                  class="w-full gap-1 btn-text-white"
                   @click="handleMessage"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +110,7 @@
                 </button>
               </div>
               <div v-if="activeTab === 'models'" class="p-6">
-                <div v-if="models.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div v-if="models.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-h-[350px] overflow-y-auto">
                   <ModelCard v-for="item in models" :key="item.id" :model="item" />
                 </div>
                 <div v-else class="p-12 flex flex-col items-center justify-center text-center text-sm text-gray-500 space-y-4">
@@ -116,18 +120,90 @@
                   <p>暂时还没有发布过模型，期待你的第一篇创作！</p>
                 </div>
               </div>
-              <div v-else class="p-12 flex flex-col items-center justify-center text-center text-sm text-gray-500 space-y-4">
-                <div class="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center text-4xl text-blue-400">
-                  :(
+              <div v-else-if="activeTab === 'favorites'" class="p-6">
+                <div v-if="favorites.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-h-[350px] overflow-y-auto">
+                  <ModelCard v-for="item in favorites" :key="item.id" :model="item" />
                 </div>
-                <p v-if="activeTab === 'comments'">还没有发布过评论哦噢</p>
-                <p v-else>收藏夹还是空空的，快去挑选喜欢的作品吧～</p>
+                <div v-else class="p-12 flex flex-col items-center justify-center text-center text-sm text-gray-500 space-y-4">
+                  <div class="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center text-4xl text-blue-400">
+                    :(
+                  </div>
+                  <p>收藏夹还是空空的，快去挑选喜欢的作品吧～</p>
+                </div>
+              </div>
+              <div v-else class="p-6">
+                <div v-if="comments.length" class="space-y-4 max-h-[350px] overflow-y-auto pr-2">
+                  <div v-for="comment in comments" :key="comment.id"
+                    class="rounded-2xl border border-gray-100 p-4 hover:bg-gray-50 transition">
+                    <router-link :to="`/model/${comment.modelId}`" class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                        <img v-if="comment.modelThumbnailUrl" :src="comment.modelThumbnailUrl"
+                          class="w-full h-full object-cover" alt="thumbnail" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-blue-600 truncate">
+                          {{ comment.modelTitle || '模型详情' }}
+                        </p>
+                        <p class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</p>
+                      </div>
+                    </router-link>
+                    <p class="mt-3 text-sm text-gray-700 leading-relaxed">{{ comment.content }}</p>
+                  </div>
+                </div>
+                <div v-else class="p-12 flex flex-col items-center justify-center text-center text-sm text-gray-500 space-y-4">
+                  <div class="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center text-4xl text-blue-400">
+                    :(
+                  </div>
+                  <p>还没有发布过评论哦噢</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </section>
+    <div v-if="followModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+      <div class="w-full max-w-xl bg-white rounded-2xl shadow-xl">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div class="text-lg font-semibold text-gray-900">{{ followModalTitle }}</div>
+          <button class="text-gray-400 hover:text-gray-700 text-2xl leading-none" @click="closeFollowModal">×</button>
+        </div>
+        <div class="px-6 py-4 max-h-[420px] overflow-y-auto">
+          <div v-if="followLoading" class="text-sm text-gray-500">加载中...</div>
+          <div v-else-if="!followList.length" class="text-sm text-gray-500">{{ followModalEmptyText }}</div>
+          <div v-else class="space-y-3">
+            <div v-for="item in followList" :key="item.id"
+              class="flex items-center justify-between gap-4 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
+              <router-link :to="`/user/${item.id}`" class="flex items-center gap-3 min-w-0" @click="closeFollowModal">
+                <div class="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
+                  <img v-if="item.avatar" :src="item.avatar" class="w-full h-full object-cover" alt="avatar" />
+                  <span v-else class="w-full h-full flex items-center justify-center text-sm text-gray-500">
+                    {{ item.username?.charAt(0)?.toUpperCase() }}
+                  </span>
+                </div>
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-gray-900 truncate">{{ item.username }}</div>
+                </div>
+              </router-link>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <router-link :to="`/user/${item.id}`" class="text-xs text-blue-600 hover:underline"
+                  @click="closeFollowModal">去TA主页</router-link>
+                <button
+                  v-if="authStore.isLoggedIn && item.id !== authStore.userId"
+                  class="px-3 py-1 rounded-full text-xs font-medium border transition"
+                  :class="item.following
+                    ? 'border-gray-300 text-gray-500 hover:border-gray-400'
+                    : 'border-blue-500 text-blue-600 hover:bg-blue-50'"
+                  @click="toggleFollowUser(item)"
+                >
+                  {{ item.following ? '已关注' : '关注' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -148,11 +224,17 @@ const router = useRouter()
 const user = ref(null)
 const followersCount = ref(0)
 const followingCount = ref(0)
-// const charmPoints = ref({ current: 2, total: 5 })
 const activeTab = ref('models')
 const models = ref([])
+const favorites = ref([])
+const comments = ref([])
 const isFollowing = ref(false)
 const toastRef = ref(null)
+const followModalOpen = ref(false)
+const followModalType = ref('followers')
+const followList = ref([])
+const followLoading = ref(false)
+const followTotal = ref(0)
 
 const tabs = [
   { label: '发布模型', value: 'models' },
@@ -167,6 +249,11 @@ const quickStats = ref([
   { key: 'favorites', label: '收藏', value: 0, iconPath: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.175 0l-3.383 2.46c-.784.57-1.838-.196-1.539-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.547 9.394c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69l1.286-3.967z' }
 ])
 
+const setQuickStat = (key, value) => {
+  const stat = quickStats.value.find(item => item.key === key)
+  if (stat) stat.value = value
+}
+
 const username = computed(() => user.value?.username || authStore.username || 'Default')
 const userAvatar = computed(() => user.value?.avatar || authStore.avatar || '')
 const userInitial = computed(() => username.value.charAt(0).toUpperCase())
@@ -176,6 +263,7 @@ const isCurrentUser = computed(() => {
   // 如果没有路由参数id，或者路由参数id等于当前登录用户id，则认为是当前用户
   return !pageUserId || pageUserId == currentUserId
 })
+const followTargetLabel = computed(() => (isCurrentUser.value ? '我' : 'TA'))
 
 const CreatedAt = computed(() => {
   const dateStr = user.value?.createdAt || authStore.user?.createdAt
@@ -199,6 +287,107 @@ const CreatedAt = computed(() => {
   return `加入于 ${months} 个月前`
 })
 
+const formatDate = (str) => (str ? new Date(str).toLocaleString() : '')
+
+const followModalTitle = computed(() => {
+  const count = followModalType.value === 'followers'
+    ? (followTotal.value || followersCount.value)
+    : (followTotal.value || followingCount.value)
+  if (followModalType.value === 'followers') {
+    return `关注${followTargetLabel.value}的人 · ${count}`
+  }
+  return `${followTargetLabel.value}关注的人 · ${count}`
+})
+
+const followModalEmptyText = computed(() => {
+  if (followModalType.value === 'followers') {
+    return `暂无关注${followTargetLabel.value}的人`
+  }
+  return `${followTargetLabel.value}还没有关注任何人`
+})
+
+const fetchAllPages = async (fetchPage, size = 50) => {
+  let page = 1
+  let total = null
+  const items = []
+
+  while (page <= 100) {
+    const res = await fetchPage(page, size)
+    const data = res?.data || {}
+    const pageItems = Array.isArray(data.items) ? data.items : []
+    if (typeof data.total === 'number') total = data.total
+    items.push(...pageItems)
+
+    if (pageItems.length < size) break
+    if (total !== null && items.length >= total) break
+    page += 1
+  }
+
+  return { items, total: total ?? items.length }
+}
+
+const openFollowModal = async (type) => {
+  followModalType.value = type
+  followModalOpen.value = true
+  await loadFollowList()
+}
+
+const closeFollowModal = () => {
+  followModalOpen.value = false
+  followList.value = []
+  followTotal.value = 0
+}
+
+const loadFollowList = async () => {
+  const id = route.params.id || authStore.userId
+  if (!id) return
+  followLoading.value = true
+  try {
+    const fetcher = followModalType.value === 'followers' ? userApi.getFollowers : userApi.getFollowing
+    const data = await fetchAllPages((page, size) => fetcher(id, { page, size }))
+    followList.value = data.items
+    followTotal.value = data.total
+  } catch (e) {
+    console.error('加载关注列表失败', e)
+    followList.value = []
+    followTotal.value = 0
+  } finally {
+    followLoading.value = false
+  }
+}
+
+const toggleFollowUser = async (target) => {
+  if (!authStore.isLoggedIn) {
+    toastRef.value?.show('请先登录', 'error')
+    router.push('/login')
+    return
+  }
+
+  try {
+    if (target.following) {
+      await followApi.unfollow(target.id)
+      target.following = false
+      if (isCurrentUser.value) {
+        followingCount.value = Math.max(0, followingCount.value - 1)
+        if (followModalType.value === 'following') {
+          followList.value = followList.value.filter(item => item.id !== target.id)
+        }
+      }
+      toastRef.value?.show('已取消关注', 'success')
+    } else {
+      await followApi.follow(target.id)
+      target.following = true
+      if (isCurrentUser.value) {
+        followingCount.value += 1
+      }
+      toastRef.value?.show('关注成功', 'success')
+    }
+  } catch (e) {
+    const msg = e.response?.data?.message || '操作失败'
+    toastRef.value?.show(msg, 'error')
+  }
+}
+
 const loadUser = async () => {
   const id = route.params.id || authStore.userId
   if (!id) return
@@ -212,16 +401,45 @@ const loadUser = async () => {
   }
 }
 
-const loadStats = async () => {
+const loadComments = async () => {
   const id = route.params.id || authStore.userId
   if (!id) return
   try {
-    // 仅拉取模型数量，保持卡片样式
-    const res = await modelsApi.getByAuthor(id)
-    const modelStat = quickStats.value.find(s => s.key === 'models')
-    if (modelStat) modelStat.value = Array.isArray(res.data) ? res.data.length : 0
+    const data = await fetchAllPages((page, size) => userApi.getComments(id, { page, size }))
+    comments.value = data.items
+    setQuickStat('comments', data.total)
   } catch (e) {
-    console.error('加载模型数据失败', e)
+    console.error('加载评论数据失败', e)
+    comments.value = []
+    setQuickStat('comments', 0)
+  }
+}
+
+const loadFavorites = async () => {
+  const id = route.params.id || authStore.userId
+  if (!id) return
+  try {
+    const data = await fetchAllPages((page, size) => userApi.getCollections(id, { page, size }))
+    favorites.value = data.items
+    setQuickStat('favorites', data.total)
+  } catch (e) {
+    console.error('加载收藏数据失败', e)
+    favorites.value = []
+    setQuickStat('favorites', 0)
+  }
+}
+
+const loadMessageCount = async () => {
+  if (!isCurrentUser.value || !authStore.isLoggedIn) {
+    setQuickStat('messages', 0)
+    return
+  }
+  try {
+    await chatStore.fetchUnreadCount()
+    setQuickStat('messages', chatStore.totalUnreadCount)
+  } catch (e) {
+    console.error('加载消息数量失败', e)
+    setQuickStat('messages', 0)
   }
 }
 
@@ -300,25 +518,34 @@ const loadModels = async () => {
   try {
     const res = await modelsApi.getByAuthor(id)
     models.value = Array.isArray(res.data) ? res.data : []
+    setQuickStat('models', models.value.length)
   } catch (e) {
     console.error('加载模型列表失败', e)
     models.value = []
+    setQuickStat('models', 0)
   }
 }
 
 onMounted(() => {
   loadUser()
-  loadStats()
   loadModels()
+  loadComments()
+  loadFavorites()
+  loadMessageCount()
   checkFollowStatus()
 })
 
 watch(
   () => route.params.id,
   () => {
+    if (followModalOpen.value) {
+      closeFollowModal()
+    }
     loadUser()
-    loadStats()
     loadModels()
+    loadComments()
+    loadFavorites()
+    loadMessageCount()
     checkFollowStatus()
   }
 )

@@ -8,9 +8,11 @@
         <router-view />
       </main>
     </div>
+    <ConfirmDialog />
   </div>
 </template>
 
 <script setup>
 import TopBar from '@/components/TopBar.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 </script>

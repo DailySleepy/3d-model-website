@@ -70,7 +70,7 @@ const buttonText = computed(() => {
 })
 
 const handleFollow = async () => {
-  if (!authStore.checkLogin()) return
+  if (!await authStore.checkLogin()) return
 
   const previousState = followedByUser.value
   followedByUser.value = !previousState

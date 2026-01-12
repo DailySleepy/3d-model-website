@@ -13,7 +13,7 @@
     </section>
 
     <section>
-      <div class="container mx-auto px-12 py-4 max-w-6xl">
+      <div class="container mx-auto px-8 py-4 max-w-6xl">
         <div class="mb-8">
           <h1 class="text-3xl font-bold text-gray-900 mb-2">账户设置</h1>
           <p class="text-gray-600">您可以在此处设置您的账户信息</p>

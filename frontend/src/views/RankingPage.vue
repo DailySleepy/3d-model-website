@@ -1,8 +1,19 @@
 <template>
-  <div class="container mx-auto px-8 py-4 max-w-6xl">
-    <div class="flex items-center justify-between mb-8 border-b pb-6">
-      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">热度排行榜</h1>
+  <section>
+    <div class="container mx-auto px-8 py-4 max-w-6xl">
+      <nav class="text-1xl text-gray-600">
+        <router-link to="/" class="hover:underline">主页</router-link>
+        <span class="mx-2">></span>
+        <span class="text-gray-900">热度排行</span>
+      </nav>
     </div>
+  </section>
+  <div class="container mx-auto px-8 py-4 max-w-6xl">
+
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">热度排行</h1>
+          <p class="text-gray-600">这里展示了最受欢迎的模型与创作用户</p>
+        </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2">
       <!-- 模型排行 -->

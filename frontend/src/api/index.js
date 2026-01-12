@@ -26,7 +26,11 @@ export const authApi = {
 
 // 用户
 export const userApi = {
-  getById: (id) => api.get(`/api/users/${id}`)
+  getById: (id) => api.get(`/api/users/${id}`),
+  getComments: (id, params) => api.get(`/api/users/${id}/comments`, { params }),
+  getCollections: (id, params) => api.get(`/api/users/${id}/collections`, { params }),
+  getFollowers: (id, params) => api.get(`/api/users/${id}/followers`, { params }),
+  getFollowing: (id, params) => api.get(`/api/users/${id}/following`, { params })
 }
 
 // 关注

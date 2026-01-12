@@ -1,13 +1,23 @@
 <template>
+  <section>
+    <div class="container mx-auto px-8 py-4 max-w-6xl">
+      <nav class="text-1xl text-gray-600">
+        <router-link to="/" class="hover:underline">主页</router-link>
+        <span class="mx-2">></span>
+        <span class="text-gray-900">消息中心</span>
+      </nav>
+    </div>
+  </section>
   <div class="container mx-auto px-8 py-4 max-w-6xl">
     <div class="flex items-center justify-between pb-3">
       <h1 class="text-3xl font-bold">消息中心</h1>
       <button @click="notificationStore.markAllAsRead"
-        class="text-sm text-blue-500 hover:text-blue-700 disabled:text-gray-300"
+        class="btn-text-white"
         :disabled="notificationStore.unreadTotal === 0">
         全部已读
       </button>
     </div>
+    <h2 class="text-sm text-gray-600">当你点击按钮后，会全部已读所有消息</h2>
 
     <div class="flex border-b border-gray-200 mb-6">
       <button v-for="item in tabs" :key="item.key" @click="switchTab(item.key)"

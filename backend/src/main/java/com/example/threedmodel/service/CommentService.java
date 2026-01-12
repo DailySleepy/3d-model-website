@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.threedmodel.dto.CommentCreateDTO;
 import com.example.threedmodel.dto.CommentDTO;
 import com.example.threedmodel.dto.PageResultDTO;
+import com.example.threedmodel.dto.UserCommentDTO;
 import com.example.threedmodel.entity.Comment;
 
 public interface CommentService extends IService<Comment> {
@@ -16,4 +17,6 @@ public interface CommentService extends IService<Comment> {
 
     // 分页查询模型的评论列表（含子回复，优化为B站二级扁平结构）
     PageResultDTO<CommentDTO> getCommentsByModelId(Long modelId, int page, int size);
+
+    PageResultDTO<UserCommentDTO> getCommentsByUserId(Long userId, int page, int size);
 }

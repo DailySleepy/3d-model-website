@@ -286,8 +286,8 @@ const showToast = (message, type = 'success') => {
 }
 provide('showToast', showToast)
 
-const handleDownload = () => {
-  if (!authStore.checkLogin()) return
+const handleDownload = async () => {
+  if (!await authStore.checkLogin()) return
 
   if (!model.value.fileUrl) {
     showToast('暂无下载链接', 'error')
@@ -297,7 +297,7 @@ const handleDownload = () => {
 }
 
 const handleLike = async () => {
-  if (!authStore.checkLogin()) return
+  if (!await authStore.checkLogin()) return
 
   try {
     if (model.value.isLiked) {
@@ -318,7 +318,7 @@ const handleLike = async () => {
 }
 
 const handleCollect = async () => {
-  if (!authStore.checkLogin()) return
+  if (!await authStore.checkLogin()) return
 
   try {
     if (model.value.isCollected) {
@@ -351,7 +351,7 @@ const checkFollowStatus = async (authorId) => {
 }
 
 const handleFollow = async () => {
-  if (!authStore.checkLogin()) return
+  if (!await authStore.checkLogin()) return
 
   const authorId = model.value.author?.id
   if (!authorId) return
