@@ -104,6 +104,17 @@ export const useChatStore = defineStore('chat', {
       const isMe = message.senderId === myId
       const otherUserId = isMe ? message.receiverId : message.senderId
 
+      if(isMe) {
+        // console.log("收到了自己的消息")
+        const lastMsg = this.messages[this.messages.length - 1]
+        if (lastMsg && lastMsg.senderId === myId && lastMsg.isTemp && lastMsg.content === message.content) {
+          // console.log("收到了自己当前设备发的消息")
+          Object.assign(lastMsg, message) // 更新属性
+          lastMsg.isTemp = false // 移除临时标记
+          return
+        }
+      }
+
       // 当前正打开着这个人的聊天框
       if (this.currentChatUser && this.currentChatUser.id === otherUserId) {
         this.messages.push(message)
@@ -227,52 +238,52 @@ export const useChatStore = defineStore('chat', {
 
       const authStore = useAuthStore()
 
+      // 手动构造消息对象, 模拟后端dto的结构
+      const tempId = Date.now()
+      const newMsg = {
+        id: tempId,
+        senderId: authStore.user.id,
+        receiverId: this.currentChatUser.id,
+        content: content,
+        createdAt: new Date().toISOString(),
+        isRead: false,
+        isTemp: true, // 手动构造的对象添加临时标记
+        sender: {
+          id: authStore.user.id,
+          username: authStore.user.username,
+          avatar: authStore.user.avatar
+        },
+        receiver: {
+          id: this.currentChatUser.id,
+          username: this.currentChatUser.username,
+          avatar: this.currentChatUser.avatar
+        }
+      }
+
+      // 1. 推入本地消息列表 (立即上屏)
+      this.messages.push(newMsg)
+
+      // 2. 更新左侧会话列表 (更新最新消息预览和时间并置顶会话)
+      const convIndex = this.conversations.findIndex(c => c.user_id === this.currentChatUser.id)
+      if (convIndex !== -1) {
+        const conv = this.conversations[convIndex]
+        conv.last_message = newMsg.content
+        conv.last_time = newMsg.createdAt
+        this.conversations.splice(convIndex, 1)
+        this.conversations.unshift(conv)
+      }
+
+      // 先乐观更新, 再发请求
       const payload = {
         receiverId: this.currentChatUser.id,
         content: content
       }
 
       try {
-        const res = await chatApi.sendMessage(payload)
-
-        if (res.data.success) {
-          // 手动构造消息对象, 模拟后端dto的结构
-          const newMsg = {
-            id: Date.now(),
-            senderId: authStore.user.id,
-            receiverId: this.currentChatUser.id,
-            content: content,
-            createdAt: new Date().toISOString(),
-            isRead: false,
-            sender: {
-              id: authStore.user.id,
-              username: authStore.user.username,
-              avatar: authStore.user.avatar
-            },
-            receiver: {
-              id: this.currentChatUser.id,
-              username: this.currentChatUser.username,
-              avatar: this.currentChatUser.avatar
-            }
-          }
-
-          // 1. 推入本地消息列表 (立即上屏)
-          this.messages.push(newMsg)
-
-          // 2. 更新左侧会话列表 (更新最新消息预览和时间并置顶会话)
-          const convIndex = this.conversations.findIndex(c => c.user_id === this.currentChatUser.id)
-          if (convIndex !== -1) {
-            const conv = this.conversations[convIndex]
-            conv.last_message = newMsg.content
-            conv.last_time = newMsg.createdAt
-            this.conversations.splice(convIndex, 1)
-            this.conversations.unshift(conv)
-          }
-        } else {
-          console.error('发送失败:', res.data.message)
-        }
+        await chatApi.sendMessage(payload)
       } catch (e) {
         console.error('发送请求失败', e)
+        // TODO: 处理失败
       }
     },
 

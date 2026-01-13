@@ -63,7 +63,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             public void afterCommit() {
                 try {
                     webSocketHandler.sendPrivateMessage(receiverId, messageDTO);
-                    //webSocketHandler.sendPrivateMessage(senderId, messageDTO); // 给自己也推送, 实现多端同步
+                    webSocketHandler.sendPrivateMessage(senderId, messageDTO); // 给自己也推送, 实现多端同步
                 } catch (Exception e) {
                     log.error("WebSocket 推送失败", e);
                 }
