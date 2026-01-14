@@ -55,7 +55,7 @@
             </div>
 
             <div class="flex" :class="isMyMessage(msg) ? 'justify-end' : 'justify-start'">
-              <div class="max-w-[70%] px-4 py-2 rounded-lg text-sm break-words shadow-sm"
+              <div class="max-w-[70%] px-4 py-2 rounded-lg text-sm break-words shadow-sm whitespace-pre-wrap"
                 :class="isMyMessage(msg) ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'">
                 {{ msg.content }}
               </div>
@@ -65,7 +65,8 @@
         </div>
 
         <div class="p-4 bg-white border-t border-gray-200">
-          <textarea v-model="inputContent" @keyup.enter="handleSend" placeholder="输入消息..."
+          <textarea v-model="inputContent" placeholder="输入消息..."
+            @keydown.ctrl.enter="handleSend" @keydown.meta.enter="handleSend"
             class="w-full outline-none resize-none min-h-[80px] text-sm text-gray-800"></textarea>
           <div class="flex justify-end">
             <button @click="handleSend" :disabled="!inputContent.trim()"

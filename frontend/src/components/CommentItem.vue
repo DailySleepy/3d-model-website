@@ -21,7 +21,7 @@
         </span>
       </div>
 
-      <div class="mt-1 text-gray-900 break-words text-base leading-relaxed">
+      <div class="mt-1 text-gray-900 break-words text-base leading-relaxed whitespace-pre-wrap">
         {{ comment.content }}
       </div>
 

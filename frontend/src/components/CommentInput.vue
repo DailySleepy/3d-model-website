@@ -6,6 +6,7 @@
 
     <div class="flex-1">
       <textarea v-model="content" ref="textareaRef" :placeholder="placeholder"
+        @keydown.ctrl.enter="handleSubmit" @keydown.meta.enter="handleSubmit"
         class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none resize-none min-h-[80px] text-sm text-gray-800"></textarea>
 
       <div class="flex justify-end mt-2 gap-2">
