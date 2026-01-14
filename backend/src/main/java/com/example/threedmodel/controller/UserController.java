@@ -6,6 +6,7 @@ import com.example.threedmodel.entity.Model;
 import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.CommentService;
 import com.example.threedmodel.service.ModelCollectService;
+import com.example.threedmodel.service.ModelLikeService;
 import com.example.threedmodel.service.UserService;
 import jakarta.annotation.Resource;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,9 @@ public class UserController {
 
     @Resource
     private ModelCollectService modelCollectService;
+
+    @Resource
+    private ModelLikeService modelLikeService;
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
@@ -60,5 +64,16 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(modelCollectService.getCollectedModels(id, page, size));
+    }
+
+    @GetMapping("/{id}/likes")
+    public ResponseEntity<PageResultDTO<Model>> getUserLikes(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        if (page < 1 || size < 1 || size > 50) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(modelLikeService.getLikedModels(id, page, size));
     }
 }

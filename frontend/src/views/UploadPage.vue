@@ -140,7 +140,7 @@
               </div>
 
               <div class="rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col">
-                <h3 class="text-base font-semibold text-gray-900">预览图 <span class="text-red-600">*</span></h3>
+                <h3 class="text-base font-semibold text-gray-900">预览图</h3>
                 <p class="text-xs text-gray-500 mt-1">1920×1080像素，支持 jpg/png/webp 格式，文件大小小于 5MB，最多上传 6 张</p>
                 <label
                   class="mt-4 inline-flex items-center justify-center rounded-2xl border border-dashed border-purple-300 bg-purple-50/60 px-4 py-3 text-purple-600 cursor-pointer hover:bg-purple-100">
@@ -171,7 +171,7 @@
                 <ul class="text-sm text-gray-500 list-disc list-inside space-y-1">
                   <li>请确保所有上传的文件符合格式和大小要求</li>
                   <li>上传过程中请勿关闭或刷新页面</li>
-                  <li>上传完成后请仔细检查信息是否正确</li>
+                  <li>确认上传前请仔细检查信息是否正确</li>
                 </ul>
                 <p v-if="submitFeedback.text" class="text-sm"
                   :class="submitFeedback.type === 'success' ? 'text-green-600' : 'text-red-500'">

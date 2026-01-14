@@ -6,11 +6,17 @@ import com.example.threedmodel.mapper.ModelLikeMapper;
 import com.example.threedmodel.mapper.ModelMapper;
 import com.example.threedmodel.entity.Model;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.threedmodel.dto.PageResultDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class ModelLikeService {
@@ -77,5 +83,33 @@ public class ModelLikeService {
     public int getLikeCount(Long modelId) {
         Model model = modelMapper.selectById(modelId);
         return model.getLikeCount() == null ? 0 : model.getLikeCount();
+    }
+
+    public PageResultDTO<Model> getLikedModels(Long userId, int page, int size) {
+        Page<ModelLike> likePage = modelLikeMapper.selectPage(
+                new Page<>(page, size),
+                new QueryWrapper<ModelLike>()
+                        .eq("user_id", userId)
+                        .orderByDesc("created_at")
+        );
+
+        List<ModelLike> likes = likePage.getRecords();
+        if (likes.isEmpty()) {
+            return new PageResultDTO<>(List.of(), likePage.getTotal(), page, size);
+        }
+
+        List<Long> modelIds = likes.stream()
+                .map(ModelLike::getModelId)
+                .collect(Collectors.toList());
+
+        Map<Long, Model> modelMap = modelMapper.selectBatchIds(modelIds).stream()
+                .collect(Collectors.toMap(Model::getId, model -> model, (a, b) -> a));
+
+        List<Model> orderedModels = modelIds.stream()
+                .map(modelMap::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return new PageResultDTO<>(orderedModels, likePage.getTotal(), page, size);
     }
 }

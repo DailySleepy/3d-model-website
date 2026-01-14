@@ -7,8 +7,13 @@
     <!-- 头像容器：垂直模式下添加底部间距 -->
     <div :class="avatarContainerClasses">
       <!-- 头像尺寸：垂直模式较大(w-20)，水平模式较小(w-16) -->
-      <img :src="user.avatar" alt="Avatar" class="rounded-full object-cover border bg-gray-50"
-        :class="avatarSizeClasses" />
+      <div
+        class="rounded-full bg-blue-500 text-white font-semibold flex items-center justify-center overflow-hidden border border-gray-100"
+        :class="[avatarSizeClasses, avatarTextClasses]"
+      >
+        <span v-if="!user.avatar">{{ userInitial }}</span>
+        <img v-else :src="user.avatar" alt="Avatar" class="w-full h-full object-cover" />
+      </div>
     </div>
 
     <!-- 信息区容器：垂直模式文字居中，水平模式自动填充剩余空间 -->
@@ -69,6 +74,11 @@ const buttonText = computed(() => {
   return followedByUser.value ? '已关注' : '关注'
 })
 
+const userInitial = computed(() => {
+  const name = props.user?.username || ''
+  return name ? name.charAt(0).toUpperCase() : '?'
+})
+
 const handleFollow = async () => {
   if (!await authStore.checkLogin()) return
 
@@ -91,5 +101,6 @@ const handleClick = () => {
 const layoutClasses = computed(() => props.layout === 'vertical' ? 'flex flex-col items-center p-4 hover:-translate-y-1 transition-transform duration-200' : 'flex items-center gap-4 p-4')
 const avatarContainerClasses = computed(() => props.layout === 'vertical' ? 'mb-3' : 'flex-shrink-0')
 const avatarSizeClasses = computed(() => props.layout === 'vertical' ? 'w-20 h-20' : 'w-16 h-16')
+const avatarTextClasses = computed(() => props.layout === 'vertical' ? 'text-xl' : 'text-lg')
 const infoContainerClasses = computed(() => props.layout === 'vertical' ? 'w-full text-center' : 'flex-1 overflow-hidden min-w-0')
 </script>

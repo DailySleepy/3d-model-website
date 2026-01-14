@@ -1,44 +1,49 @@
 <template>
-  <div class="container mx-auto px-8 py-4 flex justify-center items-center w-full h-full">
-    <nav class="relative justify-between flex items-center w-full flex-nowrap whitespace-nowrap gap-4 md:gap-8">
+  <div class="container mx-auto px-8 py-4 flex justify-center items-center w-full h-full max-w-6xl">
+    <nav class="grid grid-cols-[auto,minmax(0,1fr),auto] items-center w-full gap-4 md:gap-8">
 
-      <div class="flex items-center flex-shrink-0 mr-2 md:mr-4 z-10">
+      <div class="flex items-center flex-shrink-0 mr-2 md:mr-4">
         <!-- 网站图标 -->
-        <router-link to="/" class="flex items-center gap-2 group mr-6 lg:mr-10">
+        <router-link to="/" class="flex items-center gap-2 group mr-2 lg:mr-4">
           <img src="/favicon.png"
             class="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 transition-transform" alt="ModelCraft">
-          <span class="hidden md:block text-blue-500 text-xl md:text-2xl font-bold tracking-tight">
+          <span class="hidden md:block text-blue-500 text-base font-bold tracking-tight">
             ModelCraft
           </span>
         </router-link>
 
         <!-- 排行榜, Lab -->
-        <div class="flex items-center gap-2 md:gap-4 text-gray-600 font-medium text-base md:text-lg transition-colors">
-          <router-link to="/ranking" class="hover:text-blue-500">热度榜</router-link>
-          <router-link to="/lab" class="hover:text-blue-500">RenderLab</router-link>
+        <div class="flex items-center gap-2 md:gap-4 text-gray-600 font-medium text-base transition-colors">
+          <router-link to="/ranking" class="hover:text-blue-500 whitespace-nowrap">热度排行</router-link>
+          <router-link to="/lab" class="hover:text-blue-500 whitespace-nowrap">实验空间</router-link>
         </div>
       </div>
 
       <!-- 搜索框 -->
-      <div class="flex-1 flex justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div class="hidden md:flex items-center mx-4 lg:mx-10">
-          <input v-model="searchInput" type="text" placeholder="搜索模型或作者..."
-            class="w-72 lg:w-96 border rounded-l px-4 py-2 focus:outline-none focus:border-blue-500"
-            @keyup.enter="handleSearch">
-          <button @click="handleSearch"
-            class="bg-blue-500 text-white px-6 py-2 rounded-r hover:bg-blue-600 whitespace-nowrap">
-            搜索
-          </button>
+      <div class="flex justify-center min-w-0">
+        <div class="hidden md:flex items-center w-full max-w-[560px] mx-4 lg:mx-10">
+          <div class="relative w-full">
+            <input v-model="searchInput" type="text" placeholder="搜索模型或作者..."
+              class="input-modern mt-0 w-full pr-12 rounded-full bg-white/90 border border-white/60 shadow-sm focus:ring-blue-500/20"
+              @keyup.enter="handleSearch">
+            <button @click="handleSearch"
+              class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full text-gray-600 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-4.35-4.35m1.6-4.9a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
       <!-- 登录前样式-->
-      <div v-if="!authStore.isLoggedIn" class="flex items-center space-x-6 md:space-x-10 whitespace-nowrap">
+      <div v-if="!authStore.isLoggedIn" class="flex items-center justify-end space-x-6 md:space-x-10 whitespace-nowrap">
         <router-link to="/login" class="btn-text-blue">登录</router-link>
         <router-link to="/register" class="btn-text-white">注册</router-link>
       </div>
       <!-- 登录后样式-->
-      <div v-else class="flex items-center gap-4 md:gap-6 whitespace-nowrap">
+      <div v-else class="flex items-center justify-end gap-4 md:gap-6 whitespace-nowrap">
 
         <!-- 消息 -->
         <div class="relative group h-full flex items-center">

@@ -1,16 +1,45 @@
 <template>
-  <div class="min-h-screen p-4">
-
+  <div class="flex flex-col">
+    <section>
+      <div class="container mx-auto px-8 py-4 max-w-6xl">
+        <nav class="text-1xl text-gray-600">
+          <router-link to="/" class="hover:underline">主页</router-link>
+          <span class="mx-2">></span>
+          <span class="text-gray-900">搜索页面</span>
+        </nav>
+      </div>
+    </section>
+    <div class="container mx-auto px-8 py-4 max-w-6xl">
+              <div class="mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">搜索页面</h1>
+          <p class="text-gray-600">支持全局模糊搜索，可精准匹配作者、标题、标签及简介内容。搜索结果支持按最新发布或最高热度灵活排序</p>
+        </div>
     <!-- 筛选和排序 -->
-    <div class="flex justify-between mb-4 bg-white p-4 rounded shadow">
-      <select v-model="searchType" class="border px-2 py-1">
-        <option value="model">模型</option>
-        <option value="author">作者</option>
-      </select>
-      <select v-model="sort" class="border px-2 py-1">
-        <option value="hot">热门</option>
-        <option value="time">时间</option>
-      </select>
+    <div class="mb-6 bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
+      <div class="flex gap-4">
+        <div class="relative">
+          <select v-model="searchType"
+            class="appearance-none bg-gray-100 border border-gray-200 rounded-xl px-4 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="model">模型</option>
+            <option value="author">作者</option>
+          </select>
+          <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+            viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="relative">
+          <select v-model="sort"
+            class="appearance-none bg-gray-100 border border-gray-200 rounded-xl px-4 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="hot">热门</option>
+            <option value="time">时间</option>
+          </select>
+          <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+            viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+          </svg>
+        </div>
+      </div>
     </div>
 
     <!-- 模型列表 or 用户列表 -->
@@ -25,6 +54,7 @@
 
     <!-- 分页 -->
     <BasePagination :current="currentPage" :total="totalPages" @change="handlePageChange" />
+    </div>
   </div>
 </template>
 

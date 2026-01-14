@@ -29,6 +29,7 @@ export const userApi = {
   getById: (id) => api.get(`/api/users/${id}`),
   getComments: (id, params) => api.get(`/api/users/${id}/comments`, { params }),
   getCollections: (id, params) => api.get(`/api/users/${id}/collections`, { params }),
+  getLikes: (id, params) => api.get(`/api/users/${id}/likes`, { params }),
   getFollowers: (id, params) => api.get(`/api/users/${id}/followers`, { params }),
   getFollowing: (id, params) => api.get(`/api/users/${id}/following`, { params })
 }

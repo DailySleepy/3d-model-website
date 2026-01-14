@@ -38,8 +38,8 @@
             <div class="flex-1 min-w-0 transition-transform group-hover:-translate-y-1">
               <ModelCard :model="model" />
             </div>
-            <div class="w-12 text-right mr-4 flex flex-col items-end">
-              <div class="flex items-center gap-1 text-orange-600 font-bold text-xl">
+            <div class="w-20 shrink-0 text-right mr-4 flex flex-col items-end">
+              <div class="flex items-center justify-end gap-1 text-orange-600 font-bold text-xl">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                   <path
                     d="M19.452 14.93c-.144-3.525-2.344-6.427-4.143-8.497-.333-.382-.924-.131-.904.376.12 3.12-1.921 5.485-3.09 6.643-1.076 1.066-2.14 2.222-2.14 3.922 0 3.25 2.68 5.626 5.825 5.626s5.825-2.376 5.825-5.626c0-.147-.01-.29-.029-.43-.021-.16-.201-.24-.344-.144zM14.003 2c-.172 0-.312.131-.312.292 0 1.954-1.396 3.033-2.603 4.542-.71.888-1.554 1.943-1.554 3.491 0 .848.339 1.62.888 2.193.063.066.166.04.195-.047.387-1.159 1.481-2.072 2.385-2.822 1.139-.945 2.176-1.805 2.176-3.649 0-2.333-1.041-4.001-1.176-4c-.135-.001-.013-1.001-.013-1.001z" />
@@ -73,8 +73,8 @@
             <div class="flex-1 min-w-0 transition-transform group-hover:-translate-y-1">
               <UserCard :user="user" />
             </div>
-            <div class="w-12 text-right mr-4 flex flex-col items-end">
-              <div class="flex items-center gap-1 text-purple-600 font-bold text-xl">
+            <div class="w-20 shrink-0 text-right mr-4 flex flex-col items-end">
+              <div class="flex items-center justify-end gap-1 text-purple-600 font-bold text-xl whitespace-nowrap">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                   <path
                     d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />

@@ -79,28 +79,32 @@
               </div>
               <p class="text-xs text-gray-400 mb-8">您的点赞和收藏是对作者最大的支持</p>
 
-              <div class="mt-auto pt-3 pb-1 px-4 border-t border-gray-100 flex items-center justify-between">
+              <div class="mt-auto py-4 px-6 border-t border-gray-100 flex items-center justify-between text-base">
 
-                <div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                   @click="router.push(`/user/${model.author?.id}`)">
-                  <img :src="model.author?.avatar || '/default-avatar.png'"
-                    class="w-8 h-8 rounded-full object-cover ring-2 ring-white shadow-sm" />
+                  <div
+                    class="w-10 h-10 rounded-full bg-blue-500 text-white text-sm font-semibold flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
+                    <span v-if="!authorAvatar">{{ authorInitial }}</span>
+                    <img v-else :src="authorAvatar" class="w-full h-full object-cover" alt="author avatar" />
+                  </div>
                   <div>
-                    <p class="text-sm font-bold text-gray-900 leading-none">{{ model.author?.username || 'Unknown' }}
+                    <p class="text-base font-bold text-gray-900 leading-none">
+                      {{ model.author?.username || 'Unknown' }}
                     </p>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-4 text-xs text-gray-400 font-medium">
-                  <span class="flex items-center gap-1 hover:text-gray-600 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center gap-4 text-sm text-gray-400 font-medium">
+                  <span class="flex items-center gap-1.5 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
                     {{ model.likeCount || 0 }}
                   </span>
-                  <span class="flex items-center gap-1 hover:text-gray-600 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span class="flex items-center gap-1.5 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
@@ -164,15 +168,18 @@
           <section class="bg-white rounded-[20px] p-8 shadow-sm">
             <div class="flex items-center justify-between mb-8">
               <div class="flex items-center gap-6">
-                <img :src="model.author?.avatar || '/default-avatar.png'"
-                  class="w-24 h-24 rounded-full object-cover ring-4 ring-blue-50" />
+                <div
+                  class="w-24 h-24 rounded-full bg-blue-500 text-white text-2xl font-semibold flex items-center justify-center overflow-hidden ring-4 ring-blue-50">
+                  <span v-if="!authorAvatar">{{ authorInitial }}</span>
+                  <img v-else :src="authorAvatar" class="w-full h-full object-cover" alt="author avatar" />
+                </div>
                 <div>
                   <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ model.author?.username || 'Unknown' }}</h2>
                   <p class="text-gray-500 max-w-2xl">{{ model.author?.bio || '这位作者很懒，什么都没写~' }}</p>
                 </div>
               </div>
               <button @click="handleFollow"
-                class="px-8 py-3 rounded-xl font-medium transition-all flex items-center gap-2"
+                class="px-8 py-3 rounded-xl font-medium transition-all flex items-center gap-2 whitespace-nowrap"
                 :class="isFollowing ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'">
                 <svg v-if="!isFollowing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -198,10 +205,24 @@
             </div>
           </section>
         </div>
-
-        <!-- Other Tabs Placeholders -->
-        <div v-if="activeTab === 'links'" class="bg-white rounded-[20px] p-12 text-center text-gray-400 shadow-sm">
-          资源链接功能开发中...
+        <div v-if="activeTab === 'links'" ref="linksSectionRef" class="bg-white rounded-[20px] p-8 shadow-sm">
+          <div class="grid gap-6 lg:grid-cols-[1fr,260px]">
+            <div class="space-y-4 text-gray-600 leading-relaxed text-sm">
+              <h3 class="text-lg font-semibold text-gray-900">下载需知</h3>
+              <p>1. 该资源仅供个人学习与非商业用途使用，禁止二次分发或商业售卖。</p>
+              <p>2. 若用于公开项目，请保留作者署名并链接回原作品页面。</p>
+              <p>3. 下载即代表你已阅读并同意以上条款。</p>
+            </div>
+            <div class="flex flex-col justify-center items-center p-6">
+              <button class="btn-text-white w-full justify-center" @click="handleResourceDownload">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                立即下载
+              </button>
+            </div>
+          </div>
         </div>
         <div v-if="activeTab === 'discuss'" class="bg-white rounded-[20px] p-12 text-center text-gray-400 shadow-sm">
           <CommentSection :modelId="model.id" />
@@ -219,7 +240,7 @@ import ModelCard from '@/components/ModelCard.vue'
 import ModelViewer from '@/components/ModelViewer.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
 import { useAuthStore } from '@/stores/auth'
-import { computed, onMounted, provide, ref } from 'vue'
+import { computed, nextTick, onMounted, provide, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const backendBase = import.meta.env.VITE_API_BASE_URL || ''
@@ -249,9 +270,15 @@ const model = ref({
 })
 
 const authorModels = ref([])
+const authorAvatar = computed(() => model.value.author?.avatar || '')
+const authorInitial = computed(() => {
+  const name = model.value.author?.username || 'U'
+  return name.charAt(0).toUpperCase()
+})
 const isFollowing = ref(false)
 const isRendering = ref(false)
 const activeTab = ref('info')
+const linksSectionRef = ref(null)
 
 const tabs = [
   { id: 'info', label: '模型信息' },
@@ -289,6 +316,13 @@ provide('showToast', showToast)
 const handleDownload = async () => {
   if (!await authStore.checkLogin()) return
 
+  activeTab.value = 'links'
+  await nextTick()
+  linksSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+const handleResourceDownload = async () => {
+  if (!await authStore.checkLogin()) return
   if (!model.value.fileUrl) {
     showToast('暂无下载链接', 'error')
     return

@@ -23,6 +23,7 @@
               </div>
               <div>
                 <h1 class="text-2xl font-semibold text-gray-900">{{ username }}</h1>
+                <p class="mt-2 text-sm text-gray-500">{{ userBio }}</p>
               </div>
             </div>
 
@@ -245,7 +246,7 @@ const tabs = [
 const quickStats = ref([
   { key: 'models', label: '模型', value: 0, iconPath: 'M12 6l7 4-7 4-7-4 7-4zm0 8v4m-4 0h8' },
   { key: 'comments', label: '评论', value: 0, iconPath: 'M8 10h8m-8 4h5m-1 5l-4 4v-4H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2h-3l-3 4v-4' },
-  { key: 'messages', label: '消息', value: 0, iconPath: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8.5z' },
+  { key: 'likes', label: '点赞', value: 0, iconPath: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' },
   { key: 'favorites', label: '收藏', value: 0, iconPath: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.175 0l-3.383 2.46c-.784.57-1.838-.196-1.539-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.547 9.394c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69l1.286-3.967z' }
 ])
 
@@ -256,6 +257,7 @@ const setQuickStat = (key, value) => {
 
 const username = computed(() => user.value?.username || authStore.username || 'Default')
 const userAvatar = computed(() => user.value?.avatar || authStore.avatar || '')
+const userBio = computed(() => user.value?.bio || authStore.user?.bio || 'no bio')
 const userInitial = computed(() => username.value.charAt(0).toUpperCase())
 const isCurrentUser = computed(() => {
   const currentUserId = authStore.userId
@@ -429,17 +431,16 @@ const loadFavorites = async () => {
   }
 }
 
-const loadMessageCount = async () => {
-  if (!isCurrentUser.value || !authStore.isLoggedIn) {
-    setQuickStat('messages', 0)
-    return
-  }
+const loadLikes = async () => {
+  const id = route.params.id || authStore.userId
+  if (!id) return
   try {
-    await chatStore.fetchUnreadCount()
-    setQuickStat('messages', chatStore.totalUnreadCount)
+    const res = await userApi.getLikes(id, { page: 1, size: 1 })
+    const data = res.data || {}
+    setQuickStat('likes', typeof data.total === 'number' ? data.total : 0)
   } catch (e) {
-    console.error('加载消息数量失败', e)
-    setQuickStat('messages', 0)
+    console.error('加载点赞数据失败', e)
+    setQuickStat('likes', 0)
   }
 }
 
@@ -531,7 +532,7 @@ onMounted(() => {
   loadModels()
   loadComments()
   loadFavorites()
-  loadMessageCount()
+  loadLikes()
   checkFollowStatus()
 })
 
@@ -545,7 +546,7 @@ watch(
     loadModels()
     loadComments()
     loadFavorites()
-    loadMessageCount()
+    loadLikes()
     checkFollowStatus()
   }
 )
