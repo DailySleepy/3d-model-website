@@ -107,7 +107,7 @@ const currentList = computed(() =>
 )
 
 const getUnreadCount = (type) => {
-  notificationStore.getUnreadCount(type)
+  return notificationStore.getUnreadCount(type)
 }
 
 const switchTab = (type) => {

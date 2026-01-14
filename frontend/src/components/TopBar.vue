@@ -130,7 +130,7 @@ const handleSearch = () => {
 const notifications = notificationStore.tabs
 
 const getUnreadCount = (type) => {
-  notificationStore.getUnreadCount(type)
+  return notificationStore.getUnreadCount(type)
 }
 
 const goToNotification = (tabName) => {

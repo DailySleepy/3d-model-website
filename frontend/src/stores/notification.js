@@ -36,9 +36,33 @@ export const useNotificationStore = defineStore('notification', {
     unreadCountFollow() { return this.followList.filter(n => !n.isRead).length },
     unreadCountSystem() { return this.systemList.filter(n => !n.isRead).length },
     unreadCountPublish() { return this.publishList.filter(n => !n.isRead).length },
-    unreadCountChat: () => {
-        const chatStore = useChatStore()
-        return chatStore.totalUnreadCount
+    unreadCountChat() { return useChatStore().totalUnreadCount },
+
+    getUnreadCount() {
+      return (type) => {
+        switch (type) {
+          case 'reply': return this.unreadCountReply
+          case 'like': return this.unreadCountLike
+          case 'follow': return this.unreadCountFollow
+          case 'system': return this.unreadCountSystem
+          case 'publish': return this.unreadCountPublish
+          case 'chat': return this.unreadCountChat
+          default: return 0
+        }
+      }
+    },
+
+    getList() {
+      return (type) => {
+        switch (type) {
+          case 'reply': return this.replyList
+          case 'like': return this.likeList
+          case 'follow': return this.followList
+          case 'system': return this.systemList
+          case 'publish': return this.publishList
+          default: return []
+        }
+      }
     }
   },
 
@@ -55,29 +79,6 @@ export const useNotificationStore = defineStore('notification', {
       }
       catch(e) { console.error('获取消息失败', e) }
       finally { this.isLoading = false }
-    },
-
-    getUnreadCount(type) {
-      switch (type) {
-        case 'reply': return this.unreadCountReply
-        case 'like': return this.unreadCountLike
-        case 'follow': return this.unreadCountFollow
-        case 'system': return this.unreadCountSystem
-        case 'publish': return this.unreadCountPublish
-        case 'chat': return this.unreadCountChat
-        default: return 0
-      }
-    },
-
-    getList(type) {
-      switch (type) {
-        case 'reply': return this.replyList
-        case 'like': return this.likeList
-        case 'follow': return this.followList
-        case 'system': return this.systemList
-        case 'publish': return this.publishList
-        default: return []
-      }
     },
 
     markAsRead(id) {
