@@ -25,7 +25,7 @@ const routes = [
   { path: '/upload', component: UploadPage },
   { path: '/notification', component: NotificationPage},
   { path: '/ranking', component: RankingPage},
-  { path: '/lab', component: RenderLab},
+  { path: '/lab', component: RenderLab, meta: { hideTopbar: true }},
 ]
 
 const router = createRouter({
