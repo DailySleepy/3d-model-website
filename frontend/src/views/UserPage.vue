@@ -133,7 +133,7 @@
                 </div>
               </div>
               <div v-else class="p-6">
-                <div v-if="comments.length" class="space-y-4 max-h-[350px] overflow-y-auto pr-2">
+                <div v-if="comments.length" class="space-y-4 min-h-[228px] max-h-[350px] overflow-y-auto pr-2">
                   <div v-for="comment in comments" :key="comment.id"
                     class="rounded-2xl border border-gray-100 p-4 hover:bg-gray-50 transition">
                     <router-link :to="`/model/${comment.modelId}`" class="flex items-center gap-3">

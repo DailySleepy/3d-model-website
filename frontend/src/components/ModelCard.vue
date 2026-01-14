@@ -1,19 +1,17 @@
 <template>
-  <div
-    class="group bg-white rounded shadow cursor-pointer border border-gray-100 overflow-hidden flex flex-col h-full transition-all duration-300"
-    :class="[layout === 'compact' ? 'hover:shadow-md' : 'hover:shadow-lg hover:-translate-y-1']" @click="handleClick">
+  <div @click="handleClick"
+    class="group h-[340px] bg-white rounded shadow cursor-pointer border border-gray-100 overflow-hidden flex flex-col transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    
     <img :src="model.thumbnailUrl" alt="thumbnail"
-      class="w-full object-cover bg-gray-100 transition-all duration-300 ease-in-out" :class="[
-        layout === 'compact' ? 'h-32' : 'h-40 sm:h-48 lg:h-56 group-hover:h-72']">
+      class="w-full object-cover bg-gray-100 transition-all duration-300 ease-in-out flex-1 min-h-0">
 
-    <div :class="layout === 'compact' ? 'p-2' : 'p-4'">
-      <!-- compact模式只显示标题 -->
-      <h3 class="font-semibold mb-1 truncate transition-colors duration-300 group-hover:text-blue-600"
-        :class="layout === 'compact' ? 'text-sm' : 'text-lg'" :title="model.title">
+    <div class="p-4">
+      <h3 class="font-semibold mb-1 truncate transition-colors duration-300 group-hover:text-blue-600 text-lg"
+        :title="model.title">
         {{ model.title }}
       </h3>
-      <!-- 默认模式显示简介和作者, 还允许放大 -->
-      <div v-if="layout === 'default'"
+
+      <div
         class="grid grid-rows-[1fr] opacity-100 transition-all duration-300 ease-in-out group-hover:grid-rows-[0fr] group-hover:opacity-0">
         <div class="overflow-hidden">
           <p class="text-gray-600 text-sm mb-2 mt-1">
@@ -37,11 +35,6 @@ const props = defineProps({
   model: {
     type: Object,
     required: true
-  },
-  layout: {
-    type: String,
-    default: 'default',
-    validator: (value) => ['default', 'compact'].includes(value)
   }
 })
 
