@@ -43,13 +43,21 @@
     </div>
 
     <!-- 模型列表 or 用户列表 -->
-    <div class="grid grid-cols-4 gap-4">
+    <div v-if="isLoading" class="py-20 flex justify-center items-center">
+       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+
+    <div v-else class="grid grid-cols-4 gap-4">
       <template v-if="searchType === 'model'">
         <ModelCard v-for="model in searchResults" :key="model.id" :model="model" />
       </template>
       <template v-else-if="searchType === 'author'">
         <UserCard v-for="user in searchResults" :key="user.id" :user="user" />
       </template>
+
+      <div v-if="!isLoading && searchResults.length === 0" class="col-span-4 text-center text-gray-500 py-10">
+        没有找到相关结果
+      </div>
     </div>
 
     <!-- 分页 -->
@@ -78,6 +86,7 @@ const sort = ref(route.query.sort || 'hot')
 const currentPage = ref(1)
 const totalPages = ref(1)
 const searchResults = ref([])
+const isLoading = ref(false)
 
 const handlePageChange = (page) => {
   currentPage.value = page
@@ -111,17 +120,25 @@ watch([searchType, sort], () => {
 })
 
 async function fetchSearchResults() {
-  const params = {
-    q: query.value,
-    type: searchType.value,
-    sort: sort.value,
-    page: currentPage.value,
-    pageSize: PAGE_SIZE
+  isLoading.value = true
+  searchResults.value = []
+
+  try {
+    const params = {
+      q: query.value,
+      type: searchType.value,
+      sort: sort.value,
+      page: currentPage.value,
+      pageSize: PAGE_SIZE
+    }
+    const result = await modelsStore.fetchSearchResults(params)
+    searchResults.value = result.items
+    totalPages.value = result.totalPages
+  } catch (error) {
+    console.error('搜索失败', error)
+  } finally {
+    isLoading.value = false
   }
-  const result = await modelsStore.fetchSearchResults(params)
-  console.log(result)
-  searchResults.value = result.items
-  totalPages.value = result.totalPages
 }
 
 </script>
