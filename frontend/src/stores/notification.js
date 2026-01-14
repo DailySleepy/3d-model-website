@@ -10,11 +10,20 @@ export const useNotificationStore = defineStore('notification', {
   }),
 
   getters : {
+    tabs: () => [
+      { type: 'reply', label: '回复我的' },
+      { type: 'like', label: '收到的赞' },
+      { type: 'follow', label: '新增关注' },
+      { type: 'system', label: '系统通知' },
+      { type: 'publish', label: '关注动态' },
+      { type: 'chat', label: '我的私信' },
+    ],
+
     replyList : (state) => state.notifications.filter(n => n.type === 'COMMENT'),
-    // likeList : (state) => state.notifications.filter(n => n.type === 'LIKE'),
     likeList: (state) => state.notifications.filter(n => ['LIKE', 'COLLECT'].includes(n.type)),
     followList : (state) => state.notifications.filter(n => n.type === 'FOLLOW'),
     systemList : (state) => state.notifications.filter(n => n.type === 'SYSTEM'),
+    publishList : (state) => state.notifications.filter(n => n.type === 'PUBLISH'),
 
     unreadTotal: (state) => {
       const notificationUnread = state.notifications.filter(n => !n.isRead).length
@@ -26,6 +35,7 @@ export const useNotificationStore = defineStore('notification', {
     unreadCountLike() { return this.likeList.filter(n => !n.isRead).length },
     unreadCountFollow() { return this.followList.filter(n => !n.isRead).length },
     unreadCountSystem() { return this.systemList.filter(n => !n.isRead).length },
+    unreadCountPublish() { return this.publishList.filter(n => !n.isRead).length },
     unreadCountChat: () => {
         const chatStore = useChatStore()
         return chatStore.totalUnreadCount
@@ -45,6 +55,29 @@ export const useNotificationStore = defineStore('notification', {
       }
       catch(e) { console.error('获取消息失败', e) }
       finally { this.isLoading = false }
+    },
+
+    getUnreadCount(type) {
+      switch (type) {
+        case 'reply': return this.unreadCountReply
+        case 'like': return this.unreadCountLike
+        case 'follow': return this.unreadCountFollow
+        case 'system': return this.unreadCountSystem
+        case 'publish': return this.unreadCountPublish
+        case 'chat': return this.unreadCountChat
+        default: return 0
+      }
+    },
+
+    getList(type) {
+      switch (type) {
+        case 'reply': return this.replyList
+        case 'like': return this.likeList
+        case 'follow': return this.followList
+        case 'system': return this.systemList
+        case 'publish': return this.publishList
+        default: return []
+      }
     },
 
     markAsRead(id) {

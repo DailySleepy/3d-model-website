@@ -17,25 +17,25 @@
         全部已读
       </button>
     </div>
-    <h2 class="text-sm text-gray-600">当你点击按钮后，会全部已读所有消息</h2>
+    <!-- <h2 class="text-sm text-gray-600">当你点击按钮后，会全部已读所有消息</h2> -->
 
     <div class="flex border-b border-gray-200 mb-6">
-      <button v-for="item in tabs" :key="item.key" @click="switchTab(item.key)"
+      <button v-for="item in tabs" :key="item.type" @click="switchTab(item.type)"
         class="relative px-6 py-3 font-medium text-sm focus:outline-none transition-colors mr-2"
-        :class="currentTab === item.key ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'">
+        :class="currentTab === item.type ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'">
         {{ item.label }}
 
-        <span v-if="getUnreadCount(item.key) > 0"
+        <span v-if="getUnreadCount(item.type) > 0"
           class="ml-1 px-1.5 py-0.5 text-xs text-white bg-red-500 rounded-full min-w-[1.25rem] inline-flex items-center justify-center transform -translate-y-0.5">
-          {{ getUnreadCount(item.key) > 99 ? '99+' : getUnreadCount(item.key) }}
+          {{ getUnreadCount(item.type) > 99 ? '99+' : getUnreadCount(item.type) }}
         </span>
 
-        <span v-if="currentTab === item.key" class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600"></span>
+        <span v-if="currentTab === item.type" class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600"></span>
       </button>
     </div>
 
     <div class="min-h-[400px] bg-white rounded-lg shadow-sm border border-gray-100 relative">
-      <div v-if="currentTab === 'chat'" class="h-[650px]">
+      <div v-if="currentTab === 'chat'" class="h-[640px]">
         <ChatBox />
       </div>
 
@@ -98,39 +98,20 @@ const route = useRoute()
 const router = useRouter()
 const notificationStore = useNotificationStore()
 
-const tabs = [
-  { key: 'reply', label: '回复我的' },
-  { key: 'like', label: '收到的赞' },
-  { key: 'follow', label: '新增关注' },
-  { key: 'system', label: '系统通知' },
-  { key: 'chat', label: '我的私信' },
-]
+const tabs = notificationStore.tabs
 
 const currentTab = computed(() => route.query.tab || 'reply')
 
-const currentList = computed(() => {
-  switch (currentTab.value) {
-    case 'reply': return notificationStore.replyList
-    case 'like': return notificationStore.likeList
-    case 'follow': return notificationStore.followList
-    case 'system': return notificationStore.systemList
-    default: return []
-  }
-})
+const currentList = computed(() =>
+  notificationStore.getList(currentTab.value)
+)
 
-const getUnreadCount = (key) => {
-  switch (key) {
-    case 'reply': return notificationStore.unreadCountReply
-    case 'like': return notificationStore.unreadCountLike
-    case 'follow': return notificationStore.unreadCountFollow
-    case 'system': return notificationStore.unreadCountSystem
-    case 'chat': return notificationStore.unreadCountChat
-    default: return 0
-  }
+const getUnreadCount = (type) => {
+  notificationStore.getUnreadCount(type)
 }
 
-const switchTab = (key) => {
-  router.replace({ query: { ...route.query, tab: key } })
+const switchTab = (type) => {
+  router.replace({ query: { ...route.query, tab: type } })
 }
 
 const markAsRead = (noteid) => {
@@ -158,7 +139,8 @@ const getActionText = (note) => {
   const map = {
     'LIKE': '赞了',
     'COLLECT': '收藏了',
-    'FOLLOW': '关注了你'
+    'FOLLOW': '关注了你',
+    'PUBLISH': '发布了新模型'
   }
   return map[note.type] || ''
 }

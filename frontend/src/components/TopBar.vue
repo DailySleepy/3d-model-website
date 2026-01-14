@@ -122,23 +122,10 @@ const handleSearch = () => {
   }
 }
 
-const notifications = [
-  { type: 'reply', label: '回复我的' },
-  { type: 'like', label: '赞与收藏' },
-  { type: 'follow', label: '新增关注' },
-  { type: 'system', label: '系统通知' },
-  { type: 'chat', label: '我的私信' }
-]
+const notifications = notificationStore.tabs
 
 const getUnreadCount = (type) => {
-  switch (type) {
-    case 'reply': return notificationStore.unreadCountReply
-    case 'like': return notificationStore.unreadCountLike
-    case 'follow': return notificationStore.unreadCountFollow
-    case 'system': return notificationStore.unreadCountSystem
-    case 'chat': return notificationStore.unreadCountChat
-    default: return 0
-  }
+  notificationStore.getUnreadCount(type)
 }
 
 const goToNotification = (tabName) => {
