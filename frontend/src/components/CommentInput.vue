@@ -1,7 +1,9 @@
 <template>
   <div class="flex gap-4 p-4 w-full">
-    <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-      <img :src="userAvatar" class="w-full h-full object-cover" />
+    <div
+      class="w-10 h-10 rounded-full bg-blue-500 text-white text-sm font-semibold flex items-center justify-center overflow-hidden flex-shrink-0">
+      <span v-if="!userAvatar">{{ userInitial }}</span>
+      <img v-else :src="userAvatar" alt="用户头像" class="w-full h-full rounded-full object-cover" />
     </div>
 
     <div class="flex-1">
@@ -24,7 +26,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
 // 接收属性
 const props = defineProps({
@@ -36,9 +39,14 @@ const props = defineProps({
   autoFocus: Boolean
 })
 
+const authStore = useAuthStore()
 const emit = defineEmits(['submit', 'cancel'])
 const content = ref('')
 const textareaRef = ref(null)
+const userInitial = computed(() => {
+  const name = authStore.user?.username || authStore.username || 'U'
+  return name.charAt(0).toUpperCase()
+})
 
 onMounted(() => {
   if (props.autoFocus && textareaRef.value) {

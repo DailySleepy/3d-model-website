@@ -51,8 +51,11 @@
             <div class="flex items-center gap-4">
               <div v-if="note.fromUser" class="flex-shrink-0 w-10 h-10">
                 <router-link :to="`/user/${note.fromUser.id}`" @click.stop>
-                  <img :src="note.fromUser.avatar"
-                    class="w-full h-full object-cover rounded-full bg-gray-200 transition-opacity hover:opacity-80" />
+                  <div
+                    class="w-full h-full rounded-full bg-blue-500 text-white text-sm font-semibold flex items-center justify-center overflow-hidden transition-opacity hover:opacity-80">
+                    <span v-if="!note.fromUser.avatar">{{ userInitial(note.fromUser.username) }}</span>
+                    <img v-else :src="note.fromUser.avatar" alt="用户头像" class="w-full h-full rounded-full object-cover" />
+                  </div>
                 </router-link>
               </div>
 
@@ -146,6 +149,11 @@ const getActionText = (note) => {
 }
 
 const formatTime = (t) => t ? t.split('T')[0] : ''
+
+const userInitial = (name) => {
+  if (!name) return '?'
+  return name.charAt(0).toUpperCase()
+}
 
 onMounted(() => {
   notificationStore.fetchNotifications()

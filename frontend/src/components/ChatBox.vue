@@ -11,7 +11,11 @@
           :class="{ 'bg-blue-50': chatStore.currentChatUser?.id === conv.user_id }">
 
           <div class="relative">
-            <img :src="conv.avatar" class="w-10 h-10 rounded-full object-cover bg-gray-300" />
+            <div
+              class="w-10 h-10 rounded-full bg-blue-500 text-white text-sm font-semibold flex items-center justify-center overflow-hidden">
+              <span v-if="!conv.avatar">{{ userInitial(conv.username) }}</span>
+              <img v-else :src="conv.avatar" alt="用户头像" class="w-full h-full rounded-full object-cover" />
+            </div>
             <div v-if="conv.unread_count > 0"
               class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[1rem] h-4 flex items-center justify-center px-1">
               {{ conv.unread_count > 99 ? '99+' : conv.unread_count }}
@@ -145,6 +149,11 @@ const handleSend = async () => {
 
   await chatStore.sendMessage(content)
   inputContent.value = ''
+}
+
+const userInitial = (name) => {
+  if (!name) return '?'
+  return name.charAt(0).toUpperCase()
 }
 
 const scrollToBottom = () => {
