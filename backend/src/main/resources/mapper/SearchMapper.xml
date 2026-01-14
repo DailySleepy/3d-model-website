@@ -8,10 +8,12 @@
     <select id="searchModels" resultType="com.example.threedmodel.entity.Model">
         SELECT * FROM models
         <where>
-            <!-- 关键词模糊匹配标题或描述 -->
+            <!-- 关键词模糊匹配标题或描述或标签, 全字匹配类别 -->
             <if test="q != null and q != ''">
-                AND (title LIKE CONCAT('%', #{q}, '%')
-                OR description LIKE CONCAT('%', #{q}, '%'))
+                AND (title ILIKE CONCAT('%', #{q}, '%')
+                OR description ILIKE CONCAT('%', #{q}, '%')
+                OR category ILIKE #{q}
+                OR array_to_string(tags, ',') ILIKE CONCAT('%', #{q}, '%'))
             </if>
         </where>
         <!-- 排序逻辑 -->
@@ -35,7 +37,7 @@
         <where>
             <!-- 关键词模糊匹配用户名 -->
             <if test="q != null and q != ''">
-                AND username LIKE CONCAT('%', #{q}, '%')
+                AND username ILIKE CONCAT('%', #{q}, '%')
             </if>
         </where>
         <!-- 排序逻辑 -->
