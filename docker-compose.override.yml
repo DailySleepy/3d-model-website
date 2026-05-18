@@ -1,0 +1,16 @@
+services:
+  postgres:
+    ports:
+      - "5433:5432" # 将容器的 5432 端口映射到宿主机的 5433 端口，避免与本地 5432 端口的 PostgreSQL 冲突
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql # 数据库启动时自动执行建表脚本
+
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend/uploads:/data # 将宿主机本地的 uploads 目录直接挂载为后端文件路径
+
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./backend/uploads:/usr/share/nginx/html/uploads # 将前端静态服务挂载指向相同的宿主机本地目录
