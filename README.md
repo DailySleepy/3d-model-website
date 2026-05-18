@@ -1,159 +1,135 @@
-# 3D 模型分享网站
+# 3D Model Sharing Platform
 
-基于 Vue3 + Three.js + Spring Boot 的现代 3D 模型分享平台
+基于 Vue 3, Three.js 和 Spring Boot 的现代化 3D 模型分享与交互社区。
 
-## 技术栈
+[![Vue 3](https://img.shields.io/badge/Vue-3.x-4fc08d?style=flat-square&logo=vue.js)](https://vuejs.org/)
+[![Three.js](https://img.shields.io/badge/Three.js-r128+-black?style=flat-square&logo=three.js)](https://threejs.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-6db33f?style=flat-square&logo=springboot)](https://spring.io/projects/spring-boot)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-316192?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.x-38bdf8?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ed?style=flat-square&logo=docker)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-### 前端
+---
 
-- Vue 3 + Vite (框架 + 构建)
-- Three.js (3D 渲染)
-- Tailwind CSS (样式)
-- Pinia (状态管理)
-- Axios (HTTP 请求)
+## 项目简介
 
-### 后端
+本项目是一个全栈式的 3D 模型分享与交互平台。前端基于 Vue 3、Vite 与 Three.js 构建，实现了高性能的 3D 模型在线交互渲染；后端基于 Spring Boot 框架，搭配 MyBatis-Plus 与 PostgreSQL 数据库进行数据持久化，提供安全、稳定、响应迅速的 API 服务。
 
-- Spring Boot
+项目已实现完整的功能闭环，支持容器化一键快速部署，适合作为 3D 网页端展示、模型社区或企业级三维资产管理系统的脚手架与参考范本。
 
-## 项目结构
+---
+
+## 核心特性
+
+- **3D 实时渲染交互**
+  - 基于 Three.js 的 GLB 模型动态加载与 OrbitControls 轨道相机控制。
+  - 支持平移、旋转、缩放等平滑视口交互。
+  - 内置完善的渲染异常捕获与加载提示机制，确保前端浏览的稳定性。
+
+- **全功能互动社区**
+  - 支持模型点赞、收藏，快速将感兴趣的模型收录至个人库。
+  - 优雅的二级嵌套评论系统（类似 Bilibili 风格），支持回复特定用户，强化社区交流深度。
+  - 创作者关注机制，支持关注、取消关注，动态展示作者的粉丝数与获赞数据。
+
+- **私信与消息通知中心**
+  - 即时私信系统：支持用户之间发送私信、会话列表聚合展示以及历史记录平滑查询。
+  - 动态通知中心：自动生成并聚合点赞、收藏、新评论及关注等互动消息，支持全局一键已读。
+
+- **高安全级别认证体系**
+  - 基于 JWT（JSON Web Token）的无状态身份认证机制，Token 自动进行本地化加密存储。
+  - 支持基于邮箱验证码的账户注册与密码重置服务，保证用户信息安全。
+
+- **多维度检索与排序**
+  - 强大的模糊搜索接口，支持按模型名称、关键词、作者或描述进行全文匹配。
+  - 支持按分类筛选以及按发布时间或热门程度（点赞数、收藏数）进行复合排序。
+
+---
+
+## 项目目录结构
 
 ```text
 3d-model-website/
-├── frontend/                     # Vue 前端项目
-│   ├── node_modules/
-│   ├── public/                   # 静态资源（如 logo）
-│   ├── src/
-│   │   ├── assets/               # 图片、字体等
-│   │   ├── components/           # 可复用组件
-│   │   │   ├── BasePagination.vue # 分页
-│   │   │   ├── CommentSection.vue # 评论区
-│   │   │   ├── ImageCarousel.vue # 图片轮播
-│   │   │   ├── ModelViewer.vue   # 3D 模型渲染（Three.js）
-│   │   │   ├── ModelCard.vue     # 模型卡片
-│   │   │   ├── UserCard.vue      # 用户卡片
-│   │   │   ├── TopBar.vue        # 顶部导航
-│   │   │   └── UploadForm.vue    # 上传表单 <TODO>
-│   │   ├── views/                # 页面视图
-│   │   │   ├── HomePage.vue      # 首页（推荐+轮播）
-│   │   │   ├── SearchResult.vue  # 搜索结果
-│   │   │   ├── ModelDetail.vue   # 模型详情
-│   │   │   ├── UserPage.vue      # 用户主页
-│   │   │   ├── UserSettings.vue  # 用户设置页
-│   │   │   ├── UploadPage.vue    # 上传页 <TODO>
-│   │   │   ├── LoginPage.vue     # 登录
-│   │   │   └── RegisterPage.vue  # 注册
-│   │   ├── stores/               # Pinia 状态管理
-│   │   │   ├── auth.js           # 用户认证
-│   │   │   └── models.js         # 模型数据
-│   │   ├── router/               # 路由配置
-│   │   │   └── index.js
-│   │   ├── api/                  # Axios API 封装
-│   │   │   └── index.js          # 统一导出
-│   │   ├── utils/                # 工具函数
-│   │   │   └── threejs.js        # Three.js 辅助
-│   │   ├── App.vue
-│   │   └── main.js
-│   ├── eslint.config.js          # ESLint 代码检查配置
-│   ├── jsconfig.json             # VSCode 路径别名（如 @/components）
-│   ├── package.json              # 前端依赖和启动脚本
-│   ├── package-lock.json         # (锁定依赖版本)
-│   ├── postcss.config.js         # Tailwind CSS 编译配置
-│   ├── tailwind.config.js        # Tailwind 主题配置
-│   ├── vite.config.js            # Vite 构建配置
-│   └── index.html
-│
-├── backend/                      # Spring Boot 后端项目
-│   ├── pom.xml
-│   └── src/
-│       └── main/
-│           ├── java/
-│           │   └── com/
-│           │       └── example/
-│           │           └── threedmodel/
-│           │               ├── ThreeDApplication.java
-│           │               │
-│           │               ├── config/
-│           │               │   ├── MyBatisPlusConfig.java  # 分页插件配置
-│           │               │   └── WebMvcConfig.java       # 静态资源映射
-│           │               │
-│           │               ├── controller/
-│           │               │   ├── AuthController.java     # 登录/注册/验证码
-│           │               │   ├── CommentController.java  # <TODO>
-│           │               │   ├── FollowController.java   # 关注/取关
-│           │               │   ├── IndexController.java    # 健康检查
-│           │               │   ├── ModelActionController.java # 点赞/收藏
-│           │               │   ├── ModelController.java    # 模型发布/列表
-│           │               │   ├── NotificationController.java # <TODO>
-│           │               │   ├── SearchController.java   # 搜索
-│           │               │   ├── UploadController.java   # 文件上传
-│           │               │   ├── UserController.java     # 用户信息
-│           │               │   └── UserSettingsController.java # 用户设置
-│           │               │
-│           │               ├── dto/
-│           │               │   ├── ModelCreateDTO.java
-│           │               │   ├── ModelDetailDTO.java
-│           │               │   ├── PageResultDTO.java
-│           │               │   ├── SearchParamDTO.java
-│           │               │   ├── UserSettingsUpdateDTO.java
-│           │               │   └── ... (UpdateRequest DTOs)
-│           │               │
-│           │               ├── entity/
-│           │               │   ├── Comment.java            # <TODO>
-│           │               │   ├── Follower.java
-│           │               │   ├── Model.java
-│           │               │   ├── ModelCollect.java
-│           │               │   ├── ModelLike.java
-│           │               │   ├── Notification.java       # <TODO>
-│           │               │   ├── User.java
-│           │               │   └── VerificationCode.java
-│           │               │
-│           │               ├── handler/
-│           │               │   └── PgArrayTypeHandler.java # PostgreSQL数组类型处理
-│           │               │
-│           │               ├── mapper/
-│           │               │   ├── CommentMapper.java      # <TODO>
-│           │               │   ├── FollowerMapper.java
-│           │               │   ├── ModelCollectMapper.java
-│           │               │   ├── ModelLikeMapper.java
-│           │               │   ├── ModelMapper.java
-│           │               │   ├── SearchMapper.java
-│           │               │   ├── UserMapper.java
-│           │               │   └── VerificationCodeMapper.java
-│           │               │
-│           │               ├── service/
-│           │               │   ├── CommentService.java     # <TODO>
-│           │               │   ├── FollowerService.java
-│           │               │   ├── ModelCollectService.java
-│           │               │   ├── ModelLikeService.java
-│           │               │   ├── ModelService.java
-│           │               │   ├── NotificationService.java # <TODO>
-│           │               │   ├── SearchService.java
-│           │               │   ├── UserService.java
-│           │               │   ├── UserSettingsService.java
-│           │               │   └── VerificationCodeService.java
-│           │               │
-│           │               ├── service/impl/
-│           │               │   ├── FollowerServiceImpl.java
-│           │               │   ├── SearchServiceImpl.java
-│           │               │   ├── UserServiceImpl.java
-│           │               │   ├── UserSettingsServiceImpl.java
-│           │               │   └── VerificationCodeServiceImpl.java
-│           │               │
-│           │               └── utils/
-│           │                   ├── EmailUtil.java
-│           │                   └── JwtUtil.java
-│           │
-│           └── resources/
-│               └── application.yml
-│
-├── docs/                         # 项目文档
-│   ├── API.md                    # API 规范
-│   └── GUIDE.md                  # 开发指南
-│
-├── .editorconfig
-├── .gitignore
-├── .gitattributes
-├── .prettierrc.json
-└── README.md
+├── frontend/             # 基于 Vue 3 + Three.js + Tailwind CSS 的前端工程
+├── backend/              # 基于 Spring Boot + MyBatis-Plus + PostgreSQL 的后端工程
+├── docker-compose.yml    # 用于一键部署完整生产/演示环境的 Docker 配置文件
+└── README.md             # 项目自述文件
 ```
+
+---
+
+## 用户权限矩阵
+
+| 功能模块 | 游客访问 | 已登录用户 | 业务逻辑说明 |
+| :--- | :---: | :---: | :--- |
+| 浏览模型与搜索 | 允许 | 允许 | 免登录即可查看 3D 模型和执行全局搜索 |
+| 3D 视角交互 | 允许 | 允许 | 支持自由平移、缩放和旋转相机视角 |
+| 关注创作者 | 拒绝 | 允许 | 关注作者后可随时在其动态中查看新作品 |
+| 点赞与收藏作品 | 拒绝 | 允许 | 点赞和收藏会自动同步给作者并进入个人主页库 |
+| 发表评论与回复 | 拒绝 | 允许 | 支持发表一级评论与针对具体用户的二级回复 |
+| 私信与查看通知 | 拒绝 | 允许 | 允许发送消息及接收点赞/评论等系统提醒 |
+| 上传模型与文件 | 拒绝 | 允许 | 支持上传 `.glb` 模型、封面和多张预览图 |
+| 下载模型文件 | 拒绝 | 允许 | 仅允许已登录的合法用户下载原始 `.glb` 文件 |
+
+---
+
+## 部署与开发指南
+
+### 1. 使用 Docker Compose 一键部署（推荐）
+
+项目支持通过 Docker 快速拉起整套运行环境（PostgreSQL 数据库、前端 Nginx、后端 Java 服务）。
+
+```bash
+# 克隆并进入项目根目录
+cd 3d-model-website
+
+# 复制环境变量模板并自定义配置（默认配置已备妥，可直接一键运行）
+cp .env.example .env
+
+# 一键启动所有服务
+docker-compose up -d
+```
+
+启动完成后，您可以通过以下地址进行访问与调试：
+- **前端门户**：`http://localhost:80`
+- **后端 API 入口**：`http://localhost:8080`
+- **PostgreSQL 数据库**：`127.0.0.1:5432` （用户名与密码读取自根目录 `.env`，默认为 `postgres` / `z3j1m4`）
+
+---
+
+### 2. 本地开发与调试
+
+#### 前置要求
+- **Node.js**：18.x 或以上版本
+- **JDK**：17 或以上版本
+- **Maven**：3.8.x 或以上版本
+- **PostgreSQL**：14.x 或以上版本
+
+#### 后端服务配置与启动
+
+1. 登录本地 PostgreSQL 实例，创建数据库：
+   ```sql
+   CREATE DATABASE threed_model_db;
+   ```
+2. 配置环境变量：进入 `backend` 目录，将 `.env.example` 复制并命名为 `.env`，并在其中填入您本地 PostgreSQL 实际的连接信息（密码等）。
+3. 运行后端服务（系统将自动通过 `spring-dotenv` 加载您配置的 `backend/.env`）：
+   ```bash
+   cd backend
+   mvn spring-boot:run
+   ```
+
+#### 前端工程配置与启动
+
+1. 进入前端工程目录：
+   ```bash
+   cd frontend
+   ```
+2. 安装项目依赖：
+   ```bash
+   npm install
+   ```
+3. 启动开发服务器（支持热重载）：
+   ```bash
+   npm run dev
+   ```
+   运行成功后，浏览器访问 `http://localhost:5173`。前端已配置 Vite 反向代理，请求将自动转发至后端的 `http://localhost:8080`。

@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 jobs:
   build-and-deploy:
@@ -44,10 +47,10 @@ jobs:
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: 121.89.92.133
-          username: root
-          password: Ab123456
-          port: 22
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
           source: "backend.tar,frontend.tar,docker-compose.yml"
           target: "/root/3d-model-website-temp"
 
@@ -55,15 +58,33 @@ jobs:
       - name: SSH Remote Commands
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: 121.89.92.133
-          username: root
-          password: Ab123456
-          port: 22
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
             cd /root/3d-model-website
+            
+            # 动态基于 GitHub Secrets & Variables 构建生成服务器端 .env 配置文件
+            echo "POSTGRES_DB=${{ vars.SERVER_POSTGRES_DB || 'threed_model_db' }}" > .env
+            echo "POSTGRES_USER=${{ vars.SERVER_POSTGRES_USER || 'postgres' }}" >> .env
+            echo "POSTGRES_PASSWORD=${{ secrets.SERVER_POSTGRES_PASSWORD }}" >> .env
+            echo "DB_URL=${{ vars.SERVER_DB_URL || 'postgres:5432/threed_model_db' }}" >> .env
+            echo "DB_USERNAME=${{ vars.SERVER_DB_USERNAME || 'postgres' }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.SERVER_DB_PASSWORD }}" >> .env
+            echo "BASE_URL=${{ vars.SERVER_BASE_URL }}" >> .env
+            echo "CORS_ALLOWED_ORIGINS=${{ vars.SERVER_CORS_ALLOWED_ORIGINS }}" >> .env
+            echo "FILE_PATH=${{ vars.SERVER_FILE_PATH || '/data' }}" >> .env
+            
+            # 将打包分发的新版 docker-compose.yml 移动至工作目录
             mv /root/3d-model-website-temp/docker-compose.yml .
+            
+            # 加载 Docker 镜像
             docker load -i /root/3d-model-website-temp/backend.tar
             docker load -i /root/3d-model-website-temp/frontend.tar
+            
+            # 清理临时文件并重新拉起容器服务
             rm -rf /root/3d-model-website-temp
+            docker compose down
             docker compose up -d
             docker image prune -f
