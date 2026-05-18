@@ -103,7 +103,7 @@ const handleLogin = async () => {
     const redirectPath = route.query.redirect || '/'
     router.push(redirectPath)
   } else {
-    showToast('账号或密码错误', 'error')
+    showToast(res.message || '登录失败', 'error')
   }
 }
 
