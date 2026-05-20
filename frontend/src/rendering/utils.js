@@ -1,5 +1,11 @@
 import * as THREE from 'three'
 
+const TEXTURE_KEYS = [
+  'map', 'lightMap', 'aoMap', 'emissiveMap', 'bumpMap', 
+  'normalMap', 'displacementMap', 'roughnessMap', 'metalnessMap', 
+  'alphaMap', 'envMap', 'gradientMap'
+];
+
 export function createRadialGradientTexture(WIDTH, HEIGHT) {
   const canvas = document.createElement('canvas')
   canvas.width = WIDTH
@@ -64,4 +70,67 @@ export function debugMaterial(rootObject) {
     }
   });
   console.groupEnd();
+}
+
+/**
+ * 
+ * @param {THREE.Object3D | null} obj 
+ * @returns 
+ */
+export function disposeScene(obj) {
+  console.log("is disposing Scene")
+  if (!obj) return
+
+  if (obj.children) {
+    [...obj.children].forEach(disposeScene)
+  }
+
+  obj.removeFromParent()
+
+  if (obj.isLight) {
+    if (obj.shadow && obj.shadow.map) {
+      obj.shadow.map.dispose()
+    }
+  }
+
+  if (obj.geometry) {
+    obj.geometry.dispose()
+  }
+
+  if (obj.material) {
+    disposeMaterial(obj.material)
+  }
+
+  if (obj.isSkinnedMesh) {
+    if (obj.skeleton) {
+      if (obj.skeleton.boneTexture) {
+        obj.skeleton.boneTexture.dispose()
+      }
+      obj.skeleton.dispose()
+    }
+  }
+}
+
+/**
+ * 
+ * @param {THREE.Material | THREE.Material[] | null} material 
+ * @returns 
+ */
+export function disposeMaterial(material) {
+  console.log("is disposing Material")
+  if (!material) return
+
+  if (Array.isArray(material)) {
+    material.forEach(disposeMaterial)
+    return
+  }
+
+  for (const key of TEXTURE_KEYS) {
+    let texture = material[key]
+    if (texture && texture.isTexture) {
+      texture.dispose()
+    }
+  }
+
+  material.dispose()
 }

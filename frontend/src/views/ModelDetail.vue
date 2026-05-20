@@ -6,9 +6,9 @@
         <nav class="text-1xl text-gray-600">
           <router-link to="/" class="hover:underline">主页</router-link>
           <span class="mx-2">></span>
-          <span class="cursor-pointer hover:text-blue-500 transition-colors">模型</span>
-          <span class="mx-2">></span>
-          <span class="text-gray-900">{{ model.title }}</span>
+          <span class="text-gray-900">模型：
+            <span class="text-blue-600 font-medium">{{ model.title }}</span>
+          </span>
         </nav>
       </div>
     </section>
@@ -19,8 +19,8 @@
           <div class="flex flex-col lg:flex-row gap-8">
             <div class="w-full lg:w-2/3 relative group">
               <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
-                <ModelViewer v-if="isRendering" :model-url="model.fileUrl" class="w-full h-full" />
-                <img v-else :src="model.thumbnailUrl || '/placeholder.png'" alt="cover"
+                <ModelViewer v-if="hasRendered" v-show="isRendering" :model-url="model.fileUrl" :visible="isRendering" class="w-full h-full" />
+                <img v-show="!isRendering" :src="model.thumbnailUrl || '/placeholder.png'" alt="cover"
                   class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 <button @click="toggleRender"
                   class="absolute top-4 left-4 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2">
@@ -276,6 +276,7 @@ const authorInitial = computed(() => {
   return name.charAt(0).toUpperCase()
 })
 const isFollowing = ref(false)
+const hasRendered = ref(false)
 const isRendering = ref(false)
 const activeTab = ref('info')
 const linksSectionRef = ref(null)
@@ -288,6 +289,7 @@ const tabs = [
 ]
 
 const toggleRender = () => {
+  if (!hasRendered.value) hasRendered.value = true
   isRendering.value = !isRendering.value
 }
 

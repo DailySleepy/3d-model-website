@@ -124,6 +124,7 @@ import { onMounted, onBeforeUnmount, ref, reactive, watch } from 'vue';
 import { WebGLRenderer, PerspectiveCamera, Scene, FogExp2, Color, Uniform } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { LumaSplatsSemantics, LumaSplatsThree } from '@lumaai/luma-web';
+import { disposeScene } from '@/rendering/utils';
 
 // 场景列表
 const sceneList = {
@@ -362,8 +363,34 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onWindowResize);
-  if (renderer) renderer.dispose();
-  if (splats) splats.dispose();
+
+  if (renderer) {
+    renderer.setAnimationLoop(null);
+  }
+
+  if (controls) {
+    controls.dispose();
+    controls = null;
+  }
+
+  if (splats) {
+    if (scene) scene.remove(splats);
+    splats.dispose();
+    splats = null;
+  }
+
+  if (scene) {
+    disposeScene(scene);
+    scene = null;
+  }
+
+  if (renderer) {
+    renderer.dispose();
+    renderer.forceContextLoss();
+    renderer = null;
+  }
+
+  camera = null;
 });
 </script>
 
