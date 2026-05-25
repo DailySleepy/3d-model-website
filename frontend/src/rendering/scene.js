@@ -33,10 +33,12 @@ export function initScene(container) {
   return {scene, camera, renderer, controls}
 }
 
-export async function loadModel(modelPath, scene, camera, controls) {
+export async function loadModel(modelPath, scene, camera, controls, onProgress) {
   const loader = new GLTFLoader()
   const gltf = await loader.loadAsync(modelPath, (xhr) => {
-      console.log((xhr.loaded / xhr.total * 100) + '% loaded')
+    if (xhr.total > 0) {
+      onProgress(Math.round(xhr.loaded / xhr.total * 100))
+    }
   })
 
   while (scene.children.length > lightCount) {

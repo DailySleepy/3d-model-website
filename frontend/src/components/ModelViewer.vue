@@ -1,5 +1,25 @@
 <template>
-  <div ref="container" class="w-full h-full model-viewer-container"></div>
+  <div ref="container" class="w-full h-full model-viewer-container relative">
+
+    <div v-if="isLoading" class="absolute inset-0 bg-[radial-gradient(circle,#303030,#121212)] flex flex-col justify-center items-center z-[999]">
+
+      <div class="relative w-[120px] h-[120px] flex justify-center items-center">
+
+        <svg class="-rotate-90" width="120" height="120">
+          <circle class="stroke-white/10" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+          <circle class="stroke-cyan-400 transition-[stroke-dashoffset] duration-150 ease-out"
+            stroke-width="8" fill="transparent" r="50" cx="60" cy="60"
+            stroke-dasharray="314.16"
+            :stroke-dashoffset="314.16 * (1 - loadingProgress / 100)"/>
+        </svg>
+
+        <span class="absolute text-xl font-semibold text-white">{{ loadingProgress }}%</span>
+      </div>
+
+      <div class="mt-4 text-sm text-zinc-400 uppercase tracking-widest">loading</div>
+    </div>
+
+  </div>
 </template>
 
 <script setup>
@@ -32,6 +52,9 @@ let controls = null
 let mixer = null
 let animationId = null
 const clock = new THREE.Clock()
+
+const isLoading = ref(true);
+const loadingProgress = ref(0);
 
 const animate = () => {
   if (!props.visible) return
@@ -68,9 +91,16 @@ onMounted(async () => {
 
   if (props.modelUrl) {
     try {
-      mixer = await loadModel(props.modelUrl, scene, camera, controls)
+      isLoading.value = true
+      loadingProgress.value = 0
+
+      mixer = await loadModel(props.modelUrl, scene, camera, controls, (percent) => {
+        loadingProgress.value = percent
+      })
     } catch (error) {
       console.error("模型加载失败", error)
+    } finally {
+      isLoading.value = false
     }
   }
   animate()
