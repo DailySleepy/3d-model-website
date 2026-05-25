@@ -82,6 +82,7 @@ public class ModelActionController {
         dto.setPreviewUrls(model.getPreviewUrls());
         dto.setFileUrl(model.getFileUrl());
         dto.setThumbnailUrl(model.getThumbnailUrl());
+        dto.setShaderGraphJson(model.getShaderGraphJson());
 
         dto.setLikeCount(model.getLikeCount() == null ? 0 : model.getLikeCount());
         dto.setCollectCount(model.getCollectCount() == null ? 0 : model.getCollectCount());
