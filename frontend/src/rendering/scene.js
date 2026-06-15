@@ -1,11 +1,10 @@
-import * as THREE from 'three'
+import * as THREE from 'three/webgpu'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { createRadialGradientTexture } from './utils.js'
 
 const WIDTH = 1200
 const HEIGHT = 675
-let lightCount = 0
 
 export function initScene(container) {
   const scene = new THREE.Scene()
@@ -14,7 +13,9 @@ export function initScene(container) {
   const camera = new THREE.PerspectiveCamera(45, WIDTH / HEIGHT, 0.1, 1000)
   camera.position.z = 2
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true })
+  const renderer = new THREE.WebGPURenderer({ antialias: true })
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
   renderer.setSize(WIDTH, HEIGHT, false)
   renderer.domElement.style.width = '100%'
   renderer.domElement.style.height = '100%'
@@ -25,7 +26,7 @@ export function initScene(container) {
   const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
   directionalLight.position.set(5, 5, 5)
   scene.add(directionalLight)
-  lightCount = 2
+  scene.lightCount = 2;
 
   const controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
@@ -41,6 +42,7 @@ export async function loadModel(modelPath, scene, camera, controls, onProgress) 
     }
   })
 
+  let lightCount = scene.lightCount || 2
   while (scene.children.length > lightCount) {
     const object = scene.children[lightCount]
     if (object.isMesh || object.isGroup) {

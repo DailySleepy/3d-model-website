@@ -1,8 +1,8 @@
-import * as THREE from 'three'
+import * as THREE from 'three/webgpu'
 
 const TEXTURE_KEYS = [
-  'map', 'lightMap', 'aoMap', 'emissiveMap', 'bumpMap', 
-  'normalMap', 'displacementMap', 'roughnessMap', 'metalnessMap', 
+  'map', 'lightMap', 'aoMap', 'emissiveMap', 'bumpMap',
+  'normalMap', 'displacementMap', 'roughnessMap', 'metalnessMap',
   'alphaMap', 'envMap', 'gradientMap'
 ];
 
@@ -73,12 +73,10 @@ export function debugMaterial(rootObject) {
 }
 
 /**
- * 
- * @param {THREE.Object3D | null} obj 
- * @returns 
+ * 递归清理 Scene
+ * @param {THREE.Object3D | null} obj
  */
 export function disposeScene(obj) {
-  console.log("is disposing Scene")
   if (!obj) return
 
   if (obj.children) {
@@ -86,6 +84,10 @@ export function disposeScene(obj) {
   }
 
   obj.removeFromParent()
+
+  if (typeof obj.dispose === 'function') {
+    obj.dispose();
+  }
 
   if (obj.isLight) {
     if (obj.shadow && obj.shadow.map) {
@@ -101,23 +103,16 @@ export function disposeScene(obj) {
     disposeMaterial(obj.material)
   }
 
-  if (obj.isSkinnedMesh) {
-    if (obj.skeleton) {
-      if (obj.skeleton.boneTexture) {
-        obj.skeleton.boneTexture.dispose()
-      }
-      obj.skeleton.dispose()
-    }
+  if (obj.isSkinnedMesh && obj.skeleton) {
+    obj.skeleton.dispose()
   }
 }
 
 /**
- * 
- * @param {THREE.Material | THREE.Material[] | null} material 
- * @returns 
+ * 清理普通 Material 或递归清理 NodeMaterial
+ * @param {THREE.Material | THREE.Material[] | null} material
  */
 export function disposeMaterial(material) {
-  console.log("is disposing Material")
   if (!material) return
 
   if (Array.isArray(material)) {
@@ -125,12 +120,35 @@ export function disposeMaterial(material) {
     return
   }
 
+  if (material.isNodeMaterial) {
+    disposeNodeMaterial(material)
+  }
+  else {
+    disposeClassicMaterial(material)
+  }
+}
+
+function disposeNodeMaterial(material) {
+  const disposeTexture = (node) => {
+    if (node && node.isTextureNode && node.value && node.value.isTexture) {
+      node.value.dispose()
+    }
+  }
+
+  for (const key in material) {
+    if (key.endsWith('Node') && material[key]) {
+      material[key].traverse(disposeTexture)
+    }
+  }
+  material.dispose()
+}
+
+function disposeClassicMaterial(material) {
   for (const key of TEXTURE_KEYS) {
     let texture = material[key]
     if (texture && texture.isTexture) {
       texture.dispose()
     }
   }
-
   material.dispose()
 }
