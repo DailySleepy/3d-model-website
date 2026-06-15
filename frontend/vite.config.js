@@ -32,6 +32,11 @@ export default defineConfig(({ mode }) => {
           target: targetUrl,
           ws: true,
           changeOrigin: true
+        },
+        '/api/llm': {
+          target: 'http://127.0.0.1:55557/v1',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/llm/, '')
         }
       }
     },
