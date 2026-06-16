@@ -3,6 +3,7 @@
     <GraphHeader
       v-model:active-tab="activeTab"
       v-model:particle-count="particleCount"
+      v-model:selectedGeometry="selectedGeometry"
       @on-particle-count-change="onParticleCountChange"
       @on-geometry-change="onGeometryChange"
       @on-custom-model-upload="onCustomModelUpload"
@@ -10,13 +11,24 @@
     />
 
     <!-- Workspace -->
-    <div>
+    <div ref="workspaceRef" class="flex-1 flex overflow-hidden relative">
+
       <!-- Vue Flow 画布 -->
-      <div></div>
+      <div class="h-full relative" :style="{ width: graphWidth > 0 ? `${graphWidth}px` : '62%' }">
+        <GraphCanvas
+          v-model:nodes="currentNodes"
+          v-model:edges="currentEdges"
+          :active-tab="activeTab"
+        />
+      </div>
+
       <!-- 分界线 -->
-      <div></div>
+      <div class="w-1.5 h-full bg-zinc-900 border-x border-zinc-800 hover:bg-indigo-500 hover:border-indigo-500 cursor-col-resize transition-all duration-150 z-10 select-none shrink-0"
+        @mousedown="startResizing"
+      ></div>
+
       <!-- Three.js 渲染 -->
-      <div></div>
+      <div ref="canvasContainer" class="flex-1 h-full"></div>
     </div>
   </div>
 </template>
@@ -24,8 +36,13 @@
 <script setup>
 import { ShaderGraphEngine } from '@/rendering/shader-graph/engine'
 import { nodeRegistry } from '@/rendering/shader-graph/nodeRegistry'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, provide, ref } from 'vue'
+
+import GraphCanvas from './components/GraphCanvas.vue'
 import GraphHeader from './components/GraphHeader.vue'
+
+import { createNode } from './utils/nodeFactory.js'
+import { useGraphResize } from './composables/useGraphResize.js'
 
 const activeTab = ref('material')
 const canvasContainer = ref(null)
@@ -33,38 +50,32 @@ const particleCount = ref(1)
 const selectedGeometry = ref('sphere')
 const customModelFile = ref(null)
 const customModelUrl = ref(null)
+const workspaceRef = ref(null)
+const graphWidth = ref(0)
 
 const isMat = computed(() => activeTab.value === 'material')
-
-const createNode = (type, position) => {
-  const config = nodeRegistry[type]
-  if (!config) return
-
-  return {
-    id: `node-${type}-${Date.now()}`,
-    type: type,
-    position: position,
-    data: {
-      label: config.label,
-      category: config.category,
-      properties: config.defaultProperties ? structuredClone(config.defaultProperties) : {},
-      inputs: config.inputs ? structuredClone(config.inputs) : [],
-      outputs: config.outputs ? structuredClone(config.outputs) : [],
-    }
-  }
-}
-
-const spawnNode = (type, position) => {
-  const newNode = createNode(type, position)
-  const nodeList = isMat.value ? matNodes.value : simNodes.value
-  nodeList.push(newNode)
-}
 
 const matNodes = ref([createNode('mat-output', { x: 750, y: 300 })])
 const matEdges = ref([])
 
 const simNodes = ref([createNode('sim-output', { x: 750, y: 300 })])
 const simEdges = ref([])
+
+const currentNodes = computed({
+  get: () => isMat.value ? matNodes.value : simNodes.value,
+  set: (val) => {
+    if (isMat.value) matNodes.value = val
+    else simNodes.value = val
+  }
+})
+
+const currentEdges = computed({
+  get: () => isMat.value ? matEdges.value : simEdges.value,
+  set: (val) => {
+    if (isMat.value) matEdges.value = val
+    else simEdges.value = val
+  }
+})
 
 /** @type {ShaderGraphEngine} */
 let engineInstance = null
@@ -130,6 +141,19 @@ const onParticleReset = async () => {
     isUpdating = false
   }
 }
+
+const { startResizing } = useGraphResize(workspaceRef, graphWidth, () => {
+  if (engineInstance) {
+    engineInstance.resize()
+  }
+})
+
+const triggerCompile = () => {
+  if (isMat.value) compileMaterial()
+  else compileSimulation()
+}
+
+provide('triggerCompile', triggerCompile)
 
 onMounted(() => {
   if (canvasContainer.value) {
