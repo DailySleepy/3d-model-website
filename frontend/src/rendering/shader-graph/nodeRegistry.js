@@ -41,13 +41,13 @@ export const DEFAULT_NODE_CONSTRUCTORS = {
 
   // Semantic types
   'color': (v) => tsl.color(v ?? '#000000'),
-  'materialColor': tsl.materialColor,
-  'materialRoughness': tsl.materialRoughness,
-  'materialMetalness': tsl.materialMetalness,
-  'materialEmissive': tsl.materialEmissive,
-  'materialNormal': tsl.materialNormal,
-  'materialAO': tsl.materialAO,
-  'positionLocal': tsl.positionLocal,
+  'materialColor': () => null,
+  'materialRoughness': () => null,
+  'materialMetalness': () => null,
+  'materialEmissive': () => null,
+  'materialNormal': () => null,
+  'materialAO': () => null,
+  'positionLocal': () => null,
 };
 
 export const getDimension = (type) => TYPE_METADATA_REGISTRY[type]?.dim || 1;
