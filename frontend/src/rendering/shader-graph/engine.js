@@ -182,7 +182,7 @@ export class ShaderGraphEngine {
     const gltf = await loader.loadAsync(url)
 
     // 应用变换并简化模型(只提取normal/position/index)
-    // ERROR: lack of uv
+    // ERROR: lack of uv and material
     // TODO: 放弃合并，保留层级架构
     const geometryArray = []
     gltf.scene.updateMatrixWorld(true)
@@ -215,8 +215,10 @@ export class ShaderGraphEngine {
         const scale = 0.4 / (size || 1) // TODO: scale model or change fov
         merged.scale(scale, scale, scale)
         merged.center()
+        return merged
       } catch (err) {
         console.error("Failed to merge geometries, falling back to first child mesh geometry:", err)
+        return geometryArray[0]
       }
     } else {
       return new THREE.SphereGeometry(0.15, 16, 16)
