@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 font-sans overflow-hidden select-none">
     <GraphHeader
-      v-model:active-tab="activeTab"
-      v-model:particle-count="particleCount"
+      v-model:activeTab="activeTab"
+      v-model:particleCount="particleCount"
       v-model:selectedGeometry="selectedGeometry"
-      @on-particle-count-change="onParticleCountChange"
-      @on-geometry-change="onGeometryChange"
-      @on-custom-model-upload="onCustomModelUpload"
-      @on-particle-reset="onParticleReset"
+      @onParticleCountChange="onParticleCountChange"
+      @onGeometryChange="onGeometryChange"
+      @onCustomModelUpload="onCustomModelUpload"
+      @onParticleReset="onParticleReset"
     />
 
     <!-- Workspace -->
@@ -18,7 +18,7 @@
         <GraphCanvas
           v-model:nodes="currentNodes"
           v-model:edges="currentEdges"
-          :active-tab="activeTab"
+          :activeTab="activeTab"
         />
       </div>
 
@@ -35,7 +35,6 @@
 
 <script setup>
 import { ShaderGraphEngine } from '@/rendering/shader-graph/engine'
-import { nodeRegistry } from '@/rendering/shader-graph/nodeRegistry'
 import { computed, onMounted, onUnmounted, provide, ref } from 'vue'
 
 import GraphCanvas from './components/GraphCanvas.vue'
@@ -148,9 +147,17 @@ const { startResizing } = useGraphResize(workspaceRef, graphWidth, () => {
   }
 })
 
+let compileTimeout = null
+
 const triggerCompile = () => {
-  if (isMat.value) compileMaterial()
-  else compileSimulation()
+  if (compileTimeout) {
+    clearTimeout(compileTimeout)
+  }
+
+  compileTimeout = setTimeout(() => {
+    if (isMat.value) compileMaterial()
+    else compileSimulation()
+  }, 50)
 }
 
 provide('triggerCompile', triggerCompile)
@@ -175,5 +182,3 @@ onUnmounted(() => {
 })
 
 </script>
-
-
