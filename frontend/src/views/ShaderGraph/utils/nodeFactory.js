@@ -9,9 +9,14 @@ export const createNode = (type, position) => {
   const config = nodeRegistry[type]
   if (!config) return
 
-  const inputs = {}
-  const properties = config.defaultProperties ? structuredClone(config.defaultProperties) : {}
+  const properties = {}
+  if (config.properties) {
+    Object.entries(config.properties).forEach(([key, propSchema]) => {
+      properties[key] = structuredClone(propSchema.default)
+    })
+  }
 
+  const inputs = {}
   if (config.inputs) {
     config.inputs.forEach(socket => {
       const defaultValue = typeof socket.defaultValue === 'function'

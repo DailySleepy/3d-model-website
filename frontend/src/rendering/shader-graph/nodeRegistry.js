@@ -124,8 +124,11 @@ export const constantNodes = {
   'float': {
     label: '浮点数 (float)',
     category: 'CONSTANT',
-    defaultProperties: {
-      value: 1.0
+    properties: {
+      value: {
+        default: 1.0,
+        label: '数值'
+      }
     },
     inputs: [],
     outputs: [
@@ -137,51 +140,20 @@ export const constantNodes = {
   'color': {
     label: '颜色 (color)',
     category: 'CONSTANT',
-    defaultProperties: {
-      value: '#ff5395'
+    properties: {
+      value: {
+        default: '#ff5395',
+        label: '颜色'
+      }
     },
     inputs: [],
     outputs: [
-      { id: 'out', defaultType: 'vec3' }
+      { id: 'out', defaultType: 'color' }
     ],
     inferType() { return 'vec3' },
     compile: ({ nodeProps }) => tsl.color(nodeProps?.value ?? '#ff5395')
   },
-  'originalMaterial': {
-    label: '原始材质 (originalMaterial)',
-    category: 'CONSTANT',
-    inputs: [],
-    outputs: [
-      { id: 'out-color',     defaultType: 'vec3' },
-      { id: 'out-roughness', defaultType: 'float' },
-      { id: 'out-metalness', defaultType: 'float' },
-      { id: 'out-emissive',  defaultType: 'vec3' },
-      { id: 'out-normal',    defaultType: 'vec3' },
-      { id: 'out-ao',        defaultType: 'float' }
-    ],
-    inferType({ outputSocketId }) {
-      switch (outputSocketId) {
-        case 'out-roughness':
-        case 'out-metalness':
-        case 'out-ao':
-          return 'float'
-        default:
-          return 'vec3'
-      }
-    },
-    compile: ({ outputSocketId }) => {
-      switch (outputSocketId) {
-        case 'out-color': return tsl.materialColor
-        case 'out-roughness': return tsl.materialRoughness
-        case 'out-metalness': return tsl.materialMetalness
-        case 'out-emissive': return tsl.materialEmissive
-        case 'out-normal': return tsl.materialNormal
-        case 'out-ao': return tsl.materialAO
-        default: return tsl.materialColor
-      }
-    }
-  },
-}
+} // TODO: 向量, 整数, bool, 旋转(欧拉角)
 
 // --- Geometry Nodes ---
 export const geometryNodes = {
@@ -265,6 +237,41 @@ export const geometryNodes = {
     inferType() { return 'float' },
     compile: () => tsl.float(tsl.instanceIndex)
   },
+  'originalMaterial': {
+    label: '原始材质 (originalMaterial)',
+    category: 'GEOMETRY',
+    inputs: [],
+    outputs: [
+      { id: 'out-color',     defaultType: 'materialColor' },
+      { id: 'out-roughness', defaultType: 'materialRoughness' },
+      { id: 'out-metalness', defaultType: 'materialMetalness' },
+      { id: 'out-emissive',  defaultType: 'materialEmissive' },
+      { id: 'out-normal',    defaultType: 'materialNormal' },
+      { id: 'out-ao',        defaultType: 'materialAO' }
+    ],
+    inferType({ outputSocketId }) {
+      switch (outputSocketId) {
+        case 'out-roughness':
+        case 'out-metalness':
+        case 'out-ao':
+          return 'float'
+        default:
+          return 'vec3'
+      }
+    },
+    compile: ({ outputSocketId }) => {
+      switch (outputSocketId) {
+        case 'out-color': return tsl.materialColor
+        case 'out-roughness': return tsl.materialRoughness
+        case 'out-metalness': return tsl.materialMetalness
+        case 'out-emissive': return tsl.materialEmissive
+        case 'out-normal': return tsl.materialNormal
+        case 'out-ao': return tsl.materialAO
+        default: return tsl.materialColor
+      }
+    }
+  },
+  // TODO: 物体的特定 Mesh
 }
 
 // --- Vector Nodes ---
@@ -470,8 +477,12 @@ export const advancedNodes = {
   'mapRange': {
     label: '区间映射 (mapRange)',
     category: 'ADVANCED',
-    defaultProperties: {
-      mode: 'linear'
+    properties: {
+      mode: {
+        options: ['linear', 'linearClamped', 'smoothstep'],
+        default: 'linear',
+        label: '映射模式'
+      }
     },
     inputs: [
       { id: 'in-x',    defaultType: 'float', defaultValue: 0.5 },
@@ -502,10 +513,22 @@ export const advancedNodes = {
   'transform': {
     label: '空间变换 (transform)',
     category: 'ADVANCED',
-    defaultProperties: {
-      from: 'local',
-      to: 'world',
-      transformType: 'point'
+    properties: {
+      from: {
+        options: ['local', 'world', 'view'],
+        default: 'local',
+        label: '源空间'
+      },
+      to: {
+        options: ['local', 'world', 'view'],
+        default: 'world',
+        label: '目标空间'
+      },
+      transformType: {
+        options: ['point', 'direction'],
+        default: 'point',
+        label: '变换类型'
+      }
     },
     inputs: [
       { id: 'in-vector', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0] }
@@ -559,8 +582,12 @@ export const advancedNodes = {
   'compare': {
     label: '条件比较 (compare)',
     category: 'ADVANCED',
-    defaultProperties: {
-      op: '=='
+    properties: {
+      op: {
+        options: ['==', '!=', '<', '<=', '>', '>='],
+        default: '==',
+        label: '比较符'
+      }
     },
     inputs: [
       { id: 'in-a', defaultType: 'float', defaultValue: 0.0 },
@@ -597,8 +624,12 @@ export const advancedNodes = {
   'random': {
     label: '随机数 (random)',
     category: 'ADVANCED',
-    defaultProperties: {
-      randomType: 'float'
+    properties: {
+      randomType: {
+        options: ['float', 'int', 'bool', 'vec2', 'vec3', 'vec4'],
+        default: 'float',
+        label: '随机类型'
+      }
     },
     inputs: [
       { id: 'in-seed', defaultType: 'float', defaultValue: 0.0 },
@@ -669,7 +700,7 @@ export const customNodes = {
   'custom': {
     label: '自定义代码块 (custom)',
     category: 'CUSTOM',
-    defaultProperties: {
+    properties: {
       inputs: [],
       code: 'return vec3<f32>(0.0)',
       returnType: 'vec3'
