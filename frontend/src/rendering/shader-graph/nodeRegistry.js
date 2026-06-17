@@ -8,7 +8,7 @@ export const TYPE_METADATA_REGISTRY = {
   'vec2':          { dim: 2, wgslType: 'vec2<f32>' },
   'vec3':          { dim: 3, wgslType: 'vec3<f32>' },
   'vec4':          { dim: 4, wgslType: 'vec4<f32>' }
-};
+}
 
 export const SEMANTIC_TO_DATA_TYPE = {
   // Basic data types
@@ -28,11 +28,11 @@ export const SEMANTIC_TO_DATA_TYPE = {
   'materialNormal': 'vec3',
   'materialAO': 'float',
   'positionLocal': 'vec3',
-};
+}
 
 export const DEFAULT_NODE_CONSTRUCTORS = {
   // Basic data types
-  'float': (v) => tsl.float(v ?? 0.0),
+  'float': (v) => tsl.float(v ?? 0.0), // TODO: tsl.uniform
   'int': (v) => tsl.int(v ?? 0),
   'bool': (v) => tsl.bool(v ?? false),
   'vec2': (v) => tsl.vec2(...(v || [0, 0])),
@@ -48,27 +48,44 @@ export const DEFAULT_NODE_CONSTRUCTORS = {
   'materialNormal': () => null,
   'materialAO': () => null,
   'positionLocal': () => null,
-};
+}
 
-export const getDimension = (type) => TYPE_METADATA_REGISTRY[type]?.dim || 1;
-export const getWgslType = (type) => TYPE_METADATA_REGISTRY[type]?.wgslType || 'f32';
+export const getDimension = (type) => TYPE_METADATA_REGISTRY[type]?.dim || 1
+export const getWgslType = (type) => TYPE_METADATA_REGISTRY[type]?.wgslType || 'f32'
 
-export function getSocketDefaultNode(socket, vueNode) {
-  const nodeProps = vueNode.data?.properties || {};
-  const rawType = typeof socket.defaultType === 'function' ? socket.defaultType(nodeProps) : socket.defaultType;
-  const type = rawType || 'float';
+export function getSocketDefaultResult(vueNode, socketId) {
+  const nodeProps = vueNode.data?.properties || {}
+
+  const nodeConfig = nodeRegistry[vueNode.type]
+  const socketConfig = nodeConfig?.inputs?.find(input => input.id === socketId)
+
+  if (!socketConfig) {
+    console.warn('Unexpected')
+    return { node: tsl.float(0.0), type: 'float' }
+  }
+
+  const type = typeof socketConfig.defaultType === 'function' ? socketConfig.defaultType(nodeProps) : socketConfig.defaultType
+
+  // 转换成基础类型返回，给编译器使用
+  const dataType = SEMANTIC_TO_DATA_TYPE[type] || type
 
   // 优先从节点实例的 inputs 字段获取当前输入值/滑块值
-  let value = vueNode.data?.inputs?.[socket.id];
+  let value = vueNode.data?.inputs?.[socketId]
+  // 否则读取配置默认值
   if (value === undefined) {
-    value = typeof socket.defaultValue === 'function' ? socket.defaultValue(nodeProps) : socket.defaultValue;
+    value = typeof socketConfig.defaultValue === 'function' ? socketConfig.defaultValue(nodeProps) : socketConfig.defaultValue
   }
 
-  const constructor = DEFAULT_NODE_CONSTRUCTORS[type];
+  const constructor = DEFAULT_NODE_CONSTRUCTORS[type]
+  let node = null
   if (constructor) {
-    return typeof constructor === 'function' ? constructor(value, vueNode) : constructor;
+    node = typeof constructor === 'function' ? constructor(value) : constructor
+  } else {
+    console.warn('Unexpected')
+    node = tsl.float(0.0)
   }
-  return tsl.float(0.0);
+
+  return { node, type: dataType }
 }
 
 // --- Output Nodes ---
@@ -86,8 +103,8 @@ export const outputNodes = {
       { id: 'in-position',  defaultType: 'positionLocal' }
     ],
     outputs: [],
-    inferType() { return 'void'; },
-    compile() { return null; }
+    inferType() { return 'void' },
+    compile() { return null }
   },
   'sim-output': {
     label: '粒子物理输出 (sim-output)',
@@ -97,8 +114,8 @@ export const outputNodes = {
       { id: 'init-velocity', defaultType: 'vec3',  defaultValue: [0.0, 0.0, 0.0] }
     ],
     outputs: [],
-    inferType() { return 'void'; },
-    compile() { return null; }
+    inferType() { return 'void' },
+    compile() { return null }
   }
 }
 
@@ -114,7 +131,7 @@ export const constantNodes = {
     outputs: [
       { id: 'out', defaultType: 'float' }
     ],
-    inferType() { return 'float'; },
+    inferType() { return 'float' },
     compile: ({ nodeProps }) => tsl.float(nodeProps?.value ?? 1.0)
   },
   'color': {
@@ -127,7 +144,7 @@ export const constantNodes = {
     outputs: [
       { id: 'out', defaultType: 'vec3' }
     ],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile: ({ nodeProps }) => tsl.color(nodeProps?.value ?? '#ff5395')
   },
   'originalMaterial': {
@@ -147,9 +164,9 @@ export const constantNodes = {
         case 'out-roughness':
         case 'out-metalness':
         case 'out-ao':
-          return 'float';
+          return 'float'
         default:
-          return 'vec3';
+          return 'vec3'
       }
     },
     compile: ({ outputSocketId }) => {
@@ -175,7 +192,7 @@ export const geometryNodes = {
     outputs: [
       { id: 'out', defaultType: 'vec3' }
     ],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile: () => tsl.positionLocal
   },
   'normalWorld': {
@@ -185,7 +202,7 @@ export const geometryNodes = {
     outputs: [
       { id: 'out', defaultType: 'vec3' }
     ],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile: () => tsl.normalWorld
   },
   'normalLocal': {
@@ -195,7 +212,7 @@ export const geometryNodes = {
     outputs: [
       { id: 'out', defaultType: 'vec3' }
     ],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile: () => tsl.normalLocal
   },
   'uv': {
@@ -205,7 +222,7 @@ export const geometryNodes = {
     outputs: [
       { id: 'out', defaultType: 'vec2' }
     ],
-    inferType() { return 'vec2'; },
+    inferType() { return 'vec2' },
     compile: () => tsl.uv()
   },
   'time': {
@@ -215,7 +232,7 @@ export const geometryNodes = {
     outputs: [
       { id: 'out', defaultType: 'float' }
     ],
-    inferType() { return 'float'; },
+    inferType() { return 'float' },
     compile: ({ uniforms }) => uniforms.time || tsl.timerLocal()
   },
   'lightDir': {
@@ -225,7 +242,7 @@ export const geometryNodes = {
     outputs: [
       { id: 'out', defaultType: 'vec3' }
     ],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile: ({ uniforms }) => uniforms.lightDir
   },
   'viewDir': {
@@ -235,7 +252,7 @@ export const geometryNodes = {
     outputs: [
       { id: 'out', defaultType: 'vec3' }
     ],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile: () => tsl.cameraPosition.sub(tsl.positionWorld).normalize()
   },
   'instanceIndex': {
@@ -245,7 +262,7 @@ export const geometryNodes = {
     outputs: [
       { id: 'out', defaultType: 'float' }
     ],
-    inferType() { return 'float'; },
+    inferType() { return 'float' },
     compile: () => tsl.float(tsl.instanceIndex)
   },
 }
@@ -263,7 +280,7 @@ export const vectorNodes = {
     outputs: [
       { id: 'out', defaultType: 'vec3' }
     ],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile: ({ inputs }) => tsl.vec3(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'), inputs.compiledNode('in-z'))
   },
   'splitVec3': {
@@ -277,7 +294,7 @@ export const vectorNodes = {
       { id: 'out-y', defaultType: 'float' },
       { id: 'out-z', defaultType: 'float' }
     ],
-    inferType() { return 'float'; },
+    inferType() { return 'float' },
     compile: ({ inputs, outputSocketId }) => {
       const inputVec3 = inputs.compiledNode('in')
       switch (outputSocketId) {
@@ -329,7 +346,7 @@ export const mathNodes = {
     category: 'MATH',
     inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0 }],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in'); },
+    inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.sin(inputs.compiledNode('in'))
   },
   'cos': {
@@ -337,7 +354,7 @@ export const mathNodes = {
     category: 'MATH',
     inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0 }],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in'); },
+    inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.cos(inputs.compiledNode('in'))
   },
   'abs': {
@@ -345,7 +362,7 @@ export const mathNodes = {
     category: 'MATH',
     inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0 }],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in'); },
+    inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.abs(inputs.compiledNode('in'))
   },
   'frac': {
@@ -353,7 +370,7 @@ export const mathNodes = {
     category: 'MATH',
     inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0 }],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in'); },
+    inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.fract(inputs.compiledNode('in'))
   },
   'add': {
@@ -364,7 +381,7 @@ export const mathNodes = {
       { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-a'); },
+    inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.add(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
   'sub': {
@@ -375,7 +392,7 @@ export const mathNodes = {
       { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-a'); },
+    inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.sub(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
   'mul': {
@@ -386,7 +403,7 @@ export const mathNodes = {
       { id: 'in-b', defaultType: 'float', defaultValue: 1.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-a'); },
+    inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.mul(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
   'div': {
@@ -397,7 +414,7 @@ export const mathNodes = {
       { id: 'in-b', defaultType: 'float', defaultValue: 1.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-a'); },
+    inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.div(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
   'dot': {
@@ -408,7 +425,7 @@ export const mathNodes = {
       { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType() { return 'float'; },
+    inferType() { return 'float' },
     compile: ({ inputs }) => tsl.dot(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
 }
@@ -424,7 +441,7 @@ export const advancedNodes = {
       { id: 'in-max', defaultType: 'float', defaultValue: 1.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-x'); },
+    inferType({ inputs }) { return inputs.type('in-x') },
     compile: ({ inputs }) => tsl.clamp(inputs.compiledNode('in-x'), inputs.compiledNode('in-min'), inputs.compiledNode('in-max'))
   },
   'step': {
@@ -435,7 +452,7 @@ export const advancedNodes = {
       { id: 'in-x',    defaultType: 'float', defaultValue: 0.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-x'); },
+    inferType({ inputs }) { return inputs.type('in-x') },
     compile: ({ inputs }) => tsl.step(inputs.compiledNode('in-edge'), inputs.compiledNode('in-x'))
   },
   'smoothstep': {
@@ -447,7 +464,7 @@ export const advancedNodes = {
       { id: 'in-x',     defaultType: 'float', defaultValue: 0.5 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-x'); },
+    inferType({ inputs }) { return inputs.type('in-x') },
     compile: ({ inputs }) => tsl.smoothstep(inputs.compiledNode('in-edge0'), inputs.compiledNode('in-edge1'), inputs.compiledNode('in-x'))
   },
   'mapRange': {
@@ -464,7 +481,7 @@ export const advancedNodes = {
       { id: 'out-max', defaultType: 'float', defaultValue: 1.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-x'); },
+    inferType({ inputs }) { return inputs.type('in-x') },
     compile({ nodeProps, inputs }) {
       const x = inputs.compiledNode('in-x')
       const inMin = inputs.compiledNode('in-min')
@@ -494,7 +511,7 @@ export const advancedNodes = {
       { id: 'in-vector', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0] }
     ],
     outputs: [{ id: 'out', defaultType: 'vec3' }],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile({ nodeProps, inputs }) {
       const vec = inputs.compiledNode('in-vector')
       const from = nodeProps?.from || 'local'
@@ -525,7 +542,7 @@ export const advancedNodes = {
       { id: 'in-b', defaultType: 'vec3', defaultValue: [0.0, 1.0, 0.0] }
     ],
     outputs: [{ id: 'out', defaultType: 'vec3' }],
-    inferType() { return 'vec3'; },
+    inferType() { return 'vec3' },
     compile: ({ inputs }) => tsl.cross(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
   'power': {
@@ -536,7 +553,7 @@ export const advancedNodes = {
       { id: 'in-exponent', defaultType: 'float', defaultValue: 3.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-base'); },
+    inferType({ inputs }) { return inputs.type('in-base') },
     compile: ({ inputs }) => tsl.pow(inputs.compiledNode('in-base'), inputs.compiledNode('in-exponent'))
   },
   'compare': {
@@ -550,7 +567,7 @@ export const advancedNodes = {
       { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType() { return 'float'; },
+    inferType() { return 'float' },
     compile({ nodeProps, inputs }) {
       const a = inputs.compiledNode('in-a')
       const b = inputs.compiledNode('in-b')
@@ -574,7 +591,7 @@ export const advancedNodes = {
       { id: 'in-false', defaultType: 'float', defaultValue: 0.0 }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-true'); },
+    inferType({ inputs }) { return inputs.type('in-true') },
     compile: ({ inputs }) => inputs.compiledNode('in-cond').greaterThan(tsl.float(0.5)).select(inputs.compiledNode('in-true'), inputs.compiledNode('in-false'))
   },
   'random': {
@@ -662,11 +679,11 @@ export const customNodes = {
       { id: 'out', defaultType: 'vec3' }
     ],
     inferType({ nodeProps }) {
-      return nodeProps?.returnType || 'vec3';
+      return nodeProps?.returnType || 'vec3'
     },
     compile({ nodeId, nodeProps, inputs }) {
       const returnType = this.inferType({ nodeProps })
-      if (!nodeProps?.code) return tsl[returnType](0.0);
+      if (!nodeProps?.code) return tsl[returnType](0.0)
 
       const inputsList = nodeProps?.inputs || []
       const wgslParams = []
@@ -709,5 +726,5 @@ export const nodeRegistry = {
 }
 
 export function getNodeRegistryKeys() {
-  return Object.keys(nodeRegistry);
+  return Object.keys(nodeRegistry)
 }

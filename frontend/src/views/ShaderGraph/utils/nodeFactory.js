@@ -9,6 +9,18 @@ export const createNode = (type, position) => {
   const config = nodeRegistry[type]
   if (!config) return
 
+  const inputs = {}
+  const properties = config.defaultProperties ? structuredClone(config.defaultProperties) : {}
+
+  if (config.inputs) {
+    config.inputs.forEach(socket => {
+      const defaultValue = typeof socket.defaultValue === 'function'
+        ? socket.defaultValue(properties)
+        : socket.defaultValue
+      inputs[socket.id] = defaultValue !== undefined ? structuredClone(defaultValue) : undefined
+    })
+  }
+
   return {
     id: `node-${type}-${Date.now()}`,
     type: type,
@@ -16,9 +28,8 @@ export const createNode = (type, position) => {
     data: {
       label: config.label,
       category: config.category,
-      properties: config.defaultProperties ? structuredClone(config.defaultProperties) : {},
-      inputs: config.inputs ? structuredClone(config.inputs) : [],
-      outputs: config.outputs ? structuredClone(config.outputs) : [],
+      properties,
+      inputs
     }
   }
 }

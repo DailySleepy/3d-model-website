@@ -1,5 +1,5 @@
 import * as tsl from 'three/tsl';
-import { nodeRegistry, getSocketDefaultNode, SEMANTIC_TO_DATA_TYPE } from './nodeRegistry';
+import { getSocketDefaultResult, nodeRegistry } from './nodeRegistry';
 
 export class CompilerContext {
   uniforms
@@ -48,12 +48,7 @@ export class CompilerContext {
 
     // 插槽未连接, 返回默认值
     if (!edgeInfo) {
-      const nodeConfig = nodeRegistry[vueNode.type]
-      const inputConfig = nodeConfig?.inputs?.find(input => input.id === inputSocketId)
-      const rawType = typeof inputConfig?.defaultType === 'function' ? inputConfig.defaultType(vueNode.data?.properties) : (inputConfig?.defaultType || 'float')
-      const type = SEMANTIC_TO_DATA_TYPE[rawType] || rawType || 'float'
-      const node = inputConfig ? getSocketDefaultNode(inputConfig, vueNode) : tsl.float(0.0)
-      return { node, type }
+      return getSocketDefaultResult(vueNode, inputSocketId)
     }
 
     // 有连线, 追踪到上游
