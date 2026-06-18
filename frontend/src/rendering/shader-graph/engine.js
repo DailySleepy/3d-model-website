@@ -295,14 +295,14 @@ export class ShaderGraphEngine {
 
     const initPos = fetchInput('init-position')
     const initVel = fetchInput('init-velocity')
-    const realtimeVel = fetchInput('velocity')
-    const realtimeForce = fetchInput('force')
+    const inputVel = fetchInput('velocity')
+    const inputForce = fetchInput('force')
 
     const computeSimulationKernelFn = tsl.Fn(() => {
       const currentPos = this.positionBuffer.element(tsl.instanceIndex)
       const currentVel = this.velocityBuffer.element(tsl.instanceIndex)
 
-      const nextVel = realtimeVel ? realtimeVel : currentVel.add(realtimeForce.mul(this.deltaTimeUniform))
+      const nextVel = inputVel.add(currentVel.add(inputForce.mul(this.deltaTimeUniform)))
       const nextPos = currentPos.add(nextVel.mul(this.deltaTimeUniform))
 
       const isDead = tsl.bool(false) // TODO
