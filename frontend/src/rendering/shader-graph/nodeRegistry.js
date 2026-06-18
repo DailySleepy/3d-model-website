@@ -50,8 +50,8 @@ export const DEFAULT_NODE_CONSTRUCTORS = {
   'positionLocal': () => null,
 }
 
-export const getDimension = (type) => TYPE_METADATA_REGISTRY[type]?.dim || 1
-export const getWgslType = (type) => TYPE_METADATA_REGISTRY[type]?.wgslType || 'f32'
+export const getDimension = (type) => TYPE_METADATA_REGISTRY[SEMANTIC_TO_DATA_TYPE[type] || type]?.dim || 1
+export const getWgslType = (type) => TYPE_METADATA_REGISTRY[SEMANTIC_TO_DATA_TYPE[type] || type]?.wgslType || 'f32'
 
 export function getSocketDefaultResult(vueNode, socketId) {
   const nodeProps = vueNode.data?.properties || {}
@@ -111,7 +111,9 @@ export const outputNodes = {
     category: 'OUTPUT',
     inputs: [
       { id: 'init-position', defaultType: 'vec3',  defaultValue: [0.0, 0.0, 0.0] },
-      { id: 'init-velocity', defaultType: 'vec3',  defaultValue: [0.0, 0.0, 0.0] }
+      { id: 'init-velocity', defaultType: 'vec3',  defaultValue: [0.0, 0.0, 0.0] },
+      { id: 'velocity',      defaultType: 'vec3',  defaultValue: [0.0, 0.0, 0.0] },
+      { id: 'force',         defaultType: 'vec3',  defaultValue: [0.0, 0.0, 0.0] }
     ],
     outputs: [],
     inferType() { return 'void' },
@@ -126,7 +128,8 @@ export const constantNodes = {
     category: 'CONSTANT',
     properties: {
       value: {
-        default: 1.0,
+        type: 'float',
+        default: 0.0,
         label: '数值'
       }
     },
@@ -135,13 +138,31 @@ export const constantNodes = {
       { id: 'out', defaultType: 'float' }
     ],
     inferType() { return 'float' },
-    compile: ({ nodeProps }) => tsl.float(nodeProps?.value ?? 1.0)
+    compile: ({ nodeProps }) => tsl.float(nodeProps?.value ?? 0.0)
+  },
+  'integer': {
+    label: '整数 (integer)',
+    category: 'CONSTANT',
+    properties: {
+      value: {
+        type: 'int',
+        default: 0,
+        label: '数值'
+      }
+    },
+    inputs: [],
+    outputs: [
+      { id: 'out', defaultType: 'int' }
+    ],
+    inferType() { return 'int' },
+    compile: ({ nodeProps }) => tsl.int(nodeProps?.value ?? 0)
   },
   'color': {
     label: '颜色 (color)',
     category: 'CONSTANT',
     properties: {
       value: {
+        type: 'color',
         default: '#ff5395',
         label: '颜色'
       }
@@ -316,11 +337,11 @@ export const vectorNodes = {
     label: '拼接向量 (append)',
     category: 'VECTOR',
     inputs: [
-      { id: 'in-a', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
+      { id: 'in-a', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 0.0, isDynamic: true }
     ],
     outputs: [
-      { id: 'out', defaultType: 'vec3' }
+      { id: 'out', defaultType: 'vec3', isDynamic: true }
     ],
     inferType({ inputs }) {
       const dimA = getDimension(inputs.type('in-a'))
@@ -344,39 +365,39 @@ export const vectorNodes = {
       }
     }
   },
-}
+} // TODO: length, normalize
 
 // --- Math Nodes ---
 export const mathNodes = {
   'sin': {
     label: '正弦 (sin)',
     category: 'MATH',
-    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0 }],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.sin(inputs.compiledNode('in'))
   },
   'cos': {
     label: '余弦 (cos)',
     category: 'MATH',
-    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0 }],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.cos(inputs.compiledNode('in'))
   },
   'abs': {
     label: '绝对值 (abs)',
     category: 'MATH',
-    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0 }],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.abs(inputs.compiledNode('in'))
   },
   'frac': {
     label: '取小数部分 (frac)',
     category: 'MATH',
-    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0 }],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.fract(inputs.compiledNode('in'))
   },
@@ -384,21 +405,21 @@ export const mathNodes = {
     label: '加法 (add)',
     category: 'MATH',
     inputs: [
-      { id: 'in-a', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
+      { id: 'in-a', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 0.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-a') },
-    compile: ({ inputs }) => tsl.add(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in-a') }, // TODO: return typeof max dim (a, b)
+    compile: ({ inputs }) => tsl.add(inputs.compiledNode('in-a'), inputs.compiledNode('in-b')) // TODO: assert dim a == dim b || any(dim a, dim b) == 1
   },
   'sub': {
     label: '减法 (sub)',
     category: 'MATH',
     inputs: [
-      { id: 'in-a', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
+      { id: 'in-a', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 0.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.sub(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
@@ -406,10 +427,10 @@ export const mathNodes = {
     label: '乘法 (mul)',
     category: 'MATH',
     inputs: [
-      { id: 'in-a', defaultType: 'float', defaultValue: 1.0 },
-      { id: 'in-b', defaultType: 'float', defaultValue: 1.0 }
+      { id: 'in-a', defaultType: 'float', defaultValue: 1.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 1.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.mul(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
@@ -417,23 +438,23 @@ export const mathNodes = {
     label: '除法 (div)',
     category: 'MATH',
     inputs: [
-      { id: 'in-a', defaultType: 'float', defaultValue: 1.0 },
-      { id: 'in-b', defaultType: 'float', defaultValue: 1.0 }
+      { id: 'in-a', defaultType: 'float', defaultValue: 1.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 1.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.div(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
-  'dot': {
-    label: '点积 (dot)',
+  'power': {
+    label: '幂 (power)',
     category: 'MATH',
     inputs: [
-      { id: 'in-a', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
+      { id: 'in-base',     defaultType: 'float', defaultValue: 2.0, isDynamic: true },
+      { id: 'in-exponent', defaultType: 'float', defaultValue: 3.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType() { return 'float' },
-    compile: ({ inputs }) => tsl.dot(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in-base') },
+    compile: ({ inputs }) => tsl.pow(inputs.compiledNode('in-base'), inputs.compiledNode('in-exponent'))
   },
 }
 
@@ -443,11 +464,11 @@ export const advancedNodes = {
     label: '区间限制 (clamp)',
     category: 'ADVANCED',
     inputs: [
-      { id: 'in-x',   defaultType: 'float', defaultValue: 0.5 },
-      { id: 'in-min', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-max', defaultType: 'float', defaultValue: 1.0 }
+      { id: 'in-x',   defaultType: 'float', defaultValue: 0.5, isDynamic: true },
+      { id: 'in-min', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-max', defaultType: 'float', defaultValue: 1.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-x') },
     compile: ({ inputs }) => tsl.clamp(inputs.compiledNode('in-x'), inputs.compiledNode('in-min'), inputs.compiledNode('in-max'))
   },
@@ -455,10 +476,10 @@ export const advancedNodes = {
     label: '阶梯步进 (step)',
     category: 'ADVANCED',
     inputs: [
-      { id: 'in-edge', defaultType: 'float', defaultValue: 0.5 },
-      { id: 'in-x',    defaultType: 'float', defaultValue: 0.0 }
+      { id: 'in-edge', defaultType: 'float', defaultValue: 0.5, isDynamic: true },
+      { id: 'in-x',    defaultType: 'float', defaultValue: 0.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-x') },
     compile: ({ inputs }) => tsl.step(inputs.compiledNode('in-edge'), inputs.compiledNode('in-x'))
   },
@@ -466,11 +487,11 @@ export const advancedNodes = {
     label: '平滑步进 (smoothstep)',
     category: 'ADVANCED',
     inputs: [
-      { id: 'in-edge0', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-edge1', defaultType: 'float', defaultValue: 1.0 },
-      { id: 'in-x',     defaultType: 'float', defaultValue: 0.5 }
+      { id: 'in-edge0', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-edge1', defaultType: 'float', defaultValue: 1.0, isDynamic: true },
+      { id: 'in-x',     defaultType: 'float', defaultValue: 0.5, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-x') },
     compile: ({ inputs }) => tsl.smoothstep(inputs.compiledNode('in-edge0'), inputs.compiledNode('in-edge1'), inputs.compiledNode('in-x'))
   },
@@ -485,13 +506,13 @@ export const advancedNodes = {
       }
     },
     inputs: [
-      { id: 'in-x',    defaultType: 'float', defaultValue: 0.5 },
-      { id: 'in-min',  defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-max',  defaultType: 'float', defaultValue: 1.0 },
-      { id: 'out-min', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'out-max', defaultType: 'float', defaultValue: 1.0 }
+      { id: 'in-x',    defaultType: 'float', defaultValue: 0.5, isDynamic: true },
+      { id: 'in-min',  defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-max',  defaultType: 'float', defaultValue: 1.0, isDynamic: true },
+      { id: 'out-min', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'out-max', defaultType: 'float', defaultValue: 1.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-x') },
     compile({ nodeProps, inputs }) {
       const x = inputs.compiledNode('in-x')
@@ -557,6 +578,17 @@ export const advancedNodes = {
       return vec
     }
   },
+  'dot': {
+    label: '点积 (dot)',
+    category: 'ADVANCED',
+    inputs: [
+      { id: 'in-a', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true },
+      { id: 'in-b', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true }
+    ],
+    outputs: [{ id: 'out', defaultType: 'float' }],
+    inferType() { return 'float' },
+    compile: ({ inputs }) => tsl.dot(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
+  },
   'cross': {
     label: '向量叉积 (cross)',
     category: 'ADVANCED',
@@ -567,17 +599,6 @@ export const advancedNodes = {
     outputs: [{ id: 'out', defaultType: 'vec3' }],
     inferType() { return 'vec3' },
     compile: ({ inputs }) => tsl.cross(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
-  },
-  'power': {
-    label: '幂 (power)',
-    category: 'ADVANCED',
-    inputs: [
-      { id: 'in-base',     defaultType: 'float', defaultValue: 2.0 },
-      { id: 'in-exponent', defaultType: 'float', defaultValue: 3.0 }
-    ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
-    inferType({ inputs }) { return inputs.type('in-base') },
-    compile: ({ inputs }) => tsl.pow(inputs.compiledNode('in-base'), inputs.compiledNode('in-exponent'))
   },
   'compare': {
     label: '条件比较 (compare)',
@@ -590,8 +611,8 @@ export const advancedNodes = {
       }
     },
     inputs: [
-      { id: 'in-a', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-b', defaultType: 'float', defaultValue: 0.0 }
+      { id: 'in-a', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 0.0, isDynamic: true }
     ],
     outputs: [{ id: 'out', defaultType: 'float' }],
     inferType() { return 'float' },
@@ -614,10 +635,10 @@ export const advancedNodes = {
     category: 'ADVANCED',
     inputs: [
       { id: 'in-cond',  defaultType: 'float', defaultValue: 1.0 },
-      { id: 'in-true',  defaultType: 'float', defaultValue: 1.0 },
-      { id: 'in-false', defaultType: 'float', defaultValue: 0.0 }
+      { id: 'in-true',  defaultType: 'float', defaultValue: 1.0, isDynamic: true },
+      { id: 'in-false', defaultType: 'float', defaultValue: 0.0, isDynamic: true }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-true') },
     compile: ({ inputs }) => inputs.compiledNode('in-cond').greaterThan(tsl.float(0.5)).select(inputs.compiledNode('in-true'), inputs.compiledNode('in-false'))
   },
@@ -643,7 +664,8 @@ export const advancedNodes = {
           if (type === 'vec3') return [0.0, 0.0, 0.0]
           if (type === 'vec4') return [0.0, 0.0, 0.0, 0.0]
           return 0.0
-        }
+        },
+        isDynamic: true
       },
       {
         id: 'in-max',
@@ -655,10 +677,11 @@ export const advancedNodes = {
           if (type === 'vec4') return [1.0, 1.0, 1.0, 1.0]
           if (type === 'int')  return 100.0
           return 1.0
-        }
+        },
+        isDynamic: true
       }
     ],
-    outputs: [{ id: 'out', defaultType: 'float' }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ nodeProps }) {
       return nodeProps?.randomType || 'float'
     },
