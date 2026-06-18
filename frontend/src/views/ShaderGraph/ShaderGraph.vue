@@ -14,7 +14,7 @@
     <div ref="workspaceRef" class="flex-1 flex overflow-hidden relative">
 
       <!-- Vue Flow 画布 -->
-      <div class="h-full relative" :style="{ width: graphWidth > 0 ? `${graphWidth}px` : '62%' }">
+      <div class="h-full relative shrink-0" :style="{ width: graphWidth > 0 ? `${graphWidth}px` : '62%' }">
         <GraphCanvas
           v-model:nodes="currentNodes"
           v-model:edges="currentEdges"
@@ -28,7 +28,7 @@
       ></div>
 
       <!-- Three.js 渲染 -->
-      <div ref="canvasContainer" class="flex-1 h-full"></div>
+      <div ref="canvasContainer" class="flex-1 h-full min-w-0"></div>
     </div>
   </div>
 </template>
