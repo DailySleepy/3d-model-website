@@ -29,6 +29,12 @@ spring:
         - classpath:/resources/
         - classpath:/static/
         - classpath:/public/
+  data:
+    redis:
+      host: 127.0.0.1       # 本地测用 127.0.0.1，云服务器上如果是同台机器也用 127.0.0.1
+      port: 6379
+      password: Ab123456  # 必须和 redis.conf 中的 requirepass 完全一致
+      timeout: 5000ms
 
 
 mybatis-plus:
