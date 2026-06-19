@@ -8,6 +8,7 @@
       @onGeometryChange="onGeometryChange"
       @onCustomModelUpload="onCustomModelUpload"
       @onParticleReset="onParticleReset"
+      @onCameraReset="onCameraReset"
     />
 
     <!-- Workspace -->
@@ -138,6 +139,12 @@ const onParticleReset = async () => {
     await engineInstance.resetParticleBuffers(simNodes.value, simEdges.value)
   } finally {
     isUpdating = false
+  }
+}
+
+const onCameraReset = () => {
+  if (engineInstance) {
+    engineInstance.resetCamera()
   }
 }
 

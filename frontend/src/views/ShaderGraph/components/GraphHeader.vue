@@ -50,6 +50,12 @@
         重置粒子
       </button>
 
+      <!-- 重置相机 -->
+      <button @click="emit('onCameraReset')"
+        class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-xs transition-all">
+        重置相机
+      </button>
+
       <!-- 导出文件 -->
       <button
         class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-xs transition-all">
@@ -66,7 +72,7 @@ const activeTab = defineModel('activeTab', { type: String, default: 'material' }
 const particleCount = defineModel('particleCount', { type: Number, default: 1 })
 const selectedGeometry = defineModel('selectedGeometry', { type: String, default: 'sphere' })
 
-const emit = defineEmits(['onParticleCountChange', 'onGeometryChange', 'onCustomModelUpload', 'onParticleReset'])
+const emit = defineEmits(['onParticleCountChange', 'onGeometryChange', 'onCustomModelUpload', 'onParticleReset', 'onCameraReset'])
 
 const modelInput = ref(null)
 

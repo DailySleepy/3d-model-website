@@ -1,8 +1,8 @@
-import * as THREE from 'three/webgpu'
-import * as tsl from 'three/tsl'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import * as tsl from 'three/tsl'
+import * as THREE from 'three/webgpu'
 import { disposeScene } from '../utils.js'
 import { CompilerContext } from './compiler.js'
 
@@ -104,6 +104,7 @@ export class ShaderGraphEngine {
     this.timer.getDelta()
 
     this.renderer.setAnimationLoop(() => { // TODO: vs. requestAnimationFrame()
+      this.timer.update()
       let delteTime = this.timer.getDelta()
       if (delteTime > 0.05) delteTime = 0.05
 
@@ -283,7 +284,6 @@ export class ShaderGraphEngine {
   }
 
   compileSimulation(simNodes, simEdges) {
-    console.log("try to compile Simulation")
     if (!this.positionBuffer || !this.velocityBuffer) return
 
     const ctx = new CompilerContext(simNodes, simEdges, {
@@ -298,11 +298,15 @@ export class ShaderGraphEngine {
     const inputVel = fetchInput('velocity')
     const inputForce = fetchInput('force')
 
+    const outputNode = simNodes.find(n => n.type === 'sim-output')
+    const isVelConnected = simEdges.some(edge => edge.target === outputNode?.id && edge.targetHandle === 'velocity')
+
     const computeSimulationKernelFn = tsl.Fn(() => {
       const currentPos = this.positionBuffer.element(tsl.instanceIndex)
       const currentVel = this.velocityBuffer.element(tsl.instanceIndex)
 
-      const nextVel = inputVel.add(currentVel.add(inputForce.mul(this.deltaTimeUniform)))
+      const baseVel = isVelConnected ? inputVel : currentVel
+      const nextVel = baseVel.add(inputForce.mul(this.deltaTimeUniform))
       const nextPos = currentPos.add(nextVel.mul(this.deltaTimeUniform))
 
       const isDead = tsl.bool(false) // TODO
@@ -313,13 +317,9 @@ export class ShaderGraphEngine {
 
     this.simulationKernel = tsl.compute(computeSimulationKernelFn(), this.particleCount)
     this.resetParticleBuffers(simNodes, simEdges)
-
-    console.log("finished compile Simulation")
   }
 
   compileMaterial(matNodes, matEdges) {
-    console.log("try to compile Material")
-
     const ctx = new CompilerContext(matNodes, matEdges, {
       lightDir: this.lightDirUniform,
       time: this.timeUniform
@@ -339,8 +339,14 @@ export class ShaderGraphEngine {
     if (userVertexDeformation) pos = pos.add(userVertexDeformation)
     this.material.positionNode = pos
     this.material.needsUpdate = true
+  }
 
-    console.log("finished compile Material")
+  resetCamera() {
+    if (this.camera && this.controls) {
+      this.camera.position.set(0, 15, 25)
+      this.controls.target.set(0, 0, 0)
+      this.controls.update()
+    }
   }
 
   #clearBuffers() {

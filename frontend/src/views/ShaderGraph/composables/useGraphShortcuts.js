@@ -14,6 +14,11 @@ export function useGraphShortCuts({ canvasRef, nodes, openSearchMenu }) {
   }
 
   const handleGlobalKeyDown = (e) => {
+    const activeEl = document.activeElement
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+      return
+    }
+
     // Shift + A: 打开搜索菜单
     if (e.shiftKey && (e.key === 'A' || e.key === 'a')) {
       e.preventDefault()
@@ -39,6 +44,7 @@ export function useGraphShortCuts({ canvasRef, nodes, openSearchMenu }) {
             id: `node-${node.type}-${Date.now()}-${Math.random().toString().substring(2, 7)}`,
             type: node.type,
             position: { x: node.position.x + 30, y: node.position.y + 30 },
+            data: JSON.parse(JSON.stringify(node.data)),
             selected: true
           }
         })

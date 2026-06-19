@@ -3,24 +3,36 @@
     <VueFlow
       v-model:nodes="nodes"
       v-model:edges="edges"
-      :node-types="nodeTypes"
+      :nodeTypes="nodeTypes"
+      :isValidConnection="isValidConnection"
+      :panOnDrag="[2]"
+      :selectNodesOnDrag="true"
+      :selectionKeyCode="true"
+      :deselectOnDrag="false"
+      :snapToGrid="snapToGrid"
+      :snapGrid="[20, 20]"
+      selection-mode="partial"
+      @connect="onConnect"
+      @edgesChange="onEdgeChange"
+      @edgeDoubleClick="onEdgeDoubleClick"
+      class="vue-flow-dark"
     >
-      <Background pattern-color="#2c2c2e" gap="20" />
+      <Background patternColor="#2c2c2e" gap="20" />
       <Controls />
     </VueFlow>
 
     <NodeSearchMenu
       v-if="searchMenu.visible"
-      :search-menu="searchMenu"
-      @spawn-node="spawnNode"
+      :searchMenu="searchMenu"
+      @spawnNode="spawnNode"
       @close="closeSearchMenu"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, watch, markRaw, inject } from 'vue'
-import { VueFlow, addEdge, useVueFlow } from '@vue-flow/core'
+import { ref, nextTick, watch, markRaw, inject, provide, computed } from 'vue'
+import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
@@ -41,22 +53,79 @@ const props = defineProps({
   }
 })
 
+const { addEdges, removeEdges, getViewport, setViewport } = useVueFlow()
+
 const triggerCompile = inject('triggerCompile')
 
-const onConnect = () => {
+provide('updateNodeData', (nodeId, newData) => {
+  const node = nodes.value.find((n) => n.id == nodeId)
+  if (!node) return
 
+  if (newData.properties) Object.assign(node.data.properties, newData.properties)
+  if (newData.inputs) Object.assign(node.data.inputs, newData.inputs)
+
+  triggerCompile?.() // TODO: 只修改值时不重编译, 而是设置 uniform
+})
+
+const socketsAcitveMap = computed(() => {
+  const iMap = new Map()
+  const oMap = new Map()
+
+  edges.value.forEach(edge => {
+    if (!iMap.get(edge.target)) iMap.set(edge.target, new Set())
+    iMap.get(edge.target).add(edge.targetHandle)
+
+    if (!oMap.get(edge.source)) oMap.set(edge.source, new Set())
+    oMap.get(edge.source).add(edge.sourceHandle)
+  })
+  return { iMap, oMap }
+})
+
+const inputSocketsAcitveMap = computed(() => socketsAcitveMap.value.iMap)
+const outputSocketsAcitveMap = computed(() => socketsAcitveMap.value.oMap)
+
+provide('inputSocketsAcitveMap', inputSocketsAcitveMap)
+provide('outputSocketsAcitveMap', outputSocketsAcitveMap)
+
+const onEdgeChange = async (changes) => {
+  const hadGraphChanged = changes.some(c => c.type === 'remove' || c.type === 'add')
+  if (hadGraphChanged) {
+    await nextTick()
+    triggerCompile?.()
+  }
 }
 
-const onEdgeChange = () => {
-
+const onConnect = (params) => {
+  addEdges(params)
 }
 
-const onEdgeDoubleClick = () => {
-
+const onEdgeDoubleClick = ({ edge }) => {
+  removeEdges(edge)
 }
 
-const isValidConnection = () => {
-  // TODO
+const isValidConnection = (connection) => {
+  if (connection.source === connection.target) return false
+
+  const sourceNode = nodes.value.find(n => n.id === connection.source)
+  const targetNode = nodes.value.find(n => n.id === connection.target)
+  if (!sourceNode || !targetNode) return false
+
+  const sourceConfig = nodeRegistry[sourceNode.type]
+  const targetConfig = nodeRegistry[targetNode.type]
+  if (!sourceConfig || !targetConfig) return false
+
+  // 判断插槽是输入还是输出
+  const isSourceInput = sourceConfig.inputs?.some(i => i.id === connection.sourceHandle)
+  const isSourceOutput = sourceConfig.outputs?.some(o => o.id === connection.sourceHandle)
+  const isTargetInput = targetConfig.inputs?.some(i => i.id === connection.targetHandle)
+  const isTargetOutput = targetConfig.outputs?.some(o => o.id === connection.targetHandle)
+
+  // 必须一个是输出端口，一个是输入端口
+  const isValidDirection = (isSourceOutput && isTargetInput) || (isSourceInput && isTargetOutput)
+  if (!isValidDirection) return false
+
+  // TODO: 判断连线 from 的类型是否能隐式转换为 to (vec -> float)
+  return true
 }
 
 const canvasRef = ref(null)
@@ -65,7 +134,7 @@ const { searchMenu, openSearchMenu, closeSearchMenu, spawnNode } = useNodeSearch
   canvasRef, nodes
 })
 
-useGraphShortCuts({
+const { snapToGrid } = useGraphShortCuts({
   canvasRef, nodes, openSearchMenu
 })
 
@@ -78,8 +147,6 @@ const viewports = {
   material: { x: 0, y: 0, zoom: 1 },
   simulation: { x: 0, y: 0, zoom: 1 }
 }
-
-const { getViewport, setViewport } = useVueFlow()
 
 watch(() => props.activeTab, async (newTab, oldTab) => {
   viewports[oldTab] = getViewport()
@@ -126,5 +193,10 @@ watch(() => props.activeTab, async (newTab, oldTab) => {
   border: 1px solid rgba(99, 102, 241, 0.5) !important;
   border-radius: 4px;
   box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+
+/* 隐藏松开鼠标完成多选后的外层大蓝色遮罩框 */
+.vue-flow__nodesselection {
+  display: none !important;
 }
 </style>

@@ -8,8 +8,6 @@ export class CompilerContext {
   #outputCache = new Map()
 
   constructor(nodes, edges, uniforms = {}) {
-    console.log("nodes", nodes)
-    console.log("edges", edges)
     this.uniforms = uniforms
     this.#nodes = nodes
     this.#buildReverseEdgeLUT(nodes, edges)
