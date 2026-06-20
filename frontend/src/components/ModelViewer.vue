@@ -103,6 +103,7 @@ onMounted(async () => {
       isLoading.value = false
     }
   }
+  await renderer.init()
   animate()
 })
 
@@ -125,7 +126,6 @@ onUnmounted(() => {
   }
   if (renderer) {
     renderer.dispose()
-    renderer.forceContextLoss()
     let glCanvas = renderer.domElement
     if (glCanvas) {
       glCanvas.remove()

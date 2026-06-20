@@ -1,17 +1,29 @@
 <template>
   <header class="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-6 z-20 shrink-0">
-    <!-- 标签页切换 -->
-    <div class="flex items-center gap-1 p-1 bg-zinc-950 rounded-lg border border-zinc-800">
-      <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150"
-        :class="activeTab === 'material' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'"
-        @click="activeTab = 'material'">
-        材质节点 (Material Graph)
-      </button>
-      <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150"
-        :class="activeTab === 'simulation' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'"
-        @click="activeTab = 'simulation'">
-        模拟节点 (Simulation Graph)
-      </button>
+    <div class="flex items-center gap-3">
+      <!-- 返回主页 -->
+      <router-link to="/"
+        class="group flex items-center justify-center w-10 h-10 rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all duration-150 cursor-pointer"
+        title="返回主页">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"
+          class="w-5 h-5 transition-transform duration-150 group-hover:-translate-x-0.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+      </router-link>
+
+      <!-- 标签页切换 -->
+      <div class="flex items-center gap-1 p-1 bg-zinc-950 rounded-lg border border-zinc-800">
+        <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150"
+          :class="activeTab === 'material' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'"
+          @click="activeTab = 'material'">
+          材质节点 (Material Graph)
+        </button>
+        <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150"
+          :class="activeTab === 'simulation' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'"
+          @click="activeTab = 'simulation'">
+          模拟节点 (Simulation Graph)
+        </button>
+      </div>
     </div>
 
     <!-- 功能区 -->
