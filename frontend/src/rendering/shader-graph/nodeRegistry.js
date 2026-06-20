@@ -372,7 +372,7 @@ export const mathNodes = {
   'sin': {
     label: '正弦 (sin)',
     category: 'MATH',
-    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true }],
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
     outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.sin(inputs.compiledNode('in'))
@@ -380,15 +380,23 @@ export const mathNodes = {
   'cos': {
     label: '余弦 (cos)',
     category: 'MATH',
-    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true }],
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
     outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.cos(inputs.compiledNode('in'))
   },
+  'tan': {
+    label: '正切 (tan)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.tan(inputs.compiledNode('in'))
+  },
   'abs': {
     label: '绝对值 (abs)',
     category: 'MATH',
-    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true }],
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
     outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.abs(inputs.compiledNode('in'))
@@ -396,7 +404,7 @@ export const mathNodes = {
   'frac': {
     label: '取小数部分 (frac)',
     category: 'MATH',
-    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true }],
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
     outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in') },
     compile: ({ inputs }) => tsl.fract(inputs.compiledNode('in'))
@@ -455,6 +463,34 @@ export const mathNodes = {
     outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-base') },
     compile: ({ inputs }) => tsl.pow(inputs.compiledNode('in-base'), inputs.compiledNode('in-exponent'))
+  },
+  'floor': {
+    label: '向下取整 (floor)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.floor(inputs.compiledNode('in'))
+  },
+  'ceil': {
+    label: '向上取整 (ceil)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.ceil(inputs.compiledNode('in'))
+  },
+  'mix': {
+    label: '线性插值 (mix)',
+    category: 'MATH',
+    inputs: [
+      { id: 'in-a', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 1.0, isDynamic: true },
+      { id: 'in-t', defaultType: 'float', defaultValue: 0.5, isDynamic: true }
+    ],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in-a') },
+    compile: ({ inputs }) => tsl.mix(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'), inputs.compiledNode('in-t'))
   },
 }
 
@@ -654,7 +690,12 @@ export const advancedNodes = {
     },
     inputs: [
       { id: 'in-seed', defaultType: 'float', defaultValue: 0.0 },
-      { id: 'in-prob', defaultType: 'float', defaultValue: 0.5 },
+      {
+        id: 'in-prob',
+        defaultType: 'float',
+        defaultValue: 0.5,
+        visible: (nodeProps) => nodeProps?.randomType === 'bool'
+      },
       {
         id: 'in-min',
         defaultType: (nodeProps) => nodeProps?.randomType || 'float',
@@ -665,7 +706,7 @@ export const advancedNodes = {
           if (type === 'vec4') return [0.0, 0.0, 0.0, 0.0]
           return 0.0
         },
-        isDynamic: true
+        visible: (nodeProps) => nodeProps?.randomType !== 'bool'
       },
       {
         id: 'in-max',
@@ -678,10 +719,10 @@ export const advancedNodes = {
           if (type === 'int')  return 100.0
           return 1.0
         },
-        isDynamic: true
+        visible: (nodeProps) => nodeProps?.randomType !== 'bool'
       }
     ],
-    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: (nodeProps) => nodeProps?.randomType || 'float' }],
     inferType({ nodeProps }) {
       return nodeProps?.randomType || 'float'
     },

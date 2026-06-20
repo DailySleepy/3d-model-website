@@ -106,7 +106,7 @@ const props = defineProps({
   type: { type: String, required: true },
   data: { type: Object, required: true },
   selected: { type: Boolean, default: false }
-});
+})
 
 const updateNodeData = inject('updateNodeData')
 const inputSocketsAcitveMap = inject('inputSocketsAcitveMap')
@@ -123,15 +123,32 @@ const CATEGORY_THEMES = {
   GEOMETRY: { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.3)', border: 'rgba(59, 130, 246, 0.5)' }, // 蓝色
   VECTOR: { color: '#a855f7', bg: 'rgba(168, 85, 247, 0.3)', border: 'rgba(168, 85, 247, 0.5)' }, // 紫色
   MATH: { color: '#f97316', bg: 'rgba(249, 115, 22, 0.3)', border: 'rgba(249, 115, 22, 0.5)' }, // 橙色
-  ADVANCED: { color: '#eab308', bg: 'rgba(234, 179, 8, 0.3)', border: 'rgba(234, 179, 8, 0.5)' }, // 黄色
+  ADVANCED: { color: '#eab308', bg: 'rgba(234, 179, 8, 0.65)', border: 'rgba(234, 179, 8, 0.7)' }, // 黄色
   CUSTOM: { color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.3)', border: 'rgba(6, 182, 212, 0.5)' } // 青色
-};
+}
 const theme = CATEGORY_THEMES[props.data.category] || CATEGORY_THEMES.MATH
 
 const nodeConfig = nodeRegistry[props.type]
 const propertiesConfig = nodeConfig.properties || {}
-const inputsConfig = nodeConfig.inputs || []
-const outputsConfig = nodeConfig.outputs || []
+const inputsConfig = computed(() => {
+  const inputs = nodeConfig.inputs || []
+  return inputs.filter(input => {
+    if (typeof input.visible === 'function') {
+      return input.visible(props.data.properties || {})
+    }
+    return true
+  })
+})
+const outputsConfig = computed(() => {
+  const outputs = nodeConfig.outputs || []
+  return outputs.filter(output => {
+    if (typeof output.visible === 'function') {
+      return output.visible(props.data.properties || {})
+    }
+    return true
+  })
+})
+
 const hasProperties = Object.keys(propertiesConfig).length > 0
 
 /**
@@ -139,7 +156,12 @@ const hasProperties = Object.keys(propertiesConfig).length > 0
  * @param {string} socketId - 仅 input 使用此项
  */
 const shouldShowDrag = (config, socketId) => {
-  const type = config.type ?? config.defaultType // properties.value.type / inputs[i].defaultType
+  if (config.hideInput) return false
+
+  let type = config.type ?? config.defaultType // properties.value.type / inputs[i].defaultType
+  if (typeof type === 'function') {
+    type = type(props.data.properties || {})
+  }
   if (!['float', 'int'].includes(type)) return false // 需要是 float, int
 
   if (socketId === undefined) return true // 如果是 properties, 到这里就可以直接放行了
@@ -149,24 +171,30 @@ const shouldShowDrag = (config, socketId) => {
 }
 
 const getStepSize = (config) => {
-  const type = config.type ?? config.defaultType
+  let type = config.type ?? config.defaultType
+  if (typeof type === 'function') {
+    type = type(props.data.properties || {})
+  }
   return type === 'int' ? 1 : 0.1
 }
 
 const getSocketColor = (socket) => {
   if (socket.isDynamic) {
-    return '#c084fc'; // 动态维度: 亮紫色
+    return '#c084fc' // 动态维度: 亮紫色
   }
-  const type = socket.defaultType || 'float';
-  const dim = getDimension(type);
+  let type = socket.defaultType || 'float'
+  if (typeof type === 'function') {
+    type = type(props.data.properties || {})
+  }
+  const dim = getDimension(type)
   const colors = {
     1: '#2aff82', // 绿
     2: '#33b5ff', // 蓝
     3: '#ffea00', // 黄
     4: '#ff33aa'  // 粉
-  };
-  return colors[dim] || '#a1a1aa'; // 错误: 灰
-};
+  }
+  return colors[dim] || '#a1a1aa' // 错误: 灰
+}
 
 const onPropertyChange = (key, val) => {
   const isNum = typeof propertiesConfig[key].default === 'number'
