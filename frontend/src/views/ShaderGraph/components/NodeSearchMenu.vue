@@ -12,8 +12,8 @@
         v-model="searchQuery"
         @keydown.esc.prevent="emit('close')"
         @keydown.enter.prevent="confirmSelect"
-        @keydown.up.prevent="moveAcitve(-1)"
-        @keydown.down.prevent="moveAcitve(1)"
+        @keydown.up.prevent="moveActive(-1)"
+        @keydown.down.prevent="moveActive(1)"
         placeholder="搜索节点..."
         class="w-full bg-zinc-950 border border-zinc-800 text-white rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
       >
@@ -99,7 +99,7 @@ const filteredSearchNodes = computed(() => {
 
 watch(filteredSearchNodes, () => { activeSearchIndex.value = 0 })
 
-const moveAcitve = async (direction) => {
+const moveActive = async (direction) => {
   const count = filteredSearchNodes.value.length
   if (count === 0) return
   activeSearchIndex.value = (activeSearchIndex.value + direction + count) % count
@@ -124,7 +124,7 @@ const spawnNodeAndClose = (type) => {
 
 const confirmSelect = () => {
   const selectedNode = filteredSearchNodes.value[activeSearchIndex.value]
-  spawnNodeAndClose(selectedNode.type)
+  if (selectedNode) spawnNodeAndClose(selectedNode.type)
 }
 
 onMounted(async () => {

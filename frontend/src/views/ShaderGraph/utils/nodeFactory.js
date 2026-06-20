@@ -27,7 +27,7 @@ export const createNode = (type, position) => {
   }
 
   return {
-    id: `node-${type}-${Date.now()}`,
+    id: `node-${type}-${Date.now()}-${Math.random().toString().substring(2, 7)}`, // TODO: better UID generation
     type: type,
     position: position,
     data: {

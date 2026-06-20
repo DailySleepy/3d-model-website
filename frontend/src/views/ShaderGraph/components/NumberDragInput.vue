@@ -123,7 +123,7 @@ const onMouseMove = (e) => {
 
     let speed = 1.0
     if (e.shiftKey) speed = 0.1
-    else if (e.ctrlKey || e.mataKey) speed = 10.0
+    else if (e.ctrlKey || e.metaKey) speed = 10.0
 
     const pixelsPerStep = 8
     const stepCount = deltaX > 0

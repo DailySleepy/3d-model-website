@@ -107,7 +107,7 @@ const CATEGORY_THEMES = {
   CUSTOM: { color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.3)', border: 'rgba(6, 182, 212, 0.5)' } // 青色
 };
 
-const theme = computed(() => CATEGORY_THEMES[props.data.category] )
+const theme = CATEGORY_THEMES[props.data.category] || CATEGORY_THEMES.MATH
 
 const nodeConfig = nodeRegistry[props.type]
 const propertiesConfig = nodeConfig.properties || {}
@@ -123,7 +123,7 @@ const shouldShowDrag = (config, socketId) => {
   const type = config.type ?? config.defaultType // properties.value.type / inputs[i].defaultType
   if (!['float', 'int'].includes(type)) return false // 需要是 float, int
 
-  if (socketId === 'undefined') return true // 如果是 properties, 到这里就可以直接放行了
+  if (socketId === undefined) return true // 如果是 properties, 到这里就可以直接放行了
 
   const isConnected = inputSocketsAcitveMap.value.get(props.id)?.has(socketId) ?? false
   return !isConnected // 需要插槽未连接
