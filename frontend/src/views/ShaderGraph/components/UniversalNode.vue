@@ -16,30 +16,41 @@
       <span class="text-[13px] font-bold tracking-wide select-none">{{ data.label }}</span>
     </div>
 
-    <!-- Properties -->
-    <div v-if="hasProperties" class="px-3 pt-2 pb-1 flex flex-col gap-1">
-      <div v-for="(property, key) in propertiesConfig" :key="key" class="flex items-center gap-1 text-[10px]">
-        <span class="text-zinc-400 font-medium select-none">{{ property.label || key }}</span>
+    <div class="nodrag">
+      <!-- 特定节点补丁 -->
+      <component
+        v-if="patchComponent"
+        :is="patchComponent"
+        :id="id"
+        :data="data"
+        :theme="theme"
+      />
 
-        <select
-          v-if="property.options"
-          :value="data.properties?.[key] ?? property.default"
-          @change="e => onPropertyChange(key, e.target.value)"
-          class="node-input-control nodrag bg-zinc-950 border border-zinc-800 text-zinc-200 rounded px-2 text-[10px] focus:outline-none focus:border-[var(--theme-color)] cursor-pointer"
-        >
-          <option v-for="opt in property.options" :key="opt" :value="opt">
-            {{ opt }}
-          </option>
-        </select>
+      <!-- Properties -->
+      <div v-else-if="hasProperties" class="px-3 pt-2 pb-1 flex flex-col gap-1">
+        <div v-for="(property, key) in propertiesConfig" :key="key" class="flex items-center gap-1 text-[10px]">
+          <span class="text-zinc-400 font-medium select-none">{{ property.label || key }}</span>
 
-        <NumberDragInput
-          v-else-if="shouldShowDrag(property)"
-          :modelValue="data.properties?.[key] ?? property.default"
-          @update:modelValue="val => onPropertyChange(key, val)"
-          :step="getStepSize(property)"
-          :theme-color="theme.color"
-          class="node-input-control"
-        />
+          <select
+            v-if="property.options"
+            :value="data.properties?.[key] ?? property.default"
+            @change="e => onPropertyChange(key, e.target.value)"
+            class="node-input-control nodrag bg-zinc-950 border border-zinc-800 text-zinc-200 rounded px-2 text-[10px] focus:outline-none focus:border-[var(--theme-color)] cursor-pointer"
+          >
+            <option v-for="opt in property.options" :key="opt" :value="opt">
+              {{ opt }}
+            </option>
+          </select>
+
+          <NumberDragInput
+            v-else-if="shouldShowDrag(property)"
+            :modelValue="data.properties?.[key] ?? property.default"
+            @update:modelValue="val => onPropertyChange(key, val)"
+            :step="getStepSize(property)"
+            :theme-color="theme.color"
+            class="node-input-control"
+          />
+        </div>
       </div>
     </div>
 
@@ -87,6 +98,9 @@ import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import { getDimension, nodeRegistry } from '@/rendering/shader-graph/nodeRegistry';
 import NumberDragInput from './NumberDragInput.vue';
 
+import ColorNodePatch from './NodePatches/ColorNodePatch.vue';
+import CustomNodePatch from './NodePatches/CustomNodePatch.vue';
+
 const props = defineProps({
   id: { type: String, required: true },
   type: { type: String, required: true },
@@ -97,6 +111,12 @@ const props = defineProps({
 const updateNodeData = inject('updateNodeData')
 const inputSocketsAcitveMap = inject('inputSocketsAcitveMap')
 
+const PATCH_REGISTRY = {
+  color: ColorNodePatch,
+  custom: CustomNodePatch,
+}
+const patchComponent = PATCH_REGISTRY[props.type] || null
+
 const CATEGORY_THEMES = {
   OUTPUT: { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.3)', border: 'rgba(239, 68, 68, 0.5)' }, // 红色
   CONSTANT: { color: '#22c55e', bg: 'rgba(34, 197, 94, 0.3)', border: 'rgba(34, 197, 94, 0.5)' }, // 绿色
@@ -106,7 +126,6 @@ const CATEGORY_THEMES = {
   ADVANCED: { color: '#eab308', bg: 'rgba(234, 179, 8, 0.3)', border: 'rgba(234, 179, 8, 0.5)' }, // 黄色
   CUSTOM: { color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.3)', border: 'rgba(6, 182, 212, 0.5)' } // 青色
 };
-
 const theme = CATEGORY_THEMES[props.data.category] || CATEGORY_THEMES.MATH
 
 const nodeConfig = nodeRegistry[props.type]

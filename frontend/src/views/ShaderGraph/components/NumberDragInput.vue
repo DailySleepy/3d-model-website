@@ -28,7 +28,7 @@
         @mousedown="onMouseDown"
         class="w-full h-full flex items-center justify-center text-center text-white font-mono text-[11px] cursor-ew-resize select-none"
       >
-        {{ modelValue }}
+        {{ displayValue }}
       </div>
 
       <button
@@ -43,14 +43,16 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onUnmounted, nextTick } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Number, required: true },
   step: { type: Number, default: 0.1 },
   min: { type: Number, default: undefined },
   max: { type: Number, default: undefined },
-  themeColor: { type: String, default: '#6366f1' }
+  themeColor: { type: String, default: '#6366f1' },
+  displayPrecision: { type: Number, default: 3 },
+  precision: { type: Number, default: 6 }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -65,6 +67,11 @@ const inputRef = ref(null)
 const isEditing = ref(false)
 const localInputValue = ref('')
 
+const displayValue = computed(() => {
+  if (props.step % 1 === 0) return String(Math.round(props.modelValue))
+  return props.modelValue.toFixed(props.displayPrecision)
+})
+
 const clamp = (val) => {
   let v = Number(val)
 
@@ -74,7 +81,7 @@ const clamp = (val) => {
   if (props.max !== undefined && v > props.max) v = props.max
 
   if (props.step % 1 === 0) return Math.round(v)
-  return parseFloat(v.toFixed(6))
+  return parseFloat(v.toFixed(props.precision))
 }
 
 const increase = (sign) => {
