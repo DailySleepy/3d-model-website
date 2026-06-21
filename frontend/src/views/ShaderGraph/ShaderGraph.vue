@@ -42,6 +42,7 @@ import GraphCanvas from './components/GraphCanvas.vue'
 import GraphHeader from './components/GraphHeader.vue'
 
 import { createNode } from './utils/nodeFactory.js'
+import { useShaderEngine } from './composables/useShaderEngine.js'
 import { useGraphResize } from './composables/useGraphResize.js'
 
 const activeTab = ref('material')
@@ -77,114 +78,37 @@ const currentEdges = computed({
   }
 })
 
-/** @type {ShaderGraphEngine} */
-let engineInstance = null
-
-const compileMaterial = () => {
-  if (engineInstance) {
-    engineInstance.compileMaterial(matNodes.value, matEdges.value)
-  }
-}
-
-const compileSimulation = () => {
-  if (engineInstance) {
-    engineInstance.compileSimulation(simNodes.value, simEdges.value)
-  }
-}
-
-let isUpdating = false
-
-const onGeometryChange = async () => {
-  if (!engineInstance || isUpdating) return
-  if (selectedGeometry.value === 'custom' && customModelUrl.value === null) return
-
-  try {
-    isUpdating = true
-    await engineInstance.updateGeometry(selectedGeometry.value, customModelUrl.value)
-    compileMaterial()
-  } finally {
-    isUpdating = false
-  }
-}
-
-const onCustomModelUpload = (file) => {
-  customModelFile.value = file
-  if (customModelUrl.value) URL.revokeObjectURL(customModelUrl.value)
-  customModelUrl.value = URL.createObjectURL(file)
-  onGeometryChange()
-}
-
-const onParticleCountChange = async () => {
-  if (!engineInstance || isUpdating) return
-
-  try {
-    isUpdating = true
-    await engineInstance.updateParticleCount(
-      particleCount.value,
-      simNodes.value,
-      simEdges.value,
-      matNodes.value,
-      matEdges.value
-    )
-  } finally {
-    isUpdating = false
-  }
-}
-
-const onParticleReset = async () => {
-  if (!engineInstance || isUpdating) return
-
-  try {
-    isUpdating = true
-    await engineInstance.resetParticleBuffers(simNodes.value, simEdges.value)
-  } finally {
-    isUpdating = false
-  }
-}
-
-const onCameraReset = () => {
-  if (engineInstance) {
-    engineInstance.resetCamera()
-  }
-}
-
-const { startResizing } = useGraphResize(workspaceRef, graphWidth, () => {
-  if (engineInstance) {
-    engineInstance.resize()
-  }
+const {
+  compileMaterial,
+  compileSimulation,
+  triggerCompile,
+  onGeometryChange,
+  onCustomModelUpload,
+  onParticleCountChange,
+  onParticleReset,
+  onCameraReset,
+  onGraphResize
+} = useShaderEngine({
+  canvasContainer,
+  particleCount,
+  selectedGeometry,
+  customModelUrl,
+  matNodes,
+  matEdges,
+  simNodes,
+  simEdges,
+  isMat
 })
 
-let compileTimeout = null
-
-const triggerCompile = () => {
-  if (compileTimeout) {
-    clearTimeout(compileTimeout)
-  }
-
-  compileTimeout = setTimeout(() => {
-    if (isMat.value) compileMaterial()
-    else compileSimulation()
-  }, 50)
-}
+const { startResizing } = useGraphResize(workspaceRef, graphWidth, onGraphResize)
 
 provide('triggerCompile', triggerCompile)
 
 onMounted(() => {
-  if (canvasContainer.value) {
-    engineInstance = new ShaderGraphEngine();
-    engineInstance.init(canvasContainer.value, {
-      particleCount: particleCount.value,
-      selectedGeometry: selectedGeometry.value,
-      customModelUrl: customModelUrl.value
-    })
 
-    compileMaterial()
-    compileSimulation()
-  }
 })
 
 onUnmounted(() => {
-  if (engineInstance) engineInstance.destroy()
   if (customModelUrl.value) URL.revokeObjectURL(customModelUrl.value)
 })
 
