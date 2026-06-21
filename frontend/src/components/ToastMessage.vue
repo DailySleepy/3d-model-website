@@ -9,7 +9,7 @@
   >
     <div
       v-if="isVisible"
-      class="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-full max-w-md bg-white shadow-lg rounded-lg px-4 py-3 flex items-start space-x-3 border border-gray-100 text-black"
+      class="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-full max-w-md bg-white dark:bg-gray-800 shadow-lg rounded-lg px-4 py-3 flex items-start space-x-3 border border-gray-100 dark:border-gray-700 text-black dark:text-white transition-colors duration-200"
     >
       <div class="flex-shrink-0 pt-0.5">
         <svg v-if="type === 'success'" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -24,14 +24,14 @@
       </div>
 
       <div class="flex-1 pt-0.5">
-        <p class="text-base leading-5 whitespace-pre-line font-medium text-gray-800">
+        <p class="text-base leading-5 whitespace-pre-line font-medium text-gray-800 dark:text-gray-200">
           {{ message }}
         </p>
       </div>
 
       <button 
         type="button"
-        class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+        class="flex-shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none"
         @click="hide"
       >
         <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

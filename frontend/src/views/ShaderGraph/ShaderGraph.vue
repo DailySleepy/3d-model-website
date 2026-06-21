@@ -105,11 +105,12 @@ const { startResizing } = useGraphResize(workspaceRef, graphWidth, onGraphResize
 provide('triggerCompile', triggerCompile)
 
 onMounted(() => {
-
+  document.documentElement.classList.add('dark')
 })
 
 onUnmounted(() => {
   if (customModelUrl.value) URL.revokeObjectURL(customModelUrl.value)
+  document.documentElement.classList.remove('dark')
 })
 
 </script>
