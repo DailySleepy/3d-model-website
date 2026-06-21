@@ -92,7 +92,6 @@ const filteredSearchNodes = computed(() => {
   return allAvailableNodes.filter((n) =>
     n.type.toLowerCase().includes(query) ||
     n.label.toLowerCase().includes(query) ||
-    n.category.toLowerCase().includes(query) ||
     n.pinyinStr.includes(query)
   )
 })

@@ -365,7 +365,57 @@ export const vectorNodes = {
       }
     }
   },
-} // TODO: length, normalize
+  'length': {
+    label: '向量长度 (length)',
+    category: 'VECTOR',
+    inputs: [{ id: 'in', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float' }],
+    inferType() { return 'float' },
+    compile: ({ inputs }) => tsl.length(inputs.compiledNode('in'))
+  },
+  'normalize': {
+    label: '向量归一化 (normalize)',
+    category: 'VECTOR',
+    inputs: [{ id: 'in', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'vec3', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.normalize(inputs.compiledNode('in'))
+  },
+  'distance': {
+    label: '两点距离 (distance)',
+    category: 'VECTOR',
+    inputs: [
+      { id: 'in-a', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true },
+      { id: 'in-b', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true }
+    ],
+    outputs: [{ id: 'out', defaultType: 'float' }],
+    inferType() { return 'float' },
+    compile: ({ inputs }) => tsl.distance(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
+  },
+  'reflect': {
+    label: '向量反射 (reflect)',
+    category: 'VECTOR',
+    inputs: [
+      { id: 'in-i', defaultType: 'vec3', defaultValue: [0.0, 0.0, -1.0], isDynamic: true },
+      { id: 'in-n', defaultType: 'vec3', defaultValue: [0.0, 1.0, 0.0], isDynamic: true }
+    ],
+    outputs: [{ id: 'out', defaultType: 'vec3', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in-i') },
+    compile: ({ inputs }) => tsl.reflect(inputs.compiledNode('in-i'), inputs.compiledNode('in-n'))
+  },
+  'refract': {
+    label: '向量折射 (refract)',
+    category: 'VECTOR',
+    inputs: [
+      { id: 'in-i', defaultType: 'vec3', defaultValue: [0.0, 0.0, -1.0], isDynamic: true },
+      { id: 'in-n', defaultType: 'vec3', defaultValue: [0.0, 1.0, 0.0], isDynamic: true },
+      { id: 'in-eta', defaultType: 'float', defaultValue: 1.0 }
+    ],
+    outputs: [{ id: 'out', defaultType: 'vec3', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in-i') },
+    compile: ({ inputs }) => tsl.refract(inputs.compiledNode('in-i'), inputs.compiledNode('in-n'), inputs.compiledNode('in-eta'))
+  },
+}
 
 // --- Math Nodes ---
 export const mathNodes = {
@@ -491,6 +541,111 @@ export const mathNodes = {
     outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.mix(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'), inputs.compiledNode('in-t'))
+  },
+  'saturate': {
+    label: '饱和限制 (saturate)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.saturate(inputs.compiledNode('in'))
+  },
+  'sign': {
+    label: '符号 (sign)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.sign(inputs.compiledNode('in'))
+  },
+  'sqrt': {
+    label: '平方根 (sqrt)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.sqrt(inputs.compiledNode('in'))
+  },
+  'round': {
+    label: '四舍五入 (round)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.round(inputs.compiledNode('in'))
+  },
+  'log': {
+    label: '自然对数 (log)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.log(inputs.compiledNode('in'))
+  },
+  'exp': {
+    label: '指数 (exp)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.exp(inputs.compiledNode('in'))
+  },
+  'asin': {
+    label: '反正弦 (asin)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.asin(inputs.compiledNode('in'))
+  },
+  'acos': {
+    label: '反余弦 (acos)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.acos(inputs.compiledNode('in'))
+  },
+  'atan': {
+    label: '反正切 (atan)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 0.0, isDynamic: true, hideInput: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') },
+    compile: ({ inputs }) => tsl.atan(inputs.compiledNode('in'))
+  },
+  'mod': {
+    label: '取模 (mod)',
+    category: 'MATH',
+    inputs: [
+      { id: 'in-a', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 1.0, isDynamic: true }
+    ],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in-a') },
+    compile: ({ inputs }) => tsl.mod(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
+  },
+  'min': {
+    label: '最小值 (min)',
+    category: 'MATH',
+    inputs: [
+      { id: 'in-a', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 0.0, isDynamic: true }
+    ],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in-a') },
+    compile: ({ inputs }) => tsl.min(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
+  },
+  'max': {
+    label: '最大值 (max)',
+    category: 'MATH',
+    inputs: [
+      { id: 'in-a', defaultType: 'float', defaultValue: 0.0, isDynamic: true },
+      { id: 'in-b', defaultType: 'float', defaultValue: 0.0, isDynamic: true }
+    ],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in-a') },
+    compile: ({ inputs }) => tsl.max(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
   },
 }
 
@@ -739,15 +894,15 @@ export const advancedNodes = {
       const range = max.sub(min)
 
       if (randomType === 'vec2') {
-        const h1 = tsl.hash(seed), h2 = tsl.hash(seed.add(tsl.float(1.0)))
+        const h1 = tsl.hash(seed), h2 = tsl.hash(seed.add(tsl.float(113.159)))
         return min.add(tsl.vec2(h1, h2).mul(range))
       }
       if (randomType === 'vec3') {
-        const h1 = tsl.hash(seed), h2 = tsl.hash(seed.add(tsl.float(1.0))), h3 = tsl.hash(seed.add(tsl.float(2.0)))
+        const h1 = tsl.hash(seed), h2 = tsl.hash(seed.add(tsl.float(113.159))), h3 = tsl.hash(seed.add(tsl.float(271.828)))
         return min.add(tsl.vec3(h1, h2, h3).mul(range))
       }
       if (randomType === 'vec4') {
-        const h1 = tsl.hash(seed), h2 = tsl.hash(seed.add(tsl.float(1.0))), h3 = tsl.hash(seed.add(tsl.float(2.0))), h4 = tsl.hash(seed.add(tsl.float(3.0)))
+        const h1 = tsl.hash(seed), h2 = tsl.hash(seed.add(tsl.float(113.159))), h3 = tsl.hash(seed.add(tsl.float(271.828))), h4 = tsl.hash(seed.add(tsl.float(314.159)))
         return min.add(tsl.vec4(h1, h2, h3, h4).mul(range))
       }
       if (randomType === 'int') {
