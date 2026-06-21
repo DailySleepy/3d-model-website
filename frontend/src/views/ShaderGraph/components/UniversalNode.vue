@@ -2,8 +2,8 @@
   <div
     class="relative rounded-xl bg-zinc-900/90 border text-zinc-100 min-w-[180px] backdrop-blur-md shadow-lg select-none"
     :class="selected
-      ? 'shadow-[0_0_16px_var(--theme-bg)] border-white ring-2 ring-white'
-      : 'border-zinc-800/80 hover:shadow-[0_0_16px_var(--theme-bg)] hover:border-[var(--theme-color)] transition-all duration-200'"
+      ? 'border-white ring-2 ring-white'
+      : 'border-zinc-800/80 hover:shadow-[0_0_16px_var(--theme-border)] hover:border-[var(--theme-color)] transition-all duration-200'"
     :style="{
       '--theme-color': theme.color,
       '--theme-bg': theme.bg,
@@ -118,13 +118,13 @@ const PATCH_REGISTRY = {
 const patchComponent = PATCH_REGISTRY[props.type] || null
 
 const CATEGORY_THEMES = {
-  OUTPUT: { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.3)', border: 'rgba(239, 68, 68, 0.5)' }, // 红色
-  CONSTANT: { color: '#22c55e', bg: 'rgba(34, 197, 94, 0.3)', border: 'rgba(34, 197, 94, 0.5)' }, // 绿色
-  GEOMETRY: { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.3)', border: 'rgba(59, 130, 246, 0.5)' }, // 蓝色
-  VECTOR: { color: '#a855f7', bg: 'rgba(168, 85, 247, 0.3)', border: 'rgba(168, 85, 247, 0.5)' }, // 紫色
-  MATH: { color: '#f97316', bg: 'rgba(249, 115, 22, 0.3)', border: 'rgba(249, 115, 22, 0.5)' }, // 橙色
-  ADVANCED: { color: '#eab308', bg: 'rgba(234, 179, 8, 0.65)', border: 'rgba(234, 179, 8, 0.7)' }, // 黄色
-  CUSTOM: { color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.3)', border: 'rgba(6, 182, 212, 0.5)' } // 青色
+  OUTPUT: { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.3)', border: 'rgba(239, 68, 68, 0.4)' }, // 红色
+  CONSTANT: { color: '#22c55e', bg: 'rgba(34, 197, 94, 0.3)', border: 'rgba(34, 197, 94, 0.4)' }, // 绿色
+  GEOMETRY: { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.3)', border: 'rgba(59, 130, 246, 0.4)' }, // 蓝色
+  VECTOR: { color: '#a855f7', bg: 'rgba(168, 85, 247, 0.3)', border: 'rgba(168, 85, 247, 0.4)' }, // 紫色
+  MATH: { color: '#f97316', bg: 'rgba(249, 115, 22, 0.3)', border: 'rgba(249, 115, 22, 0.4)' }, // 橙色
+  ADVANCED: { color: '#eab308', bg: 'rgba(234, 179, 8, 0.65)', border: 'rgba(234, 179, 8, 0.4)' }, // 黄色
+  CUSTOM: { color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.3)', border: 'rgba(6, 182, 212, 0.4)' } // 青色
 }
 const theme = CATEGORY_THEMES[props.data.category] || CATEGORY_THEMES.MATH
 
