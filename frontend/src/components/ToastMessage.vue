@@ -18,6 +18,9 @@
         <svg v-else-if="type === 'error'" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
+        <svg v-else-if="type === 'warning'" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
         <svg v-else class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -27,6 +30,22 @@
         <p class="text-base leading-5 whitespace-pre-line font-medium text-gray-800 dark:text-gray-200">
           {{ message }}
         </p>
+        <div v-if="errorDetails" class="mt-2 text-xs">
+          <button 
+            type="button"
+            @click="toggleDetails" 
+            class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium focus:outline-none flex items-center space-x-1"
+          >
+            <span>{{ isDetailsExpanded ? '收起详情' : '查看详情' }}</span>
+            <svg :class="{'rotate-180': isDetailsExpanded}" class="h-3 w-3 transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <pre 
+            v-show="isDetailsExpanded" 
+            class="mt-1.5 p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto whitespace-pre-wrap break-all font-mono leading-normal"
+          >{{ errorDetails }}</pre>
+        </div>
       </div>
 
       <button 
@@ -47,20 +66,48 @@ import { ref } from 'vue'
 
 const isVisible = ref(false)
 const message = ref('')
-const type = ref('info') // 'success', 'error', 'info'
+const type = ref('info') // 'success', 'error', 'info', 'warning'
+const errorDetails = ref(null)
+const isDetailsExpanded = ref(false)
 let timer = null
 
-const show = (msg, msgType = 'info', duration = 3000) => {
+const toggleDetails = () => {
+  isDetailsExpanded.value = !isDetailsExpanded.value
+  if (isDetailsExpanded.value && timer) {
+    clearTimeout(timer)
+    timer = null
+  }
+}
+
+const show = (msg, msgType = 'info', duration = 3000, error = null) => {
   if (timer) clearTimeout(timer)
 
   message.value = msg
   type.value = msgType
+  isDetailsExpanded.value = false
+
+  if (error) {
+    if (typeof error === 'string') {
+      errorDetails.value = error
+    } else if (error instanceof Error) {
+      errorDetails.value = error.stack || error.message
+    } else if (typeof error === 'object') {
+      const apiMsg = error.response?.data?.message || error.response?.data || error.message
+      errorDetails.value = typeof apiMsg === 'object' ? JSON.stringify(apiMsg, null, 2) : apiMsg
+    } else {
+      errorDetails.value = String(error)
+    }
+  } else {
+    errorDetails.value = null
+  }
+
   isVisible.value = true
 
-  if (duration > 0) {
+  const finalDuration = error ? (duration === 3000 ? 8000 : duration) : duration
+  if (finalDuration > 0) {
     timer = setTimeout(() => {
       hide()
-    }, duration)
+    }, finalDuration)
   }
 }
 
