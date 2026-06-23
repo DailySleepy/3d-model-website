@@ -1,8 +1,10 @@
 import { ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { createNode } from '../utils/nodeFactory'
+import { useShaderGraphStore } from '../stores/shaderGraph'
 
-export function useNodeSearch({ canvasRef, nodes }) {
+export function useNodeSearch() {
+  const store = useShaderGraphStore()
   const { project } = useVueFlow()
 
   const searchMenu = ref({
@@ -14,9 +16,9 @@ export function useNodeSearch({ canvasRef, nodes }) {
   })
 
   const openSearchMenu = (mousePos) => {
-    if (!canvasRef.value || !mousePos) return
+    if (!store.graphCanvasDOM || !mousePos) return
 
-    const canvasRect = canvasRef.value.getBoundingClientRect()
+    const canvasRect = store.graphCanvasDOM.getBoundingClientRect()
     const clientX = mousePos.clientX
     const clientY = mousePos.clientY
 
@@ -49,7 +51,7 @@ export function useNodeSearch({ canvasRef, nodes }) {
     })
 
     if (newNode) {
-      nodes.value.push(newNode)
+      store.currentNodes.push(newNode)
     }
     closeSearchMenu()
   }

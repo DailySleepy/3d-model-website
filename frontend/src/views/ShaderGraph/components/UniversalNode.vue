@@ -96,8 +96,9 @@
 import { computed, inject, onUnmounted } from 'vue';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import { getDimension, nodeRegistry } from '@/rendering/shader-graph/nodeRegistry';
-import NumberDragInput from './NumberDragInput.vue';
+import { useShaderGraphStore } from '../stores/shaderGraph.js';
 
+import NumberDragInput from './NumberDragInput.vue';
 import ColorNodePatch from './NodePatches/ColorNodePatch.vue';
 import CustomNodePatch from './NodePatches/CustomNodePatch.vue';
 
@@ -108,8 +109,7 @@ const props = defineProps({
   selected: { type: Boolean, default: false }
 })
 
-const updateNodeData = inject('updateNodeData')
-const inputSocketsAcitveMap = inject('inputSocketsAcitveMap')
+const store = useShaderGraphStore()
 
 const PATCH_REGISTRY = {
   color: ColorNodePatch,
@@ -166,7 +166,7 @@ const shouldShowDrag = (config, socketId) => {
 
   if (socketId === undefined) return true // 如果是 properties, 到这里就可以直接放行了
 
-  const isConnected = inputSocketsAcitveMap.value.get(props.id)?.has(socketId) ?? false
+  const isConnected = store.inputSocketsAcitveMap.get(props.id)?.has(socketId) ?? false
   return !isConnected // 需要插槽未连接
 }
 
@@ -200,13 +200,13 @@ const onPropertyChange = (key, val) => {
   const isNum = typeof propertiesConfig[key].default === 'number'
   const processedVal = isNum ? (Number(val) || 0) : val
 
-  updateNodeData(props.id, {
+  store.updateNodeData(props.id, {
     properties: { ...props.data.properties, [key]: processedVal }
   })
 }
 
 const onInputChange = (socketId, val) => {
-  updateNodeData(props.id, {
+  store.updateNodeData(props.id, {
     inputs: { ...props.data.inputs, [socketId]: Number(val) || 0 }
   })
 }

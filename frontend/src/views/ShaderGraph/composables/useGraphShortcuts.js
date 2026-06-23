@@ -2,7 +2,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { nodeRegistry } from '@/rendering/shader-graph/nodeRegistry.js'
 
-export function useGraphShortCuts({ canvasRef, nodes, openSearchMenu }) {
+export function useGraphShortCuts({ openSearchMenu }) {
   const snapToGrid = ref(false)
 
   const { getSelectedNodes, addNodes, removeNodes } = useVueFlow()

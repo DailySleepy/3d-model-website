@@ -1,8 +1,8 @@
 <template>
-  <div class="w-full h-full relative overflow-visible" ref="canvasRef">
+  <div class="w-full h-full relative overflow-visible">
     <VueFlow
-      v-model:nodes="nodes"
-      v-model:edges="edges"
+      v-model:nodes="store.currentNodes"
+      v-model:edges="store.currentEdges"
       :nodeTypes="nodeTypes"
       :isValidConnection="isValidConnection"
       :panOnDrag="[2]"
@@ -41,57 +41,20 @@ import '@vue-flow/core/dist/theme-default.css'
 import { nodeRegistry } from '@/rendering/shader-graph/nodeRegistry.js'
 import { useGraphShortCuts } from '../composables/useGraphShortcuts.js'
 import { useNodeSearch } from '../composables/useNodeSearch.js'
+import { useShaderGraphStore } from '../stores/shaderGraph.js'
+
 import UniversalNode from './UniversalNode.vue'
 import NodeSearchMenu from './NodeSearchMenu.vue'
 
-const nodes = defineModel('nodes', { type: Array, required: true })
-const edges = defineModel('edges', { type: Array, required: true })
-const props = defineProps({
-  activeTab: {
-    type: String,
-    required: true
-  }
-})
+const store = useShaderGraphStore()
 
 const { addEdges, removeEdges, getViewport, setViewport } = useVueFlow()
-
-const triggerCompile = inject('triggerCompile')
-
-provide('updateNodeData', (nodeId, newData) => {
-  const node = nodes.value.find((n) => n.id == nodeId)
-  if (!node) return
-
-  if (newData.properties) Object.assign(node.data.properties, newData.properties)
-  if (newData.inputs) Object.assign(node.data.inputs, newData.inputs)
-
-  triggerCompile?.() // TODO: 只修改值时不重编译, 而是设置 uniform
-})
-
-const socketsAcitveMap = computed(() => {
-  const iMap = new Map()
-  const oMap = new Map()
-
-  edges.value.forEach(edge => {
-    if (!iMap.get(edge.target)) iMap.set(edge.target, new Set())
-    iMap.get(edge.target).add(edge.targetHandle)
-
-    if (!oMap.get(edge.source)) oMap.set(edge.source, new Set())
-    oMap.get(edge.source).add(edge.sourceHandle)
-  })
-  return { iMap, oMap }
-})
-
-const inputSocketsAcitveMap = computed(() => socketsAcitveMap.value.iMap)
-const outputSocketsAcitveMap = computed(() => socketsAcitveMap.value.oMap)
-
-provide('inputSocketsAcitveMap', inputSocketsAcitveMap)
-provide('outputSocketsAcitveMap', outputSocketsAcitveMap)
 
 const onEdgeChange = async (changes) => {
   const hadGraphChanged = changes.some(c => c.type === 'remove' || c.type === 'add')
   if (hadGraphChanged) {
     await nextTick()
-    triggerCompile?.()
+    store.triggerCompile()
   }
 }
 
@@ -106,8 +69,8 @@ const onEdgeDoubleClick = ({ edge }) => {
 const isValidConnection = (connection) => {
   if (connection.source === connection.target) return false
 
-  const sourceNode = nodes.value.find(n => n.id === connection.source)
-  const targetNode = nodes.value.find(n => n.id === connection.target)
+  const sourceNode = store.currentNodes.find(n => n.id === connection.source)
+  const targetNode = store.currentNodes.find(n => n.id === connection.target)
   if (!sourceNode || !targetNode) return false
 
   const sourceConfig = nodeRegistry[sourceNode.type]
@@ -128,15 +91,9 @@ const isValidConnection = (connection) => {
   return true
 }
 
-const canvasRef = ref(null)
+const { searchMenu, openSearchMenu, closeSearchMenu, spawnNode } = useNodeSearch()
 
-const { searchMenu, openSearchMenu, closeSearchMenu, spawnNode } = useNodeSearch({
-  canvasRef, nodes
-})
-
-const { snapToGrid } = useGraphShortCuts({
-  canvasRef, nodes, openSearchMenu
-})
+const { snapToGrid } = useGraphShortCuts({ openSearchMenu })
 
 const nodeTypes = {}
 Object.keys(nodeRegistry).forEach(key => {
@@ -148,7 +105,7 @@ const viewports = {
   simulation: { x: 0, y: 0, zoom: 1 }
 }
 
-watch(() => props.activeTab, async (newTab, oldTab) => {
+watch(() => store.activeTab, async (newTab, oldTab) => {
   viewports[oldTab] = getViewport()
   await nextTick()
   setViewport(viewports[newTab])

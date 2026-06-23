@@ -90,6 +90,7 @@
 
 <script setup>
 import { ref, computed, watch, inject, nextTick } from 'vue'
+import { useShaderGraphStore } from '../../stores/shaderGraph.js'
 import NumberDragInput from '../NumberDragInput.vue'
 
 const props = defineProps({
@@ -98,7 +99,7 @@ const props = defineProps({
   theme: { type: Object, required: true }
 })
 
-const updateNodeData = inject('updateNodeData')
+const store = useShaderGraphStore()
 
 const isExpanded = ref(false)
 const displayMode = ref('RGB')
@@ -160,7 +161,7 @@ const currentChannels = computed(() => {
 })
 
 const emitColorChange = (newRgb) => {
-  updateNodeData(props.id, {
+  store.updateNodeData(props.id, {
     properties: {
       ...props.data.properties,
       value: {
