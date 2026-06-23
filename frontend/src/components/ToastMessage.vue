@@ -29,13 +29,12 @@
         </div>
 
         <div class="flex-1 pt-0.5">
-          <p class="text-base leading-5 whitespace-pre-line font-medium text-gray-800 dark:text-gray-200">
-            {{ toast.message }}
+          <p class="text-base leading-5 whitespace-pre-line font-medium text-gray-800 dark:text-gray-200" v-html="toast.message">
           </p>
           <div v-if="toast.errorDetails" class="mt-2 text-xs">
-            <button 
+            <button
               type="button"
-              @click="toggleDetails(toast)" 
+              @click="toggleDetails(toast)"
               class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium focus:outline-none flex items-center space-x-1"
             >
               <span>{{ toast.isDetailsExpanded ? '收起详情' : '查看详情' }}</span>
@@ -43,14 +42,14 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            <pre 
-              v-show="toast.isDetailsExpanded" 
+            <pre
+              v-show="toast.isDetailsExpanded"
               class="mt-1.5 p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto whitespace-pre-wrap break-all font-mono leading-normal"
             >{{ toast.errorDetails }}</pre>
           </div>
         </div>
 
-        <button 
+        <button
           type="button"
           class="flex-shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none"
           @click="remove(toast.id)"
@@ -78,9 +77,9 @@ const toggleDetails = (toast) => {
   }
 }
 
-const show = (msg, msgType = 'info', duration = 3000, error = null) => {
+const show = (msg, msgType = 'info', duration = null, error = null) => {
   const id = nextId++
-  
+
   let toastErrorDetails = null
   if (error) {
     if (typeof error === 'string') {
@@ -95,7 +94,11 @@ const show = (msg, msgType = 'info', duration = 3000, error = null) => {
     }
   }
 
-  const finalDuration = error ? (duration === 3000 ? 8000 : duration) : duration
+  if (duration === null || duration === undefined) {
+    const baseDuration = error ? 10000 : 3000
+    const extension = toasts.value.length * 1500
+    duration = baseDuration + extension
+  }
 
   const toast = {
     id,
@@ -106,10 +109,10 @@ const show = (msg, msgType = 'info', duration = 3000, error = null) => {
     timer: null
   }
 
-  if (finalDuration > 0) {
+  if (duration > 0) {
     toast.timer = setTimeout(() => {
       remove(id)
-    }, finalDuration)
+    }, duration)
   }
 
   toasts.value.push(toast)

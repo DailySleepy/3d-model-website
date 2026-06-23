@@ -48,7 +48,22 @@ import NodeSearchMenu from './NodeSearchMenu.vue'
 
 const store = useShaderGraphStore()
 
-const { addEdges, removeEdges, getViewport, setViewport } = useVueFlow()
+const { addEdges, removeEdges, getViewport, setViewport, fitView, getSelectedNodes } = useVueFlow()
+
+defineExpose({
+  fitCanvasView: async () => {
+    await nextTick()
+    fitView({ padding: 0.2 })
+  },
+  getSelectedSubgraph: () => {
+    const selectedNodes = getSelectedNodes.value.filter(node => node.category !== 'OUTPUT')
+    const selectedNodesIdsSet = new Set(selectedNodes.map(n => n.id))
+    const innerEdges = store.currentEdges.filter(
+      edge => selectedNodesIdsSet.has(edge.source) && selectedNodesIdsSet.has(edge.target)
+    )
+    return { nodes: selectedNodes, edges: innerEdges }
+  }
+})
 
 const onEdgeChange = async (changes) => {
   const hadGraphChanged = changes.some(c => c.type === 'remove' || c.type === 'add')

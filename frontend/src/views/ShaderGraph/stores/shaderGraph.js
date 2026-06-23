@@ -20,6 +20,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
   const graphCanvasRef = ref(null)
   const renderingContainer = ref(null)
+  const toastRef = ref(null)
 
   // ----------------------------------------
   // Getters
@@ -63,7 +64,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const outputSocketsAcitveMap = computed(() => socketsAcitveMap.value.oMap)
 
   // ----------------------------------------
-  // Actions: Nodes
+  // Actions: Nodes And Graph
   // ----------------------------------------
   const updateNodeData = (nodeId, newData) => {
     const node = currentNodes.value.find((n) => n.id == nodeId)
@@ -73,6 +74,14 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     if (newData.inputs) Object.assign(node.data.inputs, newData.inputs)
 
     triggerCompile() // TODO: 只修改值时不重编译, 而是设置 uniform
+  }
+
+  const getSelectedSubgraph = () => {
+    return graphCanvasRef.value?.getSelectedSubgraph() || { nodes: [], edges: [] }
+  }
+
+  const fitCanvasView = () => {
+    graphCanvasRef.value?.fitCanvasView()
   }
 
   // ----------------------------------------
@@ -127,14 +136,16 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }, 50)
   }
 
-  const onGeometryChange = async () => {
+  const onGeometryChange = async (shouldCompile = true) => {
     if (!engineInstance || isUpdating) return
     if (selectedGeometry.value === 'custom' && customModelUrl.value === null) return
 
     try {
       isUpdating = true
       await engineInstance.updateGeometry(selectedGeometry.value, customModelUrl.value)
-      compileMaterial()
+      if (shouldCompile) {
+        compileMaterial()
+      }
     } finally {
       isUpdating = false
     }
@@ -147,17 +158,17 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     onGeometryChange()
   }
 
-  const onParticleCountChange = async () => {
+  const onParticleCountChange = async (shouldCompile = true) => {
     if (!engineInstance || isUpdating) return
 
     try {
       isUpdating = true
       await engineInstance.updateParticleCount(
         particleCount.value,
-        simNodes.value,
-        simEdges.value,
-        matNodes.value,
-        matEdges.value
+        shouldCompile ? simNodes.value : null,
+        shouldCompile ? simEdges.value : null,
+        shouldCompile ? matNodes.value : null,
+        shouldCompile ? matEdges.value : null
       )
     } finally {
       isUpdating = false
@@ -187,13 +198,20 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
+  const showToast = (msg, msgType = 'info', duration = null, error = null) => {
+    if (toastRef.value) {
+      toastRef.value.show(msg, msgType, duration, error)
+    }
+  }
+
   return {
-    activeTab, particleCount, selectedGeometry, customModelUrl,
-    graphCanvasRef, graphCanvasDOM, renderingContainer,
+    activeTab, isMat, particleCount, selectedGeometry, customModelUrl,
+    graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
     inputSocketsAcitveMap, outputSocketsAcitveMap,
-    updateNodeData,
+    updateNodeData, getSelectedSubgraph, fitCanvasView,
     initEngineInstance, destroyEngineInstance, triggerCompile, compileMaterial, compileSimulation,
-    onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, onGraphResize
+    onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, onGraphResize,
+    showToast
   }
 })

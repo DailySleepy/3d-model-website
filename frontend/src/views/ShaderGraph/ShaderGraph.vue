@@ -18,6 +18,8 @@
       <!-- Three.js 渲染 -->
       <div :ref="el => { store.renderingContainer = el }" class="flex-1 h-full min-w-0"></div>
     </div>
+
+    <ToastMessage :ref="el => { store.toastRef = el }" />
   </div>
 </template>
 
@@ -26,6 +28,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 
 import GraphCanvas from './components/GraphCanvas.vue'
 import GraphHeader from './components/GraphHeader.vue'
+import ToastMessage from '@/components/ToastMessage.vue'
 
 import { useGraphResize } from './composables/useGraphResize.js'
 import { useShaderGraphStore } from './stores/shaderGraph.js'

@@ -4,8 +4,7 @@
       <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
         <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ state.title }}</div>
       </div>
-      <div class="px-6 py-5 text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">
-        {{ state.message }}
+      <div class="px-6 py-5 text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line" v-html="state.message">
       </div>
       <div class="px-6 pb-5 flex justify-end gap-3">
         <button class="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
