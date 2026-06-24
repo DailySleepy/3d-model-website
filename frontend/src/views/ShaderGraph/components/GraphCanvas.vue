@@ -9,6 +9,7 @@
       :selectNodesOnDrag="true"
       :selectionKeyCode="true"
       :deselectOnDrag="false"
+      :deleteKeyCode="null"
       :snapToGrid="snapToGrid"
       :snapGrid="[20, 20]"
       selection-mode="partial"
@@ -56,7 +57,8 @@ defineExpose({
     fitView({ padding: 0.2 })
   },
   getSelectedSubgraph: () => {
-    const selectedNodes = getSelectedNodes.value.filter(node => node.category !== 'OUTPUT')
+    const selectedNodes = getSelectedNodes.value.filter(node => node.data.category !== 'OUTPUT')
+    if (selectedNodes.length === 0) return { nodes: [], edges: [] }
     const selectedNodesIdsSet = new Set(selectedNodes.map(n => n.id))
     const innerEdges = store.currentEdges.filter(
       edge => selectedNodesIdsSet.has(edge.source) && selectedNodesIdsSet.has(edge.target)

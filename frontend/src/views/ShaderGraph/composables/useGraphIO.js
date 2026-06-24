@@ -1,5 +1,6 @@
 import { nextTick } from 'vue'
 import { generateExportData, parseGraphJSON, remapAndRepositionGraph } from "../utils/graphIO"
+export { generateExportData, parseGraphJSON, remapAndRepositionGraph } from "../utils/graphIO"
 import { useShaderGraphStore } from "../stores/shaderGraph"
 import { confirmDialog } from '@/components/ConfirmDialog.vue'
 
@@ -9,12 +10,18 @@ export function useGraphIO() {
   const handleImportFile = (file, mode) => {
     const reader = new FileReader()
     reader.onload = (e) => {
-      processImportText(e.target.result, mode, null)
+      handleImportText(e.target.result, mode, null)
     }
     reader.readAsText(file)
   }
 
-  const processImportText = async (text, mode, mousePos = null) => {
+  /**
+   * 解析并应用导入的项目/画布 JSON 节点图文件数据
+   * 包含覆盖弹窗确认、全局参数同步、视角聚焦自适应
+   * @param {string} text 导入的 JSON 字符串内容
+   * @param {string} mode 导入模式 ('all' | 'current')
+   */
+  const handleImportText = async (text, mode) => {
     const result = parseGraphJSON(text, mode, store.activeTab)
     if (!result.isValid) {
       store.showToast(result.error, 'error')
@@ -35,11 +42,24 @@ export function useGraphIO() {
     // 应用图数据
     let isMatChanged = false
     let isSimChanged = false
+    let matNodeCount = 0
+    let simNodeCount = 0
 
     for (const graph of result.graphs) {
-      const changed = await applyGraphData(graph, mousePos)
-      if (graph.key === 'material') isMatChanged = changed
-      if (graph.key === 'simulation') isSimChanged = changed
+      const applyMode = graph.isFullGraph ? 'override' : 'append'
+      const changed = await applyGraphData(graph.key, graph, applyMode, null)
+      if (graph.key === 'material') {
+        isMatChanged = changed
+        if (changed) {
+          matNodeCount = graph.nodes.length
+        }
+      }
+      if (graph.key === 'simulation') {
+        isSimChanged = changed
+        if (changed) {
+          simNodeCount = graph.nodes.length
+        }
+      }
     }
 
     // 应用全局配置
@@ -65,7 +85,7 @@ export function useGraphIO() {
       store.compileMaterial()
     }
     if (isMatChanged) {
-      store.showToast("成功导入 <b>材质画布</b>", "success")
+      store.showToast(`成功导入 <b>材质画布</b>，共 <b>${matNodeCount}</b> 个节点`, "success")
     }
 
     const needCompileSim = isSimChanged || isParticleCountChanged
@@ -73,7 +93,7 @@ export function useGraphIO() {
       store.compileSimulation()
     }
     if (isSimChanged) {
-      store.showToast("成功导入 <b>模拟画布</b>", "success")
+      store.showToast(`成功导入 <b>模拟画布</b>，共 <b>${simNodeCount}</b> 个节点`, "success")
     }
 
     // 处理期望的画布未发生变更或缺失的警告提示
@@ -96,41 +116,75 @@ export function useGraphIO() {
     store.fitCanvasView()
   }
 
-  const applyGraphData = async (graph, mousePos) => {
-    const { key, nodes, edges, isFullGraph } = graph
-    if (!nodes || nodes.length === 0) return false
+  /**
+   * 静默解析来自剪切板的节点数据并应用于当前画布
+   * @param {string} text 剪切板文本
+   * @param {Object} [mousePos] 已经画布投影过的目标坐标
+   */
+  const handleClipboardPaste = async (text, mousePos) => {
+    if (!text) return
 
-    let isChanged = false
+    // 1. 静默进行基本检验，若非合法 JSON 节点图则直接静默退出
+    const result = parseGraphJSON(text, 'current', store.activeTab)
+    if (!result.isValid) return
 
-    if (isFullGraph) {
-      if (key === 'material') {
-        store.matNodes = nodes
-        store.matEdges = edges || []
-        isChanged = true
-      } else if (key === 'simulation') {
-        store.simNodes = nodes
-        store.simEdges = edges || []
-        isChanged = true
+    // 2. 获取当前画布数据
+    const activeTab = store.activeTab
+    const graph = result.graphs.find(g => g.key === activeTab)
+    if (!graph || !graph.nodes || graph.nodes.length === 0) return
+
+    // 3. 粘贴永远强制为增量追加，并偏移坐标
+    const changed = await applyGraphData(activeTab, graph, 'append', mousePos)
+
+    if (changed) {
+      // 4. 静默触发当前画布的编译
+      if (activeTab === 'material') {
+        store.compileMaterial()
+      } else if (activeTab === 'simulation') {
+        store.compileSimulation()
       }
-    } else {
+    }
+  }
+
+  /**
+   * 应用图数据到对应的画布 store 中
+   * @param {string} targetTab 画布 Tab 标识 ('material' | 'simulation')
+   * @param {Object} graph 图数据，包含 nodes 和 edges
+   * @param {'override' | 'append'} mode 应用模式：覆写 (override) 或 追加 (append)
+   * @param {Object} [mousePos] 鼠标投影坐标
+   * @returns {Promise<boolean>} 是否成功应用修改
+   */
+  const applyGraphData = async (targetTab, graph, mode, mousePos = null) => {
+    const { nodes = [], edges = [] } = graph
+    if (nodes.length === 0) return false
+
+    if (mode === 'override') {
+      if (targetTab === 'material') {
+        store.matNodes = nodes
+        store.matEdges = edges
+      } else if (targetTab === 'simulation') {
+        store.simNodes = nodes
+        store.simEdges = edges
+      }
+      return true
+    }
+    else if (mode === 'append') {
       const { nodes: newNodes, edges: newEdges } = remapAndRepositionGraph(
-        nodes, edges || [],
-        key === store.activeTab ? mousePos : null
+        nodes, edges,
+        targetTab === store.activeTab ? mousePos : null
       )
 
       if (newNodes.length > 0) {
-        if (key === 'material') {
+        if (targetTab === 'material') {
           store.matNodes = [...store.matNodes, ...newNodes]
           store.matEdges = [...store.matEdges, ...newEdges]
-          isChanged = true
-        } else if (key === 'simulation') {
+        } else if (targetTab === 'simulation') {
           store.simNodes = [...store.simNodes, ...newNodes]
           store.simEdges = [...store.simEdges, ...newEdges]
-          isChanged = true
         }
 
         // 仅在当前激活的 Tab 增量导入时，把新节点设为选中，其他节点取消选中
-        if (key === store.activeTab) {
+        if (targetTab === store.activeTab) {
           await nextTick()
           store.currentNodes.forEach(node => {
             node.selected = newNodes.some(n => n.id === node.id)
@@ -139,10 +193,10 @@ export function useGraphIO() {
             edge.selected = newEdges.some(e => e.id === edge.id)
           })
         }
+        return true
       }
     }
-
-    return isChanged
+    return false
   }
 
   const handleExportJSON = (mode) => {
@@ -207,7 +261,8 @@ export function useGraphIO() {
 
   return {
     handleImportFile,
-    processImportText,
+    processImportText: handleImportText,
+    handleClipboardPaste,
     handleExportJSON,
     handleExportHTML
   }
