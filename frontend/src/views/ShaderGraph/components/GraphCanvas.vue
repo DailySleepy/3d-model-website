@@ -16,6 +16,7 @@
       @connect="onConnect"
       @edgesChange="onEdgeChange"
       @edgeDoubleClick="onEdgeDoubleClick"
+      @nodeDragStart="onNodeDragStart"
       class="vue-flow-dark"
     >
       <Background patternColor="#2c2c2e" gap="20" />
@@ -49,7 +50,7 @@ import NodeSearchMenu from './NodeSearchMenu.vue'
 
 const store = useShaderGraphStore()
 
-const { addEdges, removeEdges, getViewport, setViewport, fitView, getSelectedNodes } = useVueFlow()
+const { getViewport, setViewport, fitView, getSelectedNodes } = useVueFlow()
 
 defineExpose({
   fitCanvasView: async () => {
@@ -71,16 +72,20 @@ const onEdgeChange = async (changes) => {
   const hadGraphChanged = changes.some(c => c.type === 'remove' || c.type === 'add')
   if (hadGraphChanged) {
     await nextTick()
-    store.triggerCompile()
+    store.compileActiveTab()
   }
 }
 
+const onNodeDragStart = () => {
+  store.takeSnapshot()
+}
+
 const onConnect = (params) => {
-  addEdges(params)
+  store.addConnection(params)
 }
 
 const onEdgeDoubleClick = ({ edge }) => {
-  removeEdges(edge)
+  store.removeEdge(edge.id)
 }
 
 const isValidConnection = (connection) => {

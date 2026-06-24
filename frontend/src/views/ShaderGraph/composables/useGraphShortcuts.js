@@ -1,14 +1,14 @@
-import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useShaderGraphStore } from '../stores/shaderGraph'
-import { generateExportData, remapAndRepositionGraph, useGraphIO } from './useGraphIO'
+import { generateExportData, useGraphIO } from './useGraphIO'
 
 export function useGraphShortCuts({ openSearchMenu }) {
   const snapToGrid = ref(false)
 
   const store = useShaderGraphStore()
   const { handleClipboardPaste } = useGraphIO()
-  const { getSelectedNodes, getSelectedEdges, project, addNodes, addEdges, removeNodes, removeEdges } = useVueFlow()
+  const { getSelectedNodes, getSelectedEdges, project } = useVueFlow()
 
   const mousePos = {}
   const trackMousePos = (e) => {
@@ -26,6 +26,22 @@ export function useGraphShortCuts({ openSearchMenu }) {
   const handleGlobalKeyDown = async (e) => {
     const activeEl = document.activeElement
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+      return
+    }
+
+    // Ctrl + Z: 撤销
+    if (e.ctrlKey && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+      e.preventDefault()
+      store.undo()
+      return
+    }
+
+    // Ctrl + Shift + Z / Ctrl + Y: 重做
+    if ((e.ctrlKey && (e.key === 'y' || e.key === 'Y')) ||
+      (e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')))
+    {
+      e.preventDefault()
+      store.redo()
       return
     }
 
@@ -65,22 +81,8 @@ export function useGraphShortCuts({ openSearchMenu }) {
 
       const subgraph = store.getSelectedSubgraph()
       if (!subgraph.nodes || subgraph.nodes.length === 0) return
-      const { nodes: newNodes, edges: newEdges } = remapAndRepositionGraph(
-        subgraph.nodes, subgraph.edges,
-        getProjectedMousePos()
-      )
 
-      getSelectedNodes.value.forEach(node => {
-        node.selected = false
-      })
-      getSelectedEdges.value.forEach(edge => {
-        edge.selected = false
-      })
-
-      addNodes(newNodes)
-      await nextTick()
-      addEdges(newEdges)
-
+      store.cloneSubgraph(subgraph, getProjectedMousePos())
       return
     }
 
@@ -90,12 +92,7 @@ export function useGraphShortCuts({ openSearchMenu }) {
       const selectedNodes = getSelectedNodes.value.filter(n => n.data.category !== 'OUTPUT')
       const selectedEdges = getSelectedEdges.value
 
-      if (selectedNodes.length > 0) {
-        removeNodes(selectedNodes)
-      }
-      if (selectedEdges.length > 0) {
-        removeEdges(selectedEdges)
-      }
+      store.removeElements(selectedNodes, selectedEdges)
       return
     }
   }

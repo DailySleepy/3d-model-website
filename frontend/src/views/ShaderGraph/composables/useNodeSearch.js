@@ -51,7 +51,7 @@ export function useNodeSearch() {
     })
 
     if (newNode) {
-      store.currentNodes.push(newNode)
+      store.addNode(newNode)
     }
     closeSearchMenu()
   }

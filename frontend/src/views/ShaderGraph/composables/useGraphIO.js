@@ -47,7 +47,7 @@ export function useGraphIO() {
 
     for (const graph of result.graphs) {
       const applyMode = graph.isFullGraph ? 'override' : 'append'
-      const changed = await applyGraphData(graph.key, graph, applyMode, null)
+      const changed = await store.applyGraphData(graph.key, graph, applyMode, null)
       if (graph.key === 'material') {
         isMatChanged = changed
         if (changed) {
@@ -134,7 +134,7 @@ export function useGraphIO() {
     if (!graph || !graph.nodes || graph.nodes.length === 0) return
 
     // 3. 粘贴永远强制为增量追加，并偏移坐标
-    const changed = await applyGraphData(activeTab, graph, 'append', mousePos)
+    const changed = await store.applyGraphData(activeTab, graph, 'append', mousePos)
 
     if (changed) {
       // 4. 静默触发当前画布的编译
@@ -146,58 +146,7 @@ export function useGraphIO() {
     }
   }
 
-  /**
-   * 应用图数据到对应的画布 store 中
-   * @param {string} targetTab 画布 Tab 标识 ('material' | 'simulation')
-   * @param {Object} graph 图数据，包含 nodes 和 edges
-   * @param {'override' | 'append'} mode 应用模式：覆写 (override) 或 追加 (append)
-   * @param {Object} [mousePos] 鼠标投影坐标
-   * @returns {Promise<boolean>} 是否成功应用修改
-   */
-  const applyGraphData = async (targetTab, graph, mode, mousePos = null) => {
-    const { nodes = [], edges = [] } = graph
-    if (nodes.length === 0) return false
 
-    if (mode === 'override') {
-      if (targetTab === 'material') {
-        store.matNodes = nodes
-        store.matEdges = edges
-      } else if (targetTab === 'simulation') {
-        store.simNodes = nodes
-        store.simEdges = edges
-      }
-      return true
-    }
-    else if (mode === 'append') {
-      const { nodes: newNodes, edges: newEdges } = remapAndRepositionGraph(
-        nodes, edges,
-        targetTab === store.activeTab ? mousePos : null
-      )
-
-      if (newNodes.length > 0) {
-        if (targetTab === 'material') {
-          store.matNodes = [...store.matNodes, ...newNodes]
-          store.matEdges = [...store.matEdges, ...newEdges]
-        } else if (targetTab === 'simulation') {
-          store.simNodes = [...store.simNodes, ...newNodes]
-          store.simEdges = [...store.simEdges, ...newEdges]
-        }
-
-        // 仅在当前激活的 Tab 增量导入时，把新节点设为选中，其他节点取消选中
-        if (targetTab === store.activeTab) {
-          await nextTick()
-          store.currentNodes.forEach(node => {
-            node.selected = newNodes.some(n => n.id === node.id)
-          })
-          store.currentEdges.forEach(edge => {
-            edge.selected = newEdges.some(e => e.id === edge.id)
-          })
-        }
-        return true
-      }
-    }
-    return false
-  }
 
   const handleExportJSON = (mode) => {
     let graphsToExport = {}
