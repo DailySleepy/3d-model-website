@@ -36,8 +36,8 @@ export class ShaderGraphEngine {
 
     // Uniforms
     this.lightDirUniform = null
-    this.timeUniform = new THREE.UniformNode(0.0);
-    this.deltaTimeUniform = new THREE.UniformNode(0.0);
+    this.timeUniform = new THREE.UniformNode(0.0)
+    this.deltaTimeUniform = new THREE.UniformNode(0.0)
 
     // Shader Terminal
     this.material = null
@@ -65,7 +65,7 @@ export class ShaderGraphEngine {
     this.customModelUrl = customModelUrl
 
     this.scene = new THREE.Scene()
-    this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100)
+    this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.01, 100)
     this.camera.position.set(0, 15, 25)
 
     this.renderer = new THREE.WebGPURenderer({ antialias: true })
@@ -283,12 +283,13 @@ export class ShaderGraphEngine {
     this.renderer.computeAsync(tsl.compute(initKernelFn(), this.particleCount))
   }
 
-  compileSimulation(simNodes, simEdges) {
+  compileSimulation(simNodes, simEdges, texturesMap = {}) {
     if (!this.positionBuffer || !this.velocityBuffer) return
 
     const ctx = new CompilerContext(simNodes, simEdges, {
       lightDir: this.lightDirUniform,
-      time: this.timeUniform
+      time: this.timeUniform,
+      textures: texturesMap
     })
     const fetchInput = ctx.createInputFetcher('sim-output')
     if (!fetchInput) return
@@ -319,10 +320,11 @@ export class ShaderGraphEngine {
     this.resetParticleBuffers(simNodes, simEdges)
   }
 
-  compileMaterial(matNodes, matEdges) {
+  compileMaterial(matNodes, matEdges, texturesMap = {}) {
     const ctx = new CompilerContext(matNodes, matEdges, {
       lightDir: this.lightDirUniform,
-      time: this.timeUniform
+      time: this.timeUniform,
+      textures: texturesMap
     })
     const fetchInput = ctx.createInputFetcher('mat-output')
     if (!fetchInput) return
@@ -373,5 +375,65 @@ export class ShaderGraphEngine {
 
   #checkBuffers() {
     return this.positionBuffer != null && this.velocityBuffer != null
+  }
+
+  getCompiledWGSL() {
+    const pipelines = this.renderer ? (this.renderer.pipelines || this.renderer._pipelines) : null
+    if (!pipelines) {
+      return { error: '渲染器未初始化或 Pipelines 未就绪' }
+    }
+
+    const programs = pipelines.programs
+    const result = {
+      vertex: [],
+      fragment: [],
+      compute: []
+    }
+
+    let simComputeShader = null
+    if (this.simulationKernel && this.renderer._nodes) {
+      const simState = this.renderer._nodes.get(this.simulationKernel)?.nodeBuilderState
+      if (simState) {
+        simComputeShader = simState.computeShader
+      }
+    }
+
+    let matVertexShader = null
+    let matFragmentShader = null
+    if (this.renderer._nodes && this.renderer._nodes.nodeBuilderCache) {
+      for (const state of this.renderer._nodes.nodeBuilderCache.values()) {
+        if (state.vertexShader && (state.vertexShader.includes('positionAttribute') || state.vertexShader.includes('positionBuffer'))) {
+          matVertexShader = state.vertexShader
+          matFragmentShader = state.fragmentShader
+          break
+        }
+      }
+    }
+
+    if (programs) {
+      for (const [code, stage] of programs.vertex.entries()) {
+        const isOurShader = code === matVertexShader
+        result.vertex.push({
+          name: isOurShader ? 'ShaderGraphMaterial' : (stage.name || 'Anonymous'),
+          code
+        })
+      }
+      for (const [code, stage] of programs.fragment.entries()) {
+        const isOurShader = code === matFragmentShader
+        result.fragment.push({
+          name: isOurShader ? 'ShaderGraphMaterial' : (stage.name || 'Anonymous'),
+          code
+        })
+      }
+      for (const [code, stage] of programs.compute.entries()) {
+        const isOurShader = code === simComputeShader
+        result.compute.push({
+          name: isOurShader ? 'ShaderGraphSimulation' : (stage.name || 'Anonymous'),
+          code
+        })
+      }
+    }
+
+    return result
   }
 }

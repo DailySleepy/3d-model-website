@@ -6,6 +6,7 @@ export class CompilerContext {
   #nodes
   #reverseEdgeLUT = new Map()
   #outputCache = new Map()
+  #inputCache = new Map()
 
   constructor(nodes, edges, uniforms = {}) {
     this.uniforms = uniforms
@@ -42,11 +43,18 @@ export class CompilerContext {
   }
 
   #resolveInput(vueNode, inputSocketId) {
-    const edgeInfo = this.#reverseEdgeLUT.get(this.#buildKey(vueNode.id, inputSocketId))
+    const inputKey = this.#buildKey(vueNode.id, inputSocketId)
+    if (this.#inputCache.has(inputKey)) {
+      return this.#inputCache.get(inputKey)
+    }
+
+    const edgeInfo = this.#reverseEdgeLUT.get(inputKey)
 
     // 插槽未连接, 返回默认值
     if (!edgeInfo) {
-      return getSocketDefaultResult(vueNode, inputSocketId)
+      const result = getSocketDefaultResult(vueNode, inputSocketId)
+      this.#inputCache.set(inputKey, result)
+      return result
     }
 
     // 有连线, 追踪到上游
@@ -55,17 +63,23 @@ export class CompilerContext {
     const cacheKey = this.#buildKey(sourceNode.id, sourceSocketId)
 
     if (this.#outputCache.has(cacheKey)) {
-      return this.#outputCache.get(cacheKey)
+      const result = this.#outputCache.get(cacheKey)
+      this.#inputCache.set(inputKey, result)
+      return result
     }
 
     const sourceNodeConfig = nodeRegistry[sourceNode.type]
     if (!sourceNodeConfig) {
-      return { node: tsl.float(0.0), type: 'float' }
+      console.warn('Unexpected')
+      const result = { node: tsl.float(0.0), type: 'float' }
+      this.#inputCache.set(inputKey, result)
+      return result
     }
 
     const inputProxy = {
       compiledNode: (socketId) => this.#resolveInput(sourceNode, socketId).node,
-      type: (socketId) => this.#resolveInput(sourceNode, socketId).type
+      type: (socketId) => this.#resolveInput(sourceNode, socketId).type,
+      hasConnection: (socketId) => this.#reverseEdgeLUT.has(this.#buildKey(sourceNode.id, socketId))
     }
 
     const compiledNode = sourceNodeConfig.compile({
@@ -84,6 +98,7 @@ export class CompilerContext {
 
     const result = { node: compiledNode, type: inferredType }
     this.#outputCache.set(cacheKey, result)
+    this.#inputCache.set(inputKey, result)
     return result
   }
 }
