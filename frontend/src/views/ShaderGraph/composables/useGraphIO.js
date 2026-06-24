@@ -1,18 +1,90 @@
 import { nextTick } from 'vue'
-import { generateExportData, parseGraphJSON, remapAndRepositionGraph } from "../utils/graphIO"
-export { generateExportData, parseGraphJSON, remapAndRepositionGraph } from "../utils/graphIO"
+import { generateExportData, parseGraphJSON, remapAndRepositionGraph, getUsedTextureIds } from "../utils/graphIO"
+export { generateExportData, parseGraphJSON, remapAndRepositionGraph, getUsedTextureIds } from "../utils/graphIO"
 import { useShaderGraphStore } from "../stores/shaderGraph"
 import { confirmDialog } from '@/components/ConfirmDialog.vue'
+import JSZip from 'jszip'
 
 export function useGraphIO() {
   const store = useShaderGraphStore()
 
   const handleImportFile = (file, mode) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      handleImportText(e.target.result, mode, null)
+    if (file.name.endsWith('.zip')) {
+      handleImportZip(file, mode)
+    } else {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        handleImportText(e.target.result, mode)
+      }
+      reader.readAsText(file)
     }
-    reader.readAsText(file)
+  }
+
+  const handleImportZip = async (file, mode) => {
+    let zip
+    try {
+      zip = await JSZip.loadAsync(file)
+    } catch (e) {
+      store.showToast('无法解析 zip 压缩包', 'error')
+      return
+    }
+
+    const jsonFile = zip.file('shadergraph.json')
+    if (!jsonFile) {
+      store.showToast('无效的项目压缩包，未包含 shadergraph.json', 'error')
+      return
+    }
+
+    let text
+    try {
+      text = await jsonFile.async('text')
+    } catch (e) {
+      store.showToast('读取 shadergraph.json 失败', 'error')
+      return
+    }
+
+    let parsedData
+    try {
+      parsedData = JSON.parse(text)
+    } catch (e) {
+      store.showToast('JSON 格式错误', 'error')
+      return
+    }
+
+    const projectSettings = parsedData.projectSettings || {}
+
+    // 并发加载贴图资源
+    const texturesMeta = projectSettings.customTextures
+    if (texturesMeta && texturesMeta.length > 0) {
+      const loadPromises = texturesMeta.map(async (texMeta) => {
+        const exists = store.customTextures.some(t => t.id === texMeta.id)
+        if (exists) return
+
+        const texFile = zip.file(texMeta.path)
+        if (texFile) {
+          const blob = await texFile.async('blob')
+          await store.addCustomTextureFromBlob(blob, texMeta.name, texMeta.id, false)
+        }
+      })
+      await Promise.all(loadPromises)
+    }
+
+    // 加载模型
+    const modelMeta = projectSettings.customModel
+    let loadedModelFile = null
+    if (modelMeta) {
+      const modelFileInZip = zip.file(modelMeta.path)
+      if (modelFileInZip) {
+        const blob = await modelFileInZip.async('blob')
+        loadedModelFile = new File([blob], modelMeta.name, { type: 'model/gltf-binary' })
+      }
+    }
+    if (loadedModelFile) {
+      store.onCustomModelUpload(loadedModelFile, false)
+    }
+
+    // 应用图和文本
+    handleImportText(text, mode)
   }
 
   /**
@@ -47,7 +119,12 @@ export function useGraphIO() {
 
     for (const graph of result.graphs) {
       const applyMode = graph.isFullGraph ? 'override' : 'append'
-      const changed = await store.applyGraphData(graph.key, graph, applyMode, null)
+      const changed = await store.applyGraphData({
+        targetTab: graph.key,
+        graph,
+        mode: applyMode,
+        shouldCompile: false
+      })
       if (graph.key === 'material') {
         isMatChanged = changed
         if (changed) {
@@ -124,33 +201,109 @@ export function useGraphIO() {
   const handleClipboardPaste = async (text, mousePos) => {
     if (!text) return
 
-    // 1. 静默进行基本检验，若非合法 JSON 节点图则直接静默退出
     const result = parseGraphJSON(text, 'current', store.activeTab)
     if (!result.isValid) return
 
-    // 2. 获取当前画布数据
     const activeTab = store.activeTab
     const graph = result.graphs.find(g => g.key === activeTab)
     if (!graph || !graph.nodes || graph.nodes.length === 0) return
 
-    // 3. 粘贴永远强制为增量追加，并偏移坐标
-    const changed = await store.applyGraphData(activeTab, graph, 'append', mousePos)
+    store.applyGraphData({
+      targetTab: activeTab,
+      graph,
+      mode: 'append',
+      mousePos
+    })
+  }
 
-    if (changed) {
-      // 4. 静默触发当前画布的编译
-      if (activeTab === 'material') {
-        store.compileMaterial()
-      } else if (activeTab === 'simulation') {
-        store.compileSimulation()
+  const exportAsJSON = (exportData, filename) => {
+    const jsonStr = JSON.stringify(exportData, null, 2)
+    const blob = new Blob([jsonStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${filename}.json`
+    a.click()
+
+    URL.revokeObjectURL(url)
+    store.showToast('项目配置已成功导出并下载', 'success')
+  }
+
+  const exportAsZip = async (exportData, filename, usedCustomTextures) => {
+    const zip = new JSZip()
+    const usedPaths = new Set()
+
+    // 1. 打包自定义贴图
+    const customTexturesMeta = usedCustomTextures.map(tex => {
+      let fileName = tex.name
+      let path = `assets/textures/${fileName}`
+      let counter = 1
+      while (usedPaths.has(path)) {
+        const dotIdx = fileName.lastIndexOf('.')
+        const base = dotIdx !== -1 ? fileName.substring(0, dotIdx) : fileName
+        const ext = dotIdx !== -1 ? fileName.substring(dotIdx) : ''
+        path = `assets/textures/${base}_${counter}${ext}`
+        counter++
       }
+      usedPaths.add(path)
+
+      zip.file(path, tex.file)
+
+      return {
+        id: tex.id,
+        name: tex.name,
+        path: path
+      }
+    })
+
+    // 2. 打包自定义模型
+    let customModelMeta = null
+    const hasCustomModel = store.selectedGeometry === 'custom' && store.customModelFile
+    if (hasCustomModel) {
+      const modelPath = 'assets/model/model.glb'
+      zip.file(modelPath, store.customModelFile)
+      customModelMeta = {
+        name: store.customModelFile.name,
+        path: modelPath
+      }
+    }
+
+    // 3. 注入元数据
+    if (customTexturesMeta.length > 0 || customModelMeta) {
+      const projectSettings = exportData.projectSettings || {}
+      if (customTexturesMeta.length > 0) {
+        projectSettings.customTextures = customTexturesMeta
+      }
+      if (customModelMeta) {
+        projectSettings.customModel = customModelMeta
+      }
+      exportData.projectSettings = projectSettings
+    }
+
+    // 4. 打包 json
+    const jsonStr = JSON.stringify(exportData, null, 2)
+    zip.file('shadergraph.json', jsonStr)
+
+    // 5. 压缩下载
+    try {
+      const blob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${filename}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+      store.showToast('项目配置及自定义资产已成功打包为 ZIP 导出', 'success')
+    } catch (err) {
+      console.error(err)
+      store.showToast('生成 ZIP 失败', 'error')
     }
   }
 
-
-
-  const handleExportJSON = (mode) => {
+  const handleExportFile = async (mode) => {
     let graphsToExport = {}
-    let globalSettings = {}
+    let projectSettings = {}
     let filename = ''
 
     if (mode === 'current') {
@@ -158,11 +311,11 @@ export function useGraphIO() {
         nodes: store.currentNodes,
         edges: store.currentEdges
       }
-      globalSettings = {
+      projectSettings = {
         particleCount: store.particleCount,
         selectedGeometry: store.selectedGeometry
       }
-      filename = `shadergraph-${store.activeTab}-${Date.now()}.json`
+      filename = `shadergraph-${store.activeTab}-${Date.now()}`
     }
     else if (mode === 'all') {
       graphsToExport["material"] = {
@@ -173,46 +326,44 @@ export function useGraphIO() {
         nodes: store.simNodes,
         edges: store.simEdges
       }
-      globalSettings = {
+      projectSettings = {
         particleCount: store.particleCount,
         selectedGeometry: store.selectedGeometry
       }
-      filename = `shadergraph-project-${Date.now()}.json`
+      filename = `shadergraph-project-${Date.now()}`
     }
     else if (mode === 'selection') {
       graphsToExport["selection"] = store.getSelectedSubgraph()
-      filename = `shadergraph-selection-${Date.now()}.json`
+      filename = `shadergraph-selection-${Date.now()}`
     }
 
-    const exportData = generateExportData({ graphs: graphsToExport, globalSettings })
+    const exportData = generateExportData({ graphs: graphsToExport, projectSettings })
 
     if (!exportData) {
       store.showToast('导出文件失败', 'error')
       return
     }
 
-    const jsonStr = JSON.stringify(exportData, null, 2)
-    const blob = new Blob([jsonStr], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
+    let usedCustomTextures = []
+    if (store.customTextures.length > 0) {
+      const usedTextureIds = getUsedTextureIds(exportData)
+      usedCustomTextures = store.customTextures.filter(tex => usedTextureIds.has(tex.id))
+    }
 
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
+    const hasCustomTextures = usedCustomTextures.length > 0
+    const hasCustomModel = store.selectedGeometry === 'custom' && store.customModelFile
 
-    URL.revokeObjectURL(url)
-    store.showToast('项目配置已成功导出并下载', 'success')
-  }
-
-  const handleExportHTML = (mode) => {
-    // TODO
+    if (hasCustomTextures || hasCustomModel) {
+      await exportAsZip(exportData, filename, usedCustomTextures)
+    } else {
+      exportAsJSON(exportData, filename)
+    }
   }
 
   return {
     handleImportFile,
-    processImportText: handleImportText,
+    handleImportText,
     handleClipboardPaste,
-    handleExportJSON,
-    handleExportHTML
+    handleExportFile
   }
 }

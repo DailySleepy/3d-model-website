@@ -1,91 +1,21 @@
 import * as tsl from 'three/tsl'
+import * as THREE from 'three/webgpu'
+import {
+  getDefaultTexture,
+  getSocketDefaultResult as rawGetSocketDefaultResult
+} from './registryUtils'
 
-// --- Utils ---
-export const TYPE_METADATA_REGISTRY = {
-  'float':         { dim: 1, wgslType: 'f32'       },
-  'int':           { dim: 1, wgslType: 'i32'       },
-  'bool':          { dim: 1, wgslType: 'bool'      },
-  'vec2':          { dim: 2, wgslType: 'vec2<f32>' },
-  'vec3':          { dim: 3, wgslType: 'vec3<f32>' },
-  'vec4':          { dim: 4, wgslType: 'vec4<f32>' }
-}
-
-export const SEMANTIC_TO_DATA_TYPE = {
-  // Basic data types
-  'float': 'float',
-  'int': 'int',
-  'bool': 'bool',
-  'vec2': 'vec2',
-  'vec3': 'vec3',
-  'vec4': 'vec4',
-
-  // Semantic types
-  'color': 'vec3',
-  'materialColor': 'vec3',
-  'materialRoughness': 'float',
-  'materialMetalness': 'float',
-  'materialEmissive': 'vec3',
-  'materialNormal': 'vec3',
-  'materialAO': 'float',
-  'positionLocal': 'vec3',
-}
-
-export const DEFAULT_NODE_CONSTRUCTORS = {
-  // Basic data types
-  'float': (v) => tsl.float(v ?? 0.0), // TODO: tsl.uniform
-  'int': (v) => tsl.int(v ?? 0),
-  'bool': (v) => tsl.bool(v ?? false),
-  'vec2': (v) => tsl.vec2(...(v || [0, 0])),
-  'vec3': (v) => tsl.vec3(...(v || [0, 0, 0])),
-  'vec4': (v) => tsl.vec4(...(v || [0, 0, 0, 0])),
-
-  // Semantic types
-  'color': (v) => tsl.color(v ?? '#000000'),
-  'materialColor': () => null,
-  'materialRoughness': () => null,
-  'materialMetalness': () => null,
-  'materialEmissive': () => null,
-  'materialNormal': () => null,
-  'materialAO': () => null,
-  'positionLocal': () => null,
-}
-
-export const getDimension = (type) => TYPE_METADATA_REGISTRY[SEMANTIC_TO_DATA_TYPE[type] || type]?.dim || 1
-export const getWgslType = (type) => TYPE_METADATA_REGISTRY[SEMANTIC_TO_DATA_TYPE[type] || type]?.wgslType || 'f32'
+export {
+  TYPE_METADATA_REGISTRY,
+  SEMANTIC_TO_DATA_TYPE,
+  DEFAULT_NODE_CONSTRUCTORS,
+  getDimension,
+  getWgslType,
+  getDefaultTexture
+} from './registryUtils'
 
 export function getSocketDefaultResult(vueNode, socketId) {
-  const nodeProps = vueNode.data?.properties || {}
-
-  const nodeConfig = nodeRegistry[vueNode.type]
-  const socketConfig = nodeConfig?.inputs?.find(input => input.id === socketId)
-
-  if (!socketConfig) {
-    console.warn('Unexpected')
-    return { node: tsl.float(0.0), type: 'float' }
-  }
-
-  const type = typeof socketConfig.defaultType === 'function' ? socketConfig.defaultType(nodeProps) : socketConfig.defaultType
-
-  // 转换成基础类型返回，给编译器使用
-  const dataType = SEMANTIC_TO_DATA_TYPE[type] || type
-
-  // 优先从节点实例的 inputs 字段获取当前输入值/滑块值
-  let value = vueNode.data?.inputs?.[socketId]
-  // 否则读取配置默认值
-  if (value === undefined) {
-    value = typeof socketConfig.defaultValue === 'function' ? socketConfig.defaultValue(nodeProps) : socketConfig.defaultValue
-  }
-
-  const constructor = DEFAULT_NODE_CONSTRUCTORS[type]
-  let node = null
-  if (constructor) {
-    node = typeof constructor === 'function' ? constructor(value) : constructor
-  } else {
-    console.warn('Unexpected')
-    node = tsl.float(0.0)
-  }
-
-  return { node, type: dataType }
+  return rawGetSocketDefaultResult(vueNode, socketId, nodeRegistry)
 }
 
 // --- Output Nodes ---
@@ -174,7 +104,64 @@ export const constantNodes = {
     inferType() { return 'vec3' },
     compile: ({ nodeProps }) => tsl.color(nodeProps?.value ?? '#ff5395')
   },
-} // TODO: 向量, 整数, bool, 旋转(欧拉角)
+  'textureSample': {
+    label: '纹理采样 (textureSample)',
+    category: 'CONSTANT',
+    properties: {
+      textureId: {
+        type: 'string',
+        default: '',
+        label: '纹理'
+      },
+      wrap: {
+        type: 'string',
+        default: 'repeat',
+        label: '包裹方式'
+      },
+      filter: {
+        type: 'string',
+        default: 'linear',
+        label: '插值方式'
+      }
+    },
+    inputs: [
+      { id: 'uv', defaultType: 'uv' }
+    ],
+    outputs: [
+      { id: 'color', defaultType: 'vec3' }
+    ],
+    inferType() { return 'vec3' },
+    compile({ nodeProps, inputs, uniforms }) {
+      const userTex = uniforms?.textures && nodeProps?.textureId
+        ? uniforms.textures[nodeProps.textureId]
+        : null
+      const tex = userTex || getDefaultTexture()
+
+      if (userTex) {
+        const wrapMode = nodeProps.wrap === 'clamp'
+          ? THREE.ClampToEdgeWrapping
+          : (nodeProps.wrap === 'mirror' ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping)
+        if (userTex.wrapS !== wrapMode || userTex.wrapT !== wrapMode) {
+          userTex.wrapS = wrapMode
+          userTex.wrapT = wrapMode
+          userTex.needsUpdate = true
+        }
+
+        const filterMode = nodeProps.filter === 'nearest'
+          ? THREE.NearestFilter
+          : THREE.LinearFilter
+        if (userTex.minFilter !== filterMode || userTex.magFilter !== filterMode) {
+          userTex.minFilter = filterMode
+          userTex.magFilter = filterMode
+          userTex.needsUpdate = true
+        }
+      }
+
+      const uvInput = inputs.compiledNode('uv')
+      return tsl.texture(tex, uvInput.xy).rgb
+    }
+  },
+}
 
 // --- Geometry Nodes ---
 export const geometryNodes = {

@@ -73,7 +73,7 @@
         v-model="importMode"
         :options="importOptions"
         labelPrefix="导入"
-        dropdownWidth="w-36"
+        dropdownWidth="w-44"
         @click-main="triggerImportInput"
         class="h-6 shrink-0"
       >
@@ -83,14 +83,14 @@
           </svg>
         </template>
       </SplitDropdown>
-      <input type="file" ref="importInput" style="display: none;" accept=".json" @change="handleImportFileChange">
+      <input type="file" ref="importInput" style="display: none;" accept=".json,.zip" @change="handleImportFileChange">
 
       <!-- 导出文件 -->
       <SplitDropdown
         v-model="exportMode"
         :options="exportOptions"
         labelPrefix="导出"
-        dropdownWidth="w-36"
+        dropdownWidth="w-44"
         @click-main="handleExportWithMode(exportMode)"
         class="h-6 shrink-0"
       >
@@ -112,7 +112,7 @@ import SplitDropdown from '@/components/SplitDropdown.vue'
 
 const store = useShaderGraphStore()
 
-const { handleImportFile, handleExportJSON, handleExportHTML } = useGraphIO()
+const { handleImportFile, handleExportFile } = useGraphIO()
 
 const modelInput = ref(null)
 
@@ -129,8 +129,8 @@ const handleModelFileChange = (event) => {
 
 const importMode = ref('current')
 const importOptions = [
-  { value: 'current', label: '当前', desc: '导入到当前图 (JSON)' },
-  { value: 'all',     label: '全部', desc: '导入到全部图 (JSON)' }
+  { value: 'current', label: '当前', desc: '导入到当前图 (JSON / ZIP)' },
+  { value: 'all',     label: '全部', desc: '导入到全部图 (JSON / ZIP)' }
 ]
 
 const importInput = ref(null)
@@ -148,19 +148,15 @@ const handleImportFileChange = (event) => {
 
 const exportMode = ref('current')
 const exportOptions = [
-  { value: 'current',   label: '当前', desc: '导出当前图为 JSON' },
-  { value: 'all',       label: '全部', desc: '导出全部图为 JSON' },
-  { value: 'selection', label: '选中', desc: '导出选中节点为 JSON' },
-  { divider: true },
-  { value: 'encode',    label: '编码', desc: '导出渲染结果为 HTML - 模型数据: 编码' },
-  { value: 'origin',    label: '原始', desc: '导出渲染结果为 HTML - 模型数据: 原始' },
+  { value: 'current',   label: '当前', desc: '导出当前图为 JSON / ZIP' },
+  { value: 'all',       label: '全部', desc: '导出全部图为 JSON / ZIP' },
+  { value: 'selection', label: '选中', desc: '导出选中节点为 JSON / ZIP' }
 ]
 
 const handleExportWithMode = (mode) => {
   if (['current', 'all', 'selection'].includes(mode)) {
-    handleExportJSON(mode)
+    handleExportFile(mode)
   }
-  else handleExportHTML(mode)
 }
 </script>
 

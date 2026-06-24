@@ -101,6 +101,7 @@ import { useShaderGraphStore } from '../stores/shaderGraph.js';
 import NumberDragInput from './NumberDragInput.vue';
 import ColorNodePatch from './NodePatches/ColorNodePatch.vue';
 import CustomNodePatch from './NodePatches/CustomNodePatch.vue';
+import TextureSampleNodePatch from './NodePatches/TextureSampleNodePatch.vue';
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -114,6 +115,7 @@ const store = useShaderGraphStore()
 const PATCH_REGISTRY = {
   color: ColorNodePatch,
   custom: CustomNodePatch,
+  textureSample: TextureSampleNodePatch,
 }
 const patchComponent = PATCH_REGISTRY[props.type] || null
 

@@ -3,6 +3,7 @@ import { computed, ref, nextTick } from 'vue';
 import { ShaderGraphEngine } from "@/rendering/shader-graph/engine";
 import { createNode } from '../utils/nodeFactory';
 import { remapAndRepositionGraph } from '../utils/graphIO';
+import * as THREE from 'three/webgpu';
 
 export const useShaderGraphStore = defineStore('shaderGraph', () => {
   // ----------------------------------------
@@ -13,6 +14,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const selectedGeometry = ref('sphere')
   const customModelUrl = ref(null)
   const customModelFile = ref(null)
+  const customTextures = ref([])
 
   const matNodes = ref([createNode('mat-output', { x: 750, y: 300 })])
   const matEdges = ref([])
@@ -190,7 +192,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     compileActiveTab()
   }
 
-  const applyGraphData = async (targetTab, graph, mode, mousePos = null) => {
+  const applyGraphData = async ({ targetTab, graph, mode, mousePos = null, shouldCompile = true }) => {
     const { nodes = [], edges = [] } = graph
     if (nodes.length === 0) return false
 
@@ -204,36 +206,41 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
         simNodes.value = nodes
         simEdges.value = edges
       }
-      return true
     }
-    else if (mode === 'append') {
+    else { // append
       const { nodes: newNodes, edges: newEdges } = remapAndRepositionGraph(
         nodes, edges,
         targetTab === activeTab.value ? mousePos : null
       )
 
-      if (newNodes.length > 0) {
-        if (targetTab === 'material') {
-          matNodes.value = [...matNodes.value, ...newNodes]
-          matEdges.value = [...matEdges.value, ...newEdges]
-        } else if (targetTab === 'simulation') {
-          simNodes.value = [...simNodes.value, ...newNodes]
-          simEdges.value = [...simEdges.value, ...newEdges]
-        }
+      if (targetTab === 'material') {
+        matNodes.value = [...matNodes.value, ...newNodes]
+        matEdges.value = [...matEdges.value, ...newEdges]
+      } else if (targetTab === 'simulation') {
+        simNodes.value = [...simNodes.value, ...newNodes]
+        simEdges.value = [...simEdges.value, ...newEdges]
+      }
 
-        if (targetTab === activeTab.value) {
-          await nextTick()
-          currentNodes.value.forEach(node => {
-            node.selected = newNodes.some(n => n.id === node.id)
-          })
-          currentEdges.value.forEach(edge => {
-            edge.selected = newEdges.some(e => e.id === edge.id)
-          })
-        }
-        return true
+      if (targetTab === activeTab.value) {
+        await nextTick()
+        currentNodes.value.forEach(node => {
+          node.selected = newNodes.some(n => n.id === node.id)
+        })
+        currentEdges.value.forEach(edge => {
+          edge.selected = newEdges.some(e => e.id === edge.id)
+        })
       }
     }
-    return false
+
+    if (shouldCompile) {
+      if (activeTab.value === 'material') {
+        compileMaterial()
+      } else if (activeTab.value === 'simulation') {
+        compileSimulation()
+      }
+    }
+
+    return true
   }
 
   let canTakeSnapshot = true
@@ -298,16 +305,60 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
+  const getTexturesMap = () => {
+    const texturesMap = {}
+    customTextures.value.forEach(tex => {
+      if (tex.texture) {
+        texturesMap[tex.id] = tex.texture
+      }
+    })
+    return texturesMap
+  }
+
   const compileMaterial = () => {
     if (engineInstance) {
-      engineInstance.compileMaterial(matNodes.value, matEdges.value)
+      engineInstance.compileMaterial(matNodes.value, matEdges.value, getTexturesMap())
     }
   }
 
   const compileSimulation = () => {
     if (engineInstance) {
-      engineInstance.compileSimulation(simNodes.value, simEdges.value)
+      engineInstance.compileSimulation(simNodes.value, simEdges.value, getTexturesMap())
     }
+  }
+
+  const addCustomTexture = (file, explicitId = null, shouldCompile = true) => {
+    return new Promise((resolve, reject) => {
+      const id = explicitId || 'tex_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      const url = URL.createObjectURL(file)
+
+      const loader = new THREE.TextureLoader()
+      loader.load(
+        url,
+        (texture) => {
+          texture.wrapS = THREE.RepeatWrapping
+          texture.wrapT = THREE.RepeatWrapping
+          texture.colorSpace = THREE.SRGBColorSpace
+
+          const newTex = { id, name: file.name, file, url, texture }
+          customTextures.value.push(newTex)
+          if (shouldCompile) {
+            compileActiveTab()
+          }
+          resolve(newTex)
+        },
+        undefined,
+        (err) => {
+          URL.revokeObjectURL(url)
+          reject(err)
+        }
+      )
+    })
+  }
+
+  const addCustomTextureFromBlob = (blob, name, id, shouldCompile = true) => {
+    const file = new File([blob], name, { type: blob.type })
+    return addCustomTexture(file, id, shouldCompile)
   }
 
   const compileActiveTab = () => {
@@ -336,11 +387,11 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
-  const onCustomModelUpload = (file) => {
+  const onCustomModelUpload = (file, shouldCompile = true) => {
     customModelFile.value = file
     if (customModelUrl.value) URL.revokeObjectURL(customModelUrl.value)
     customModelUrl.value = URL.createObjectURL(file)
-    onGeometryChange()
+    onGeometryChange(shouldCompile)
   }
 
   const onParticleCountChange = async (shouldCompile = true) => {
@@ -390,7 +441,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   }
 
   return {
-    activeTab, isMat, particleCount, selectedGeometry, customModelUrl,
+    activeTab, isMat, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
     inputSocketsAcitveMap, outputSocketsAcitveMap,
@@ -398,6 +449,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     updateNodeData, getSelectedSubgraph, fitCanvasView,
     initEngineInstance, destroyEngineInstance, compileActiveTab, compileMaterial, compileSimulation,
     onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, onGraphResize,
+    addCustomTexture, addCustomTextureFromBlob,
     showToast
   }
 })

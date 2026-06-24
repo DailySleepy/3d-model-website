@@ -129,9 +129,9 @@ function checkGraph(graph, targetTab) {
  *     simulation?: { nodes: Array, edges: Array },
  *     selection?: { nodes: Array, edges: Array }
  *   }
- * @param {Object} [options.globalSettings] 全局环境参数（如几何体、粒子数等）
+ * @param {Object} [options.projectSettings] 全局环境参数（如几何体、粒子数等）
  */
-export function generateExportData({ graphs = {}, globalSettings = {} } = {}) {
+export function generateExportData({ graphs = {}, projectSettings = {} } = {}) {
   const cleanedGraphs = {}
   const validKeys = ['material', 'simulation', 'selection']
 
@@ -147,9 +147,9 @@ export function generateExportData({ graphs = {}, globalSettings = {} } = {}) {
   return {
     version: '1.0.0',
     timestamp: Date.now(),
-    globalSettings: {
-      particleCount: globalSettings?.particleCount,
-      selectedGeometry: globalSettings?.selectedGeometry
+    projectSettings: {
+      particleCount: projectSettings?.particleCount,
+      selectedGeometry: projectSettings?.selectedGeometry
     },
     graphs: cleanedGraphs
   }
@@ -234,4 +234,29 @@ export function remapAndRepositionGraph(incomingNodes, incomingEdges, mousePos) 
   })
 
   return { nodes: remappedNodes, edges: remappedEdges }
+}
+
+/**
+ * 提取节点图中被 textureSample 节点引用的贴图 ID 集合
+ * @param {Object} exportData 导出的 JSON 对象数据
+ * @returns {Set<string>}
+ */
+export function getUsedTextureIds(exportData) {
+  const usedIds = new Set()
+  if (!exportData || !exportData.graphs) return usedIds
+
+  for (const key of Object.keys(exportData.graphs)) {
+    const graph = exportData.graphs[key]
+    if (graph && Array.isArray(graph.nodes)) {
+      for (const node of graph.nodes) {
+        if (node.type === 'textureSample') {
+          const texId = node.data?.properties?.textureId
+          if (texId) {
+            usedIds.add(texId)
+          }
+        }
+      }
+    }
+  }
+  return usedIds
 }
