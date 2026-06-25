@@ -41,7 +41,11 @@ export const DEFAULT_NODE_CONSTRUCTORS = {
   'vec4': (v) => tsl.vec4(...(v || [0, 0, 0, 0])),
 
   // Semantic types
-  'color': (v) => tsl.color(v ?? '#000000'),
+  'color': (v) => {
+    if (!v) return tsl.color('#ffffff')
+    if (typeof v === 'string') return tsl.color(v)
+    return tsl.color(new THREE.Color(v.r ?? 1.0, v.g ?? 1.0, v.b ?? 1.0))
+  },
   'uv': () => tsl.uv(),
   'materialColor': () => null,
   'materialRoughness': () => null,

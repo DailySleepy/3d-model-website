@@ -108,11 +108,17 @@ const sliderBarS = ref(null)
 const sliderBarV = ref(null)
 const hexInputStr = ref('#ffffff')
 
-const rgb = computed(() => ({
-  r: props.data.properties?.value?.r ?? 1.0,
-  g: props.data.properties?.value?.g ?? 1.0,
-  b: props.data.properties?.value?.b ?? 1.0,
-}))
+const rgb = computed(() => {
+  const val = props.data.properties?.value
+  if (typeof val === 'string') {
+    return hexToRgb(val)
+  }
+  return {
+    r: val?.r ?? 1.0,
+    g: val?.g ?? 1.0,
+    b: val?.b ?? 1.0,
+  }
+})
 
 const rgb255 = computed(() => ({
   r: Math.round(rgb.value.r * 255),

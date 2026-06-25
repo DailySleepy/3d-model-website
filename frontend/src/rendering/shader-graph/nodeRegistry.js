@@ -93,7 +93,7 @@ export const constantNodes = {
     properties: {
       value: {
         type: 'color',
-        default: '#ff5395',
+        default: { r: 1.0, g: 1.0, b: 1.0 },
         label: '颜色'
       }
     },
@@ -102,7 +102,10 @@ export const constantNodes = {
       { id: 'out', defaultType: 'color' }
     ],
     inferType() { return 'vec3' },
-    compile: ({ nodeProps }) => tsl.color(nodeProps?.value ?? '#ff5395')
+    compile: ({ nodeProps }) => {
+      const val = nodeProps?.value
+      return tsl.color(new THREE.Color(val?.r ?? 1.0, val?.g ?? 1.0, val?.b ?? 1.0))
+    }
   },
   'textureSample': {
     label: '纹理采样 (textureSample)',
