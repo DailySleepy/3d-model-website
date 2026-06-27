@@ -23,10 +23,13 @@ export class ShaderGraphEngine {
     this.particleCount = null
     this.selectedGeometry = null
     this.customModelUrl = null
+    this.mode = 'particle' // 'particle'  | 'classic'
 
-    // Render Target
+    // Scene Objects & Animation
     this.geometries = null
-    this.instancedMesh = null
+    this.instancedMeshes = []
+    this.classicModel = null
+    this.mixer = null
 
     // Buffers
     this.positionAttribute = null
@@ -35,12 +38,11 @@ export class ShaderGraphEngine {
     this.velocityBuffer = null
 
     // Uniforms
-    this.lightDirUniform = null
+    this.lightDirUniform = new THREE.UniformNode(new THREE.Vector3(10, 10, 10).normalize())
     this.timeUniform = new THREE.UniformNode(0.0)
     this.deltaTimeUniform = new THREE.UniformNode(0.0)
 
     // Shader Terminal
-    this.material = null
     this.simulationKernel = null
   }
 
@@ -51,22 +53,26 @@ export class ShaderGraphEngine {
    * @param {number} [options.particleCount] - 粒子总数
    * @param {'sphere'|'box'|'cylinder'|'torus'|'plane'|'custom'} [options.selectedGeometry] - 初始几何体形状
    * @param {string|null} [options.customModelUrl] - 自定义 GLTF 模型的网络或本地 URL 地址（仅在 selectedGeometry 为 'custom' 时生效）
+   * @param {'particle'|'classic'} [options.mode] - 渲染模式
    */
-  init(container, options = {}) {
+  async init(container, options = {}) {
     const {
       particleCount = 1,
       selectedGeometry = 'sphere',
       customModelUrl = null,
+      mode = 'classic'
     } = options
 
     this.container = container
     this.particleCount = particleCount
     this.selectedGeometry = selectedGeometry
     this.customModelUrl = customModelUrl
+    this.mode = mode
 
     this.scene = new THREE.Scene()
-    this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.01, 100)
-    this.camera.position.set(0, 15, 25)
+    this.scene.background = new THREE.Color('#121212')
+    this.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.01, 1000)
+    this.camera.position.z = 2
 
     this.renderer = new THREE.WebGPURenderer({ antialias: true })
     this.renderer.setSize(container.clientWidth, container.clientHeight)
@@ -77,7 +83,9 @@ export class ShaderGraphEngine {
     this.controls.enableDamping = true
 
     // 在显存中分配 particleCount * 3 长度的 Float32Array 用于存储每个粒子的位置和速度, 并转换成 storage 节点
-    this.#allocateBuffers()
+    if (this.mode === 'particle') {
+      this.#allocateBuffers()
+    }
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4)
     this.scene.add(ambientLight)
@@ -93,49 +101,65 @@ export class ShaderGraphEngine {
       plane: new THREE.PlaneGeometry(0.3, 0.3, 1, 1)
     }
 
-    // 创建实例化节点材质, 并初始化材质坐标节点
-    this.material = new THREE.MeshStandardNodeMaterial({ roughness: 0.1, metalness: 0.1 })
-    this.material.positionNode = tsl.positionLocal.add(this.positionBuffer.toAttribute())
-
-    // 在 scene & material 初始化完成后, 初始化 InstancedMesh
-    this.updateGeometry(selectedGeometry, customModelUrl)
+    await this.updateGeometry(selectedGeometry, customModelUrl)
 
     this.timer = new THREE.Timer()
     this.timer.getDelta()
 
-    this.renderer.setAnimationLoop(() => { // TODO: vs. requestAnimationFrame()
-      this.timer.update()
-      let delteTime = this.timer.getDelta()
-      if (delteTime > 0.05) delteTime = 0.05
-
-      this.deltaTimeUniform.value = delteTime
-      this.timeUniform.value += delteTime
-
-      this.controls.update()
-
-      if (this.simulationKernel) {
-        this.renderer.compute(this.simulationKernel)
-      }
-      this.renderer.render(this.scene, this.camera)
-    })
+    this.startLoop()
 
     this.resizeListener = () => {
       if (this.container && this.camera && this.renderer) {
-        this.camera.aspect = this.container.clientWidth / this.container.clientHeight
-        this.camera.updateProjectionMatrix()
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight)
+        const width = this.container.clientWidth
+        const height = this.container.clientHeight
+        if (width > 0 && height > 0) {
+          this.camera.aspect = width / height
+          this.camera.updateProjectionMatrix()
+          this.renderer.setSize(width, height)
+        }
       }
     }
     window.addEventListener('resize', this.resizeListener)
   }
 
+  startLoop() {
+    if (!this.renderer) return
+
+    this.renderer.setAnimationLoop(() => {
+      this.timer.update()
+      let deltaTime = this.timer.getDelta()
+      if (deltaTime > 0.05) deltaTime = 0.05
+
+      this.deltaTimeUniform.value = deltaTime
+      this.timeUniform.value += deltaTime
+
+      this.controls.update()
+
+      if (this.mode === 'particle' && this.simulationKernel) {
+        this.renderer.compute(this.simulationKernel)
+      }
+
+      if (this.mode === 'classic' && this.mixer) {
+        this.mixer.update(deltaTime)
+      }
+
+      this.renderer.render(this.scene, this.camera)
+    })
+  }
+
+  stopLoop() {
+    if (this.renderer) {
+      this.renderer.setAnimationLoop(null)
+    }
+  }
+
   destroy() {
     // Core & Context
     if (this.renderer) {
-      this.renderer.setAnimationLoop(null)
-      let carvas = this.renderer.domElement
-      if (carvas) {
-        carvas.remove()
+      this.stopLoop()
+      let canvas = this.renderer.domElement
+      if (canvas) {
+        canvas.remove()
       }
       this.renderer.dispose()
       this.renderer = null
@@ -152,11 +176,23 @@ export class ShaderGraphEngine {
       this.container = null
     }
 
-    // Scene & Instanced Mesh & Graph Root Node
+    // Scene Objects & Animation
     if (this.scene) {
       disposeScene(this.scene)
       this.scene = null
     }
+    this.instancedMeshes = []
+    this.classicModel = null
+    if (this.geometries) {
+      Object.values(this.geometries).forEach(geom => geom.dispose())
+      this.geometries = null
+    }
+    if (this.mixer) {
+      this.mixer.stopAllAction()
+      this.mixer = null
+    }
+
+    // Shader Terminal
     if (this.simulationKernel) {
       this.simulationKernel.dispose()
       this.simulationKernel = null
@@ -164,12 +200,6 @@ export class ShaderGraphEngine {
 
     // Buffers
     this.#clearBuffers()
-
-    // Render Target
-    if (this.geometries) {
-      Object.values(this.geometries).forEach(geom => geom.dispose())
-      this.geometries = null
-    }
   }
 
   resize() {
@@ -178,75 +208,141 @@ export class ShaderGraphEngine {
     }
   }
 
-  async loadCustomGeometry(url) {
+  fitCameraToObject(object) {
+    if (!this.camera || !this.controls) return
+    const box = new THREE.Box3().setFromObject(object)
+    const center = box.getCenter(new THREE.Vector3())
+    const size = box.getSize(new THREE.Vector3())
+    const maxDim = Math.max(size.x, size.y, size.z)
+    const fov = this.camera.fov * (Math.PI / 180)
+    const cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2))
+
+    this.camera.position.set(0, size.y / 2, cameraZ * 1.8)
+    this.controls.target.copy(center)
+    this.controls.update()
+  }
+
+  // 加载多子 Mesh 模型, 为各 Mesh 创建共享物理 Buffer 的 InstancedMesh 粒子
+  async loadInstancedModel(url, count, loadId) {
     const loader = new GLTFLoader()
     const gltf = await loader.loadAsync(url)
 
-    // 应用变换并简化模型(只提取normal/position/index)
-    // ERROR: lack of uv and material
-    // TODO: 放弃合并，保留层级架构
-    const geometryArray = []
-    gltf.scene.updateMatrixWorld(true)
+    if (loadId !== undefined && loadId !== this.currentLoadId) {
+      disposeScene(gltf.scene)
+      return
+    }
 
-    gltf.scene.traverse((child) => {
+    const root = gltf.scene
+    root.updateMatrixWorld(true)
+
+    root.traverse((child) => {
       if (child.isMesh) {
+        // 静态预变换 geometry 顶点到世界空间坐标, 消除多层级位移的拼合对齐问题
         const geom = child.geometry.clone()
         geom.applyMatrix4(child.matrixWorld)
 
-        if (!geom.getAttribute('normal')) {
-          geom.computeVertexNormals()
-        }
-        const clean = new THREE.BufferGeometry()
-        for (const attributeName of ['position', 'normal']) {
-          clean.setAttribute(attributeName, geom.getAttribute(attributeName))
-        }
-        if (geom.index) {
-          clean.setIndex(geom.index)
+        geom.setAttribute('positionAttribute', this.positionAttribute)
+        geom.setAttribute('velocityAttribute', this.velocityAttribute)
+
+        const nodeMat = this.#buildNodeMaterial(child.material)
+        // 在顶点着色器中绑定共享粒子位置偏移
+        if (this.positionBuffer) {
+          nodeMat.positionNode = tsl.positionLocal.add(this.positionBuffer.toAttribute())
         }
 
-        geometryArray.push(clean)
+        const instMesh = new THREE.InstancedMesh(geom, nodeMat, count)
+        this.scene.add(instMesh)
+        this.instancedMeshes.push(instMesh)
       }
     })
 
-    if (geometryArray.length > 0) {
-      try {
-        const merged = BufferGeometryUtils.mergeGeometries(geometryArray, true)
-        merged.computeBoundingBox()
-        const size = merged.boundingBox.getSize(new THREE.Vector3()).length()
-        const scale = 0.4 / (size || 1) // TODO: scale model or change fov
-        merged.scale(scale, scale, scale)
-        merged.center()
-        return merged
-      } catch (err) {
-        console.error("Failed to merge geometries, falling back to first child mesh geometry:", err)
-        return geometryArray[0]
-      }
-    } else {
-      return new THREE.SphereGeometry(0.15, 16, 16)
+    this.fitCameraToObject(root)
+  }
+
+  // 直接加载层级模型
+  async loadClassicModel(url, loadId) {
+    const loader = new GLTFLoader()
+    const gltf = await loader.loadAsync(url)
+
+    if (loadId !== undefined && loadId !== this.currentLoadId) {
+      disposeScene(gltf.scene)
+      return
     }
+
+    const root = gltf.scene
+
+    root.traverse((child) => {
+      if (child.isMesh) {
+        child.material = this.#buildNodeMaterial(child.material)
+      }
+    })
+
+    if (gltf.animations && gltf.animations.length > 0) {
+      this.mixer = new THREE.AnimationMixer(root)
+      const action = this.mixer.clipAction(gltf.animations[0])
+      action.play()
+    }
+
+    this.scene.add(root)
+    this.classicModel = root
+
+    this.fitCameraToObject(this.classicModel)
   }
 
   async updateGeometry(selectedGeometry, customModelUrl = null) {
-    if (!this.scene || !this.material) return
+    if (!this.scene) return
+
+     // 通过 loadId 避免并发加载导致的资源混乱
+    this.currentLoadId = (this.currentLoadId || 0) + 1
+    const loadId = this.currentLoadId
 
     this.selectedGeometry = selectedGeometry
     this.customModelUrl = customModelUrl
 
-    if (this.instancedMesh) {
-      this.scene.remove(this.instancedMesh)
-      this.instancedMesh.dispose()
+    // 动态根据当前的渲染模式，按需分配或清理粒子缓冲
+    if (this.mode === 'particle') {
+      if (!this.positionAttribute) {
+        this.#allocateBuffers()
+      }
+    }
+    else {
+      this.#clearBuffers()
     }
 
-    let geometry
-    if (this.selectedGeometry == 'custom' && this.customModelUrl) {
-      geometry = await this.loadCustomGeometry(this.customModelUrl)
-    } else {
-      geometry = (this.geometries[this.selectedGeometry] || this.geometries.sphere).clone()
+    this.#clearCurrentGeometry()
+
+    if (this.mode === 'classic') {
+      if (this.selectedGeometry === 'custom' && this.customModelUrl) {
+        await this.loadClassicModel(this.customModelUrl, loadId)
+      }
+      else {
+        const geom = (this.geometries[this.selectedGeometry] || this.geometries.sphere).clone()
+        const nodeMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.5, metalness: 0.0 })
+        const mesh = new THREE.Mesh(geom, nodeMat)
+        this.scene.add(mesh)
+        this.classicModel = mesh
+      }
     }
-    geometry.setAttribute('positionAttribute', this.positionAttribute)
-    geometry.setAttribute('velocityAttribute', this.velocityAttribute)
-    this.instancedMesh = new THREE.InstancedMesh(geometry, this.material, this.particleCount)
-    this.scene.add(this.instancedMesh)
+    else { // particle
+      if (this.selectedGeometry === 'custom' && this.customModelUrl) {
+        await this.loadInstancedModel(this.customModelUrl, this.particleCount, loadId)
+      }
+      else {
+        const geom = (this.geometries[this.selectedGeometry] || this.geometries.sphere).clone()
+
+        geom.setAttribute('positionAttribute', this.positionAttribute)
+        geom.setAttribute('velocityAttribute', this.velocityAttribute)
+
+        const nodeMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.5, metalness: 0.0 })
+        if (this.positionBuffer) {
+          nodeMat.positionNode = tsl.positionLocal.add(this.positionBuffer.toAttribute())
+        }
+
+        const instMesh = new THREE.InstancedMesh(geom, nodeMat, this.particleCount)
+        this.scene.add(instMesh)
+        this.instancedMeshes.push(instMesh)
+      }
+    }
   }
 
   async updateParticleCount(newCount, simNodes, simEdges, matNodes, matEdges) {
@@ -255,8 +351,6 @@ export class ShaderGraphEngine {
 
     this.#clearBuffers()
     this.#allocateBuffers()
-
-    this.material.positionNode = tsl.positionLocal.add(this.positionBuffer)
 
     await this.updateGeometry(this.selectedGeometry, this.customModelUrl)
 
@@ -329,23 +423,53 @@ export class ShaderGraphEngine {
     const fetchInput = ctx.createInputFetcher('mat-output')
     if (!fetchInput) return
 
-    this.material.colorNode = fetchInput('in-color')
-    this.material.roughnessNode = fetchInput('in-roughness')
-    this.material.metalnessNode = fetchInput('in-metalness')
-    this.material.emissiveNode = fetchInput('in-emissive')
-    this.material.aoNode = fetchInput('in-ao')
-    this.material.normalNode = fetchInput('in-normal')
-
+    const inColor = fetchInput('in-color')
+    const inRoughness = fetchInput('in-roughness')
+    const inMetalness = fetchInput('in-metalness')
+    const inEmissive = fetchInput('in-emissive')
+    const inAO = fetchInput('in-ao')
+    const inNormal = fetchInput('in-normal')
     const userVertexDeformation = fetchInput('in-position')
-    let pos = tsl.positionLocal.add(this.positionBuffer.toAttribute())
-    if (userVertexDeformation) pos = pos.add(userVertexDeformation)
-    this.material.positionNode = pos
-    this.material.needsUpdate = true
+
+    const applyToMaterial = (material) => {
+      material.colorNode = inColor || null
+      material.roughnessNode = inRoughness || null
+      material.metalnessNode = inMetalness || null
+      material.emissiveNode = inEmissive || null
+      material.normalNode = inNormal || null
+      material.aoNode = inAO || null
+
+      let pos = null
+      if (this.mode === 'particle' && this.positionBuffer) {
+        pos = tsl.positionLocal.add(this.positionBuffer.toAttribute())
+      }
+      if (userVertexDeformation) {
+        pos = (pos || tsl.positionLocal).add(userVertexDeformation)
+      }
+      material.positionNode = pos
+
+      material.needsUpdate = true
+    }
+
+    if (this.mode === 'classic' && this.classicModel) {
+      this.classicModel.traverse((child) => {
+        if (child.isMesh && child.material) {
+          applyToMaterial(child.material)
+        }
+      })
+    }
+    else if (this.mode === 'particle' && this.instancedMeshes && this.instancedMeshes.length > 0) {
+      this.instancedMeshes.forEach(mesh => {
+        if (mesh.material) {
+          applyToMaterial(mesh.material)
+        }
+      })
+    }
   }
 
   resetCamera() {
     if (this.camera && this.controls) {
-      this.camera.position.set(0, 15, 25)
+      this.camera.position.set(0, 0, 2)
       this.controls.target.set(0, 0, 0)
       this.controls.update()
     }
@@ -365,7 +489,6 @@ export class ShaderGraphEngine {
   }
 
   #allocateBuffers() {
-    console.log("allocate Buffers")
     this.positionAttribute = new THREE.StorageInstancedBufferAttribute(new Float32Array(this.particleCount * 3), 3)
     this.positionBuffer = new THREE.StorageBufferNode(this.positionAttribute, 'vec3', this.particleCount)
 
@@ -375,6 +498,39 @@ export class ShaderGraphEngine {
 
   #checkBuffers() {
     return this.positionBuffer != null && this.velocityBuffer != null
+  }
+
+  #buildNodeMaterial(originalMat) {
+    return new THREE.MeshStandardNodeMaterial({
+      roughness: originalMat.roughness ?? 0.0,
+      metalness: originalMat.metalness ?? 0.0,
+      color: originalMat.color ? originalMat.color.clone() : new THREE.Color('#ffffff'),
+      map: originalMat.map || null,
+      roughnessMap: originalMat.roughnessMap || null,
+      metalnessMap: originalMat.metalnessMap || null,
+      emissive: originalMat.emissive ? originalMat.emissive.clone() : new THREE.Color('#000000'),
+      emissiveMap: originalMat.emissiveMap || null,
+      normalMap: originalMat.normalMap || null,
+      aoMap: originalMat.aoMap || null,
+    })
+  }
+
+  #clearCurrentGeometry() {
+    if (this.instancedMeshes && this.instancedMeshes.length > 0) {
+      this.instancedMeshes.forEach(mesh => {
+        disposeScene(mesh)
+      })
+      this.instancedMeshes = []
+    }
+
+    if (this.classicModel) {
+      disposeScene(this.classicModel)
+      this.classicModel = null
+    }
+    if (this.mixer) {
+      this.mixer.stopAllAction()
+      this.mixer = null
+    }
   }
 
   getCompiledWGSL() {

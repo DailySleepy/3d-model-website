@@ -216,7 +216,7 @@ export const geometryNodes = {
       { id: 'out', defaultType: 'float' }
     ],
     inferType() { return 'float' },
-    compile: ({ uniforms }) => uniforms.time || tsl.timerLocal()
+    compile: ({ uniforms }) => uniforms.time || tsl.time
   },
   'lightDir': {
     label: '光源方向 (lightDir)',
