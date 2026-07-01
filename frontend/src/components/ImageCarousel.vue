@@ -34,7 +34,7 @@
       <span
         v-for="(slide, idx) in slides"
         :key="idx"
-        @mouseenter="handleMouseAction(setImageIndex(idx))"
+        @mouseenter="handleMouseAction(setImageIndex, idx)"
         class="w-3 h-3 rounded-full cursor-pointer transition-colors"
         :class="idx === currentIndex ? 'bg-blue-500' : 'bg-white hover:bg-blue-400'"
       ></span>
@@ -78,8 +78,8 @@ const setImageIndex = (idx) => {
   currentIndex.value = idx
 }
 
-const handleMouseAction = (action) => {
-  action()
+const handleMouseAction = (action, param = null) => {
+  action(param)
   resetTimer()
 }
 

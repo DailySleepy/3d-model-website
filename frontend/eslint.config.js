@@ -20,6 +20,10 @@ export default defineConfig([
     },
   },
 
+  rules: {
+    'no-unused-vars': 'off',
+  },
+
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
   skipFormatting,

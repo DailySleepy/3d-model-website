@@ -40,5 +40,9 @@
     "tailwindcss": "^3.4.18",
     "vite": "^7.1.11",
     "vite-plugin-vue-devtools": "^8.0.3"
+  },
+  "overrides": {
+    "three": "$three",
+    "@types/three": "$@types/three"
   }
 }

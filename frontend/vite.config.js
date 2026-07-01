@@ -6,7 +6,8 @@ import { cwd } from 'process'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, cwd(), '') // 读取同目录下的.env文件
 
-  const targetUrl = env.VITE_API_BASE_URL || 'http://121.89.92.133' // 如果没有配置.env, 则fallback到云服务器
+  const targetUrl = env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const llmUrl = env.LLM_URL
 
   return {
     plugins: [vue()],
@@ -14,9 +15,6 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       }
-    },
-    define: {
-      '__API_URL__': JSON.stringify(targetUrl) // vue 中使用这个作为后端地址
     },
     server: {
       proxy: {
@@ -34,7 +32,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true
         },
         '/api/llm': {
-          target: 'http://127.0.0.1:55557/v1',
+          target: llmUrl,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/llm/, '')
         }
