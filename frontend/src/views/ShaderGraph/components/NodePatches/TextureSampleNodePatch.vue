@@ -108,7 +108,7 @@ const handleFileChange = async (e) => {
   if (!file) return
 
   try {
-    const newTex = await store.addCustomTexture(file)
+    const newTex = await store.addCustomTextureFromFile(file)
     selectTexture(newTex.id)
     store.showToast(`贴图 <b>${file.name}</b> 上传并加载成功`, 'success')
   } catch (err) {

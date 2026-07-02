@@ -1,3 +1,5 @@
+import JSZip from 'jszip'
+
 /**
  * 验证并解析导入或粘贴的节点图 JSON 文本
  * @param {string} jsonText JSON 文本内容
@@ -47,9 +49,13 @@ export function parseGraphJSON(jsonText, importMode, activeTab) {
   let hasFullGraph = false
   const parsedGraphs = []
 
-  const keysToCheck = importMode === 'all'
+  let keysToCheck = importMode === 'all'
     ? ['material', 'simulation']
     : [activeTab]
+
+  if (importMode === 'all' && data.projectSettings?.enableSimulation !== true) {
+    keysToCheck = keysToCheck.filter(key => key !== 'simulation')
+  }
 
   for (const key of keysToCheck) {
     const graphData = data.graphs[key]
@@ -74,7 +80,8 @@ export function parseGraphJSON(jsonText, importMode, activeTab) {
     isValid: true,
     hasFullGraph,
     graphs: parsedGraphs,
-    projectSettings: data.projectSettings || null
+    projectSettings: data.projectSettings || null,
+    assets: data.assets || null
   }
 }
 
@@ -147,10 +154,7 @@ export function generateExportData({ graphs = {}, projectSettings = {} } = {}) {
   return {
     version: '1.0.0',
     timestamp: Date.now(),
-    projectSettings: {
-      particleCount: projectSettings?.particleCount,
-      selectedGeometry: projectSettings?.selectedGeometry
-    },
+    projectSettings: { ...projectSettings },
     graphs: cleanedGraphs
   }
 }
@@ -259,4 +263,105 @@ export function getUsedTextureIds(exportData) {
     }
   }
   return usedIds
+}
+
+/**
+ * 提取节点图中被引用且在给定贴图列表（或 exportData.assets.customTextures）中的贴图对象
+ * @param {Object} exportData 导出的 JSON 对象数据
+ * @param {Array} [customTextures] 可选的贴图列表，若不传则从 exportData.assets.customTextures 获取
+ * @returns {Array} 过滤后实际使用的贴图对象数组
+ */
+export function getUsedTextures(exportData, customTextures = null) {
+  const usedIds = getUsedTextureIds(exportData)
+  const textures = customTextures || exportData?.assets?.customTextures || []
+  return textures.filter(tex => usedIds.has(tex.id))
+}
+
+/**
+ * 导出项目配置为 JSON 下载
+ * @param {Object} exportData 导出的 JSON 对象数据
+ * @param {string} filename 文件名称
+ */
+export function exportAsJSON(exportData, filename) {
+  const jsonStr = JSON.stringify(exportData, null, 2)
+  const blob = new Blob([jsonStr], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${filename}.json`
+  a.click()
+
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * 打包项目配置和自定义资产并压缩为 ZIP 导出
+ * @param {Object} exportData 导出的 JSON 对象数据
+ * @param {string} filename 导出的压缩包名称
+ * @param {Array<{id: string, name: string, file: File|Blob}>} usedCustomTextures 使用的自定义贴图资产列表
+ * @param {File|Blob|null} customModelFile 自定义模型二进制文件或 Blob
+ */
+export async function exportAsZip(exportData, filename, usedCustomTextures = [], customModelFile = null) {
+  const zip = new JSZip()
+  const usedPaths = new Set()
+
+  // 1. 打包自定义贴图
+  const customTexturesMeta = usedCustomTextures.map(tex => {
+    let fileName = tex.name || 'texture.png'
+    let path = `assets/textures/${fileName}`
+    let counter = 1
+    while (usedPaths.has(path)) {
+      const dotIdx = fileName.lastIndexOf('.')
+      const base = dotIdx !== -1 ? fileName.substring(0, dotIdx) : fileName
+      const ext = dotIdx !== -1 ? fileName.substring(dotIdx) : ''
+      path = `assets/textures/${base}_${counter}${ext}`
+      counter++
+    }
+    usedPaths.add(path)
+
+    zip.file(path, tex.file)
+
+    return {
+      id: tex.id,
+      name: tex.name,
+      path: path
+    }
+  })
+
+  // 2. 打包自定义模型
+  let customModelMeta = null
+  if (customModelFile) {
+    const modelPath = 'assets/model/model.glb'
+    zip.file(modelPath, customModelFile)
+    customModelMeta = {
+      name: customModelFile.name || 'model.glb',
+      path: modelPath
+    }
+  }
+
+  // 3. 注入元数据
+  if (customTexturesMeta.length > 0 || customModelMeta) {
+    const assets = exportData.assets || {}
+    if (customTexturesMeta.length > 0) {
+      assets.customTextures = customTexturesMeta
+    }
+    if (customModelMeta) {
+      assets.customModel = customModelMeta
+    }
+    exportData.assets = assets
+  }
+
+  // 4. 打包 json
+  const jsonStr = JSON.stringify(exportData, null, 2)
+  zip.file('shadergraph.json', jsonStr)
+
+  // 5. 压缩下载
+  const blob = await zip.generateAsync({ type: 'blob' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${filename}.zip`
+  a.click()
+  URL.revokeObjectURL(url)
 }

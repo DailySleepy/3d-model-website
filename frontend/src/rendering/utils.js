@@ -152,3 +152,29 @@ function disposeClassicMaterial(material) {
   }
   material.dispose()
 }
+
+/**
+ * 纯粹的加载并配置 Three.js 贴图的 Promise 包装函数
+ * @param {string} url 贴图 URL
+ * @param {Function} [onError] 加载失败回调
+ * @returns {Promise<THREE.Texture>}
+ */
+export function loadThreeTexture(url, onError = null) {
+  const loader = new THREE.TextureLoader()
+  return new Promise((resolve, reject) => {
+    loader.load(
+      url,
+      (texture) => {
+        texture.wrapS = THREE.RepeatWrapping
+        texture.wrapT = THREE.RepeatWrapping
+        texture.colorSpace = THREE.SRGBColorSpace
+        resolve(texture)
+      },
+      undefined,
+      (err) => {
+        if (onError) onError(err)
+        reject(err)
+      }
+    )
+  })
+}

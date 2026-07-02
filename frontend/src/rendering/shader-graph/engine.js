@@ -1,6 +1,5 @@
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import * as tsl from 'three/tsl'
 import * as THREE from 'three/webgpu'
 import { disposeScene } from '../utils.js'
@@ -345,6 +344,7 @@ export class ShaderGraphEngine {
     }
   }
 
+  /**会自动调用 updateGeometry 以按照新的粒子数量重新实例化 Mesh */
   async updateParticleCount(newCount, simNodes, simEdges, matNodes, matEdges) {
     if (this.particleCount === newCount) return
     this.particleCount = newCount
@@ -354,6 +354,7 @@ export class ShaderGraphEngine {
 
     await this.updateGeometry(this.selectedGeometry, this.customModelUrl)
 
+    // 节点图可能使用了粒子数量, 故需要重新编译, 也可以选择通过传入 null 来跳过编译
     if (simNodes && simEdges) this.compileSimulation(simNodes, simEdges)
     if (matNodes && matEdges) this.compileMaterial(matNodes, matEdges)
   }

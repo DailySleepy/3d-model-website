@@ -2,7 +2,8 @@ import { defineStore, acceptHMRUpdate } from 'pinia';
 import { computed, ref, nextTick } from 'vue';
 import { ShaderGraphEngine } from "@/rendering/shader-graph/engine";
 import { createNode } from '../utils/nodeFactory';
-import { remapAndRepositionGraph } from '../utils/graphIO';
+import { remapAndRepositionGraph, generateExportData, getUsedTextures } from '../utils/graphIO';
+import { loadThreeTexture } from '@/rendering/utils';
 import * as THREE from 'three/webgpu';
 
 export const useShaderGraphStore = defineStore('shaderGraph', () => {
@@ -10,11 +11,17 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   // State
   // ----------------------------------------
   const activeTab = ref('material')
+  const enableSimulation = ref(false)
   const particleCount = ref(1)
   const selectedGeometry = ref('sphere')
   const customModelUrl = ref(null)
   const customModelFile = ref(null)
   const customTextures = ref([])
+  const isDirty = ref(false)
+
+  const publishData = ref(null)
+  const forkData = ref(null)
+  const uploadPageState = ref(null)
 
   const matNodes = ref([createNode('mat-output', { x: 750, y: 300 })])
   const matEdges = ref([])
@@ -91,6 +98,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       hist.past.shift()
     }
     hist.future = []
+    isDirty.value = true
   }
 
   const undo = () => {
@@ -107,6 +115,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
     compileActiveTab()
     showToast('已撤销', 'info', 1000)
+    isDirty.value = true
   }
 
   const redo = () => {
@@ -123,6 +132,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
     compileActiveTab()
     showToast('已重做', 'info', 1000)
+    isDirty.value = true
   }
 
   const addNode = (node) => {
@@ -284,21 +294,39 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   let isUpdating = false
   let compileTimeout = null
 
-  const initEngineInstance = () => {
+  const initEngineInstance = async () => {
     if (renderingContainer.value) {
       engineInstance = new ShaderGraphEngine();
-      engineInstance.init(renderingContainer.value, {
+      await engineInstance.init(renderingContainer.value, {
         particleCount: particleCount.value,
         selectedGeometry: selectedGeometry.value,
-        customModelUrl: customModelUrl.value
+        customModelUrl: customModelUrl.value,
+        mode: enableSimulation.value ? 'particle' : 'classic'
       })
       compileMaterial()
-      compileSimulation()
+      if (enableSimulation.value) {
+        compileSimulation()
+      }
     }
   }
 
+  const clearBlobResources = () => {
+    if (customModelUrl.value && customModelUrl.value.startsWith('blob:')) {
+      URL.revokeObjectURL(customModelUrl.value)
+    }
+    customTextures.value.forEach(tex => {
+      if (tex.url && tex.url.startsWith('blob:')) {
+        URL.revokeObjectURL(tex.url)
+      }
+    })
+  }
+
   const destroyEngineInstance = () => {
-    if (customModelUrl.value) URL.revokeObjectURL(customModelUrl.value)
+    customTextures.value.forEach(tex => {
+      if (tex.texture) {
+        tex.texture.dispose()
+      }
+    })
     if (engineInstance) {
       engineInstance.destroy()
       engineInstance = null
@@ -327,38 +355,42 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
-  const addCustomTexture = (file, explicitId = null, shouldCompile = true) => {
-    return new Promise((resolve, reject) => {
-      const id = explicitId || 'tex_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-      const url = URL.createObjectURL(file)
+  const loadAndAddTexture = async ({ url, name, file = null, explicitId = null, shouldCompile = true, onError = null }) => {
+    const id = explicitId || 'tex_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    try {
+      const texture = await loadThreeTexture(url)
+      const newTex = { id, name, file, url, texture }
+      customTextures.value.push(newTex)
+      isDirty.value = true
+      if (shouldCompile) {
+        compileActiveTab()
+      }
+      return newTex
+    } catch (err) {
+      if (onError) onError(err)
+      throw err
+    }
+  }
 
-      const loader = new THREE.TextureLoader()
-      loader.load(
-        url,
-        (texture) => {
-          texture.wrapS = THREE.RepeatWrapping
-          texture.wrapT = THREE.RepeatWrapping
-          texture.colorSpace = THREE.SRGBColorSpace
-
-          const newTex = { id, name: file.name, file, url, texture }
-          customTextures.value.push(newTex)
-          if (shouldCompile) {
-            compileActiveTab()
-          }
-          resolve(newTex)
-        },
-        undefined,
-        (err) => {
-          URL.revokeObjectURL(url)
-          reject(err)
-        }
-      )
+  const addCustomTextureFromFile = (file, explicitId = null, shouldCompile = true) => {
+    const url = URL.createObjectURL(file)
+    return loadAndAddTexture({
+      url,
+      name: file.name,
+      file,
+      explicitId,
+      shouldCompile,
+      onError: () => URL.revokeObjectURL(url)
     })
   }
 
   const addCustomTextureFromBlob = (blob, name, id, shouldCompile = true) => {
     const file = new File([blob], name, { type: blob.type })
-    return addCustomTexture(file, id, shouldCompile)
+    return addCustomTextureFromFile(file, id, shouldCompile)
+  }
+
+  const addCustomTextureFromUrl = (url, name, explicitId = null, shouldCompile = true) => {
+    return loadAndAddTexture({ url, name, explicitId, shouldCompile })
   }
 
   const compileActiveTab = () => {
@@ -381,7 +413,13 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       await engineInstance.updateGeometry(selectedGeometry.value, customModelUrl.value)
       if (shouldCompile) {
         compileMaterial()
+        if (enableSimulation.value) {
+          compileSimulation()
+          // 理论上单纯改变模型无需重编译模拟图
+          // 但是目前存在问题: 新模型无法利用已存在的缓冲区和着色器, 简单起见在这里重新编译触发缓冲区和着色器刷新
+        }
       }
+      isDirty.value = true
     } finally {
       isUpdating = false
     }
@@ -389,7 +427,9 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
   const onCustomModelUpload = (file, shouldCompile = true) => {
     customModelFile.value = file
-    if (customModelUrl.value) URL.revokeObjectURL(customModelUrl.value)
+    if (customModelUrl.value && customModelUrl.value.startsWith('blob:')) {
+      URL.revokeObjectURL(customModelUrl.value)
+    }
     customModelUrl.value = URL.createObjectURL(file)
     onGeometryChange(shouldCompile)
   }
@@ -406,6 +446,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
         shouldCompile ? matNodes.value : null,
         shouldCompile ? matEdges.value : null
       )
+      isDirty.value = true
     } finally {
       isUpdating = false
     }
@@ -428,6 +469,67 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
+  const toggleSimulationMode = async (enabled, shouldCompile = true) => {
+    enableSimulation.value = enabled
+    isDirty.value = true
+    if (!enabled && activeTab.value === 'simulation') {
+      activeTab.value = 'material'
+    }
+    if (engineInstance) {
+      engineInstance.mode = enabled ? 'particle' : 'classic'
+      await onGeometryChange(shouldCompile)
+    }
+  }
+
+  /**
+   * @typedef {Object} ProjectSettings
+   * @property {boolean} [enableSimulation] - 是否开启粒子模拟
+   * @property {number} [particleCount] - 粒子实例化数量
+   * @property {string} [selectedGeometry] - 3D 几何体形状 ('sphere'|'box'|'cylinder'|'torus'|'plane'|'custom')
+   */
+  /**
+   * 更新全局项目设置并按需更新几何
+   * @param {ProjectSettings} settings - 全局项目设置对象
+   * @param {boolean} [shouldCompile=true] - 是否自动重新编译节点图
+   */
+  const updateProjectSettings = async (settings = {}, shouldCompile = true) => {
+    let modeChanged = false
+    let geometryChanged = false
+    let particleCountChanged = false
+
+    const { enableSimulation: simEnabled, particleCount: pCount, selectedGeometry: geometry } = settings
+
+    if (typeof simEnabled === 'boolean' && simEnabled !== enableSimulation.value) {
+      enableSimulation.value = simEnabled
+      if (!simEnabled && activeTab.value === 'simulation') {
+        activeTab.value = 'material'
+      }
+      if (engineInstance) {
+        engineInstance.mode = simEnabled ? 'particle' : 'classic'
+      }
+      modeChanged = true
+    }
+
+    if (pCount && pCount !== particleCount.value) {
+      particleCount.value = pCount
+      particleCountChanged = true
+    }
+
+    if (geometry && geometry !== selectedGeometry.value) {
+      selectedGeometry.value = geometry
+      geometryChanged = true
+    }
+
+    if (engineInstance) {
+      if (particleCountChanged) {
+        // onParticleCountChange 内部会自动执行 updateGeometry (onGeometryChange)
+        await onParticleCountChange(shouldCompile)
+      } else if (modeChanged || geometryChanged) {
+        await onGeometryChange(shouldCompile)
+      }
+    }
+  }
+
   const onGraphResize = () => {
     if (engineInstance) {
       engineInstance.resize()
@@ -440,17 +542,171 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
+  const backendBase = import.meta.env.VITE_API_BASE_URL || ''
+  const buildUrl = (url) => {
+    if (!url) return ''
+    if (url.startsWith('http')) return url
+    return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`
+  }
+
+  const loadForkData = async () => {
+    if (!forkData.value) return
+    const currentForkData = forkData.value
+    forkData.value = null
+    const { shaderGraphJson, fileUrl } = currentForkData
+
+    let parsedData = null
+    if (shaderGraphJson) {
+      try {
+        parsedData = typeof shaderGraphJson === 'string' ? JSON.parse(shaderGraphJson) : shaderGraphJson
+      } catch (e) {
+        console.error("解析 shaderGraphJson 失败:", e)
+        throw new Error("解析节点图 JSON 失败，数据已损坏")
+      }
+    }
+
+    if (fileUrl) {
+      customModelUrl.value = buildUrl(fileUrl)
+    }
+
+    // 1. 加载全局配置
+    if (parsedData) {
+      const projectSettings = parsedData.projectSettings || {}
+      await updateProjectSettings(projectSettings, false)
+    }
+
+    // 2. 下载自定义贴图
+    if (parsedData) {
+      const assets = parsedData.assets || {}
+      const texturesMeta = assets.customTextures
+      if (texturesMeta && texturesMeta.length > 0) {
+        const loadPromises = texturesMeta.map(async (texMeta) => {
+          const exists = customTextures.value.some(t => t.id === texMeta.id)
+          if (exists) return
+
+          const texUrl = texMeta.path
+          if (texUrl) {
+            try {
+              const resolvedUrl = buildUrl(texUrl)
+              await addCustomTextureFromUrl(resolvedUrl, texMeta.name, texMeta.id, false)
+            } catch (err) {
+              console.error("加载 fork 贴图失败:", texMeta, err)
+            }
+          }
+        })
+        await Promise.all(loadPromises)
+      }
+    }
+
+    // 3. 载入节点与连线数据, 通过 nextTick 延迟载入连线 (此时 vue-flow 组件初次挂载)
+    if (parsedData && parsedData.graphs) {
+      const graphs = parsedData.graphs
+      if (graphs.material) {
+        matNodes.value = graphs.material.nodes || [createNode('mat-output', { x: 750, y: 300 })]
+        matEdges.value = []
+      }
+      if (enableSimulation.value && graphs.simulation) {
+        simNodes.value = graphs.simulation.nodes || [createNode('sim-output', { x: 750, y: 300 })]
+        simEdges.value = []
+      } else {
+        simNodes.value = [createNode('sim-output', { x: 750, y: 300 })]
+        simEdges.value = []
+      }
+
+      await nextTick()
+      if (graphs.material) {
+        matEdges.value = graphs.material.edges || []
+      }
+      if (enableSimulation.value && graphs.simulation) {
+        simEdges.value = graphs.simulation.edges || []
+      }
+    }
+
+    compileMaterial()
+    if (enableSimulation.value) {
+      compileSimulation()
+    }
+    fitCanvasView()
+  }
+
+  const updatePublishData = () => {
+    const graphsToExport = {
+      material: {
+        nodes: matNodes.value,
+        edges: matEdges.value
+      }
+    }
+
+    if (enableSimulation.value) {
+      graphsToExport.simulation = {
+        nodes: simNodes.value,
+        edges: simEdges.value
+      }
+    }
+
+    const projectSettings = {
+      selectedGeometry: selectedGeometry.value,
+      particleCount: particleCount.value,
+      enableSimulation: enableSimulation.value
+    }
+
+    const exportData = generateExportData({ graphs: graphsToExport, projectSettings })
+
+    if (!exportData) {
+      return false
+    }
+
+    const usedCustomTextures = getUsedTextures(exportData, customTextures.value)
+
+    publishData.value = {
+      shaderGraphJson: exportData,
+      customModelFile: selectedGeometry.value === 'custom' ? customModelFile.value : null,
+      customModelUrl: selectedGeometry.value === 'custom' ? customModelUrl.value : null,
+      customTextures: usedCustomTextures
+    }
+    return true
+  }
+
+  const clearGraphState = () => {
+    clearBlobResources()
+
+    customTextures.value.forEach(tex => {
+      if (tex.texture) {
+        tex.texture.dispose()
+      }
+    })
+
+    customModelUrl.value = null
+    customModelFile.value = null
+    customTextures.value = []
+    forkData.value = null
+    selectedGeometry.value = 'sphere'
+    enableSimulation.value = false
+
+    matNodes.value = [createNode('mat-output', { x: 750, y: 300 })]
+    matEdges.value = []
+    simNodes.value = [createNode('sim-output', { x: 750, y: 300 })]
+    simEdges.value = []
+
+    historyState.value = {
+      material: { past: [], future: [] },
+      simulation: { past: [], future: [] }
+    }
+    isDirty.value = false
+  }
+
   return {
-    activeTab, isMat, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures,
+    activeTab, isMat, enableSimulation, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures,
+    publishData, forkData, uploadPageState, isDirty,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
     inputSocketsAcitveMap, outputSocketsAcitveMap,
     historyState, takeSnapshot, undo, redo, addNode, removeElements, cloneSubgraph, addConnection, removeEdge, applyGraphData,
     updateNodeData, getSelectedSubgraph, fitCanvasView,
     initEngineInstance, destroyEngineInstance, compileActiveTab, compileMaterial, compileSimulation,
-    onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, onGraphResize,
-    addCustomTexture, addCustomTextureFromBlob,
-    showToast
+    onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, toggleSimulationMode, updateProjectSettings, onGraphResize,
+    addCustomTextureFromFile, addCustomTextureFromBlob, addCustomTextureFromUrl, loadForkData, clearGraphState, updatePublishData,
+    clearBlobResources, showToast
   }
 })
 
