@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS models (
     file_url VARCHAR(255),
     thumbnail_url VARCHAR(255),
     preview_urls VARCHAR(255)[],
+    shader_graph_json TEXT,
     author_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
     like_count INTEGER DEFAULT 0,
     collect_count INTEGER DEFAULT 0,

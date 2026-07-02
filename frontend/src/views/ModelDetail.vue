@@ -19,7 +19,14 @@
           <div class="flex flex-col lg:flex-row gap-8">
             <div class="w-full lg:w-2/3 relative group">
               <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
-                <ModelViewer v-if="hasRendered" v-show="isRendering" :model-url="model.fileUrl" :visible="isRendering" class="w-full h-full" />
+                <ModelViewer
+                  v-if="hasRendered"
+                  v-show="isRendering"
+                  :model-url="model.fileUrl"
+                  :shader-graph-json="model.shaderGraphJson"
+                  :visible="isRendering"
+                  class="w-full h-full"
+                />
                 <img v-show="!isRendering" :src="model.thumbnailUrl || '/placeholder.png'" alt="cover"
                   class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 <button @click="toggleRender"
@@ -51,12 +58,19 @@
                 </span>
               </div>
               <div class="flex flex-wrap gap-3 mb-6">
-                <button class="btn-text-white w-1/2" @click="handleDownload">
+                <button class="btn-text-white flex-1" @click="handleDownload">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                   下载
+                </button>
+                <button class="btn-text-white flex-1" @click="handleFork">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Fork
                 </button>
                 <button
                   class="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-red-500 transition-colors"
@@ -152,6 +166,7 @@
             <h2 class="text-xl font-bold text-gray-900 mb-6 border-l-4 border-blue-500 pl-4">模型截图</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div v-for="(url, index) in (model.previewUrls || [])" :key="index"
+                @click="openImageModal(url)"
                 class="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-zoom-in">
                 <img :src="url" class="w-full h-48 object-cover hover:scale-105 transition-transform duration-500" />
               </div>
@@ -206,21 +221,65 @@
           </section>
         </div>
         <div v-if="activeTab === 'links'" ref="linksSectionRef" class="bg-white rounded-[20px] p-8 shadow-sm">
-          <div class="grid gap-6 lg:grid-cols-[1fr,260px]">
+          <div class="grid gap-6 lg:grid-cols-[1fr,300px]">
             <div class="space-y-4 text-gray-600 leading-relaxed text-sm">
-              <h3 class="text-lg font-semibold text-gray-900">下载需知</h3>
+                <h3 class="text-lg font-semibold text-gray-900">下载需知</h3>
               <p>1. 该资源仅供个人学习与非商业用途使用，禁止二次分发或商业售卖。</p>
               <p>2. 若用于公开项目，请保留作者署名并链接回原作品页面。</p>
               <p>3. 下载即代表你已阅读并同意以上条款。</p>
             </div>
-            <div class="flex flex-col justify-center items-center p-6">
-              <button class="btn-text-white w-full justify-center" @click="handleResourceDownload">
+            <div class="flex flex-col gap-3 justify-center items-center p-6 w-full">
+              <!-- 纯模型下载通道 -->
+              <button
+                v-if="model.category === '模型'"
+                class="btn-text-white w-full justify-center flex items-center gap-2 cursor-pointer"
+                @click="handleDownloadModel"
+              >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                立即下载
+                下载 3D 模型 (glb)
               </button>
+
+              <!-- 纯节点图下载通道 -->
+              <button
+                v-if="model.category === '节点图'"
+                class="btn-text-white w-full justify-center flex items-center gap-2 cursor-pointer"
+                @click="handleDownloadGraph"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                下载节点图 (JSON)
+              </button>
+
+              <!-- 模型+节点图（混合）下载通道 -->
+              <template v-if="model.category === '模型+节点图'">
+                <!-- ZIP 打包为主按钮 -->
+                <button
+                  class="btn-text-white w-full justify-center flex items-center gap-2 cursor-pointer"
+                  @click="handleDownloadGraph"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  下载节点图项目 (.zip)
+                </button>
+                <!-- GLB 单模型为次级按钮 -->
+                <button
+                  class="w-full justify-center flex items-center gap-2 px-8 py-3 rounded-xl font-medium border border-blue-600 hover:bg-blue-50 text-blue-600 transition-all cursor-pointer"
+                  @click="handleDownloadModel"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  仅下载 3D 模型 (.glb)
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -230,6 +289,13 @@
 
       </div>
     </section>
+
+    <!-- 大图查看器 -->
+    <ImageModal
+      :show="imageModal.show"
+      :image-url="imageModal.url"
+      @close="closeImageModal"
+    />
   </div>
 </template>
 
@@ -239,15 +305,35 @@ import CommentSection from '@/components/CommentSection.vue'
 import ModelCard from '@/components/ModelCard.vue'
 import ModelViewer from '@/components/ModelViewer.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
+import ImageModal from '@/components/ImageModal.vue'
+import { useGraphIO } from '@/views/ShaderGraph/composables/useGraphIO'
 import { useAuthStore } from '@/stores/auth'
-import { computed, nextTick, onMounted, provide, ref } from 'vue'
+import { useShaderGraphStore } from '@/views/ShaderGraph/stores/shaderGraph'
+import { computed, nextTick, onMounted, onUnmounted, provide, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
+const imageModal = ref({
+  show: false,
+  url: ''
+})
+
+const openImageModal = (url) => {
+  imageModal.value.url = url
+  imageModal.value.show = true
+}
+
+const closeImageModal = () => {
+  imageModal.value.show = false
+  imageModal.value.url = ''
+}
 
 const backendBase = import.meta.env.VITE_API_BASE_URL || ''
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const shaderGraphStore = useShaderGraphStore()
+const { exportGraphFromModelDetail } = useGraphIO()
 const toastRef = ref(null)
 
 const modelId = computed(() => route.params.id)
@@ -266,7 +352,8 @@ const model = ref({
   collectCount: 0,
   createdAt: new Date().toISOString(),
   isLiked: false,
-  isCollected: false
+  isCollected: false,
+  shaderGraphJson: null
 })
 
 const authorModels = ref([])
@@ -323,13 +410,60 @@ const handleDownload = async () => {
   linksSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-const handleResourceDownload = async () => {
+const handleDownloadModel = async () => {
   if (!await authStore.checkLogin()) return
   if (!model.value.fileUrl) {
     showToast('暂无下载链接', 'error')
     return
   }
-  window.open(model.value.fileUrl, '_blank')
+
+  try {
+    const res = await fetch(model.value.fileUrl)
+    const blob = await res.blob()
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${model.value.title || 'model'}.glb`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('模型文件下载成功', 'success')
+  } catch (err) {
+    console.error(err)
+    showToast('模型文件下载失败', 'error')
+  }
+}
+
+const handleDownloadGraph = async () => {
+  if (!await authStore.checkLogin()) return
+  if (!model.value.shaderGraphJson) {
+    showToast('该作品没有关联的节点图逻辑', 'error')
+    return
+  }
+  await exportGraphFromModelDetail(
+    model.value.shaderGraphJson,
+    model.value.title,
+    model.value.fileUrl,
+    showToast
+  )
+}
+
+const handleFork = async () => {
+  if (!await authStore.checkLogin()) return
+  if (!model.value.id || model.value.title === 'Loading...') {
+    showToast('作品资产仍在加载中，请稍候...', 'warning')
+    return
+  }
+
+  shaderGraphStore.forkData = {
+    shaderGraphJson: model.value.shaderGraphJson || null,
+    fileUrl: model.value.fileUrl || null
+  }
+
+  showToast('正在载入原作资产，已准备派生编辑...', 'success')
+  setTimeout(() => {
+    router.push('/shadergraph')
+  }, 600)
 }
 
 const handleLike = async () => {
@@ -448,6 +582,11 @@ const loadModel = async () => {
 }
 
 onMounted(() => {
+  document.documentElement.classList.add('stable-gutter')
   loadModel()
+})
+
+onUnmounted(() => {
+  document.documentElement.classList.remove('stable-gutter')
 })
 </script>

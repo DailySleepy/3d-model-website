@@ -33,6 +33,7 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         model.setFileUrl(dto.getFileUrl());
         model.setThumbnailUrl(dto.getThumbnailUrl());
         model.setPreviewUrls(dto.getPreviewUrls());
+        model.setShaderGraphJson(dto.getShaderGraphJson());
         model.setAuthorId(authorId);
         model.setLikeCount(0);
         model.setCollectCount(0);
