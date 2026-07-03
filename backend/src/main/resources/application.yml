@@ -14,6 +14,10 @@ app:
     temp-path: ${FILE_TEMP_PATH:${app.file-root-path}/temp/chunk/} # 分片临时目录
     storage-path: ${FILE_STORAGE_PATH:${app.file-root-path}/uploads/} # 正式文件目录
     chunk-size: 5242880 # 5MB 分片大小（固定）
+  #新增：预签名配置
+  presigned:
+    secret: ${PRESIGNED_SECRET:my-presigned-secret-key}  # 签名密钥，建议通过环境变量注入
+    expiry-seconds: ${PRESIGNED_EXPIRY:300}              # 有效期，默认 5 分钟（300秒）
 
 spring:
   datasource:
