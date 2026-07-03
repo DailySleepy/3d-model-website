@@ -30,6 +30,9 @@ public class Model {
     @TableField(value = "preview_urls", typeHandler = PgArrayTypeHandler.class)
     private String[] previewUrls;
 
+    @TableField("shader_graph_json")
+    private String shaderGraphJson;
+
     @TableField("author_id")
     private Long authorId;
 

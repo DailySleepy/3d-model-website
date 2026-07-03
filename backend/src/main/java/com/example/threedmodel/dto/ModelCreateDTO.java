@@ -12,5 +12,6 @@ public class ModelCreateDTO {
     private String fileUrl;
     private String thumbnailUrl;
     private String[] previewUrls;
+    private String shaderGraphJson;
     private Long authorId;
 }

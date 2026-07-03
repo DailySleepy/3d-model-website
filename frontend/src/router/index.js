@@ -11,6 +11,7 @@ import UploadPage from '@/views/UploadPage.vue'
 import NotificationPage from '@/views/NotificationPage.vue'
 import RankingPage from '@/views/RankingPage.vue'
 import RenderLab from '@/views/RenderLab.vue'
+import ShaderGraph from '@/views/ShaderGraph/ShaderGraph.vue'
 // TODO: 添加其他路由
 
 const routes = [
@@ -26,6 +27,7 @@ const routes = [
   { path: '/notification', component: NotificationPage},
   { path: '/ranking', component: RankingPage},
   { path: '/lab', component: RenderLab, meta: { hideTopbar: true }},
+  { path: '/shadergraph', component: ShaderGraph, meta: { hideTopbar: true }},
 ]
 
 const router = createRouter({
