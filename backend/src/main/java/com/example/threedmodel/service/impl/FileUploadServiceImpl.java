@@ -82,6 +82,7 @@ public class FileUploadServiceImpl implements FileUploadService {
         newFile.setConvertStatus(0);
         newFile.setCreateAt(LocalDateTime.now());
         newFile.setUpdateAt(LocalDateTime.now());
+        newFile.setStoragePath(""); //新增：临时占位
         // storagePath 稍后更新
         fileInfoMapper.insert(newFile);
 

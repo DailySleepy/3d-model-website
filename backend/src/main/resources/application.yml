@@ -21,7 +21,7 @@ app:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_URL:localhost:5432/threed_model_db} #先创建你的数据库 createdb xx_db
+    url: jdbc:postgresql://${DB_URL:localhost:5433/threed_model_db} #先创建你的数据库 createdb xx_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:123}
     driver-class-name: org.postgresql.Driver
@@ -48,7 +48,7 @@ spring:
     redis:
       host: 127.0.0.1       # 本地测用 127.0.0.1，云服务器上如果是同台机器也用 127.0.0.1
       port: 6379
-      password: Ab123456  # 必须和 redis.conf 中的 requirepass 完全一致
+      # password: Ab123456  # 必须和 redis.conf 中的 requirepass 完全一致
       timeout: 5000ms
 
 
