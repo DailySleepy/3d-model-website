@@ -146,6 +146,7 @@ watch(() => store.activeTab, async (newTab, oldTab) => {
   --vf-edge-active-color: #6366f1;
   width: 100%;
   height: 100%;
+  touch-action: none;
 }
 
 /* 激活选中的连线路径 */

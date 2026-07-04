@@ -28,6 +28,7 @@
                   v-model="identifier"
                   class="input-modern"
                   placeholder="请输入用户名或邮箱"
+                  autocomplete="username"
                   required
                 />
               </div>
@@ -38,6 +39,7 @@
                   v-model="password"
                   class="input-modern"
                   placeholder="请输入密码"
+                  autocomplete="current-password"
                   required
                 />
               </div>

@@ -39,6 +39,9 @@ public class ModelController {
 
         String token = authHeader.substring(7).trim();
         String username = jwtUtil.extractUsername(token);
+        if (username == null) {
+            return null;
+        }
 
         User user = userService.getOne(
                 new QueryWrapper<User>().eq("username", username)
@@ -57,7 +60,7 @@ public class ModelController {
     ) {
         Long userId = getUserId(request);
         if (userId == null) {
-            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+            return ResponseEntity.status(401).body("用户未登录或 Token 无效");
         }
 
         // 设置作者 ID（关键）

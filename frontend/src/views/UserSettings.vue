@@ -55,6 +55,7 @@
                 placeholder="用户名"
                 maxlength="17"
                 class="input-modern"
+                autocomplete="username"
                 :class="errors.username ? 'border-red-400 bg-red-50 text-red-700' : ''"
               />
               <div class="flex items-center justify-between">
@@ -113,6 +114,7 @@
                 placeholder="邮箱"
                 maxlength="64"
                 class="input-modern"
+                autocomplete="email"
                 :class="errors.email ? 'border-red-400 bg-red-50 text-red-700' : ''"
               />
               <div class="flex items-center gap-2">
@@ -158,6 +160,7 @@
                 placeholder="旧密码"
                 maxlength="50"
                 class="input-modern"
+                autocomplete="current-password"
               />
               <input
                 v-model="newPassword"
@@ -165,6 +168,7 @@
                 placeholder="新密码"
                 maxlength="50"
                 class="input-modern"
+                autocomplete="new-password"
               />
               <div class="flex items-center justify-between">
                 <p class="text-xs text-gray-500">

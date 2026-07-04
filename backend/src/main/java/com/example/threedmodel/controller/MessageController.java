@@ -203,6 +203,9 @@ public class MessageController {
     }
     String token = authHeader.substring(7).trim();
     String username = jwtUtil.extractUsername(token);
+    if (username == null) {
+      return null;
+    }
     User user = userService
         .getOne(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<User>().eq("username", username));
     return user != null ? user.getId() : null;

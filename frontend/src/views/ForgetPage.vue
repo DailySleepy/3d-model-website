@@ -23,22 +23,22 @@
             <h2 class="text-2xl sm:text-3xl font-bold text-center mb-6">忘记密码</h2>
             <form @submit.prevent="handleForgetPassword">
               <div class="mb-4">
-                <input type="email" id="email" v-model="email" class="input-modern" placeholder="请输入绑定邮箱" required />
+                <input type="email" id="email" v-model="email" class="input-modern" placeholder="请输入绑定邮箱" autocomplete="email" required />
               </div>
 
               <div class="mb-4 flex items-center">
-                <input type="text" id="verificationCode" v-model="verificationCode" @input="handleCodeInput" class="input-modern w-2/3" placeholder="请输入验证码" required />
+                <input type="text" id="verificationCode" v-model="verificationCode" @input="handleCodeInput" class="input-modern w-2/3" placeholder="请输入验证码" autocomplete="one-time-code" required />
                 <button type="button" class="btn-text-white ml-2 mt-2 w-1/3 py-3" @click="sendVerificationCode" :disabled="codeCountDown > 0">
                   {{ codeCountDown > 0 ? `${codeCountDown}秒` : '发送验证码' }}
                 </button>
               </div>
 
               <div class="mb-6">
-                <input type="password" id="newPassword" v-model="newPassword" class="input-modern" placeholder="请输入新密码" required />
+                <input type="password" id="newPassword" v-model="newPassword" class="input-modern" placeholder="请输入新密码" autocomplete="new-password" required />
               </div>
 
               <div class="mb-6">
-                <input type="password" id="confirmPassword" v-model="confirmPassword" class="input-modern" placeholder="请确认密码" required />
+                <input type="password" id="confirmPassword" v-model="confirmPassword" class="input-modern" placeholder="请确认密码" autocomplete="new-password" required />
               </div>
               <button type="submit" class="btn-text-white w-full">
                 重置密码

@@ -13,6 +13,39 @@ api.interceptors.request.use(config => {
   return config
 })
 
+api.interceptors.response.use(
+  respose => respose,
+  error => {
+    if (error.response && error.response.status === 401) {
+      import('@/stores/auth').then(async ({ useAuthStore }) => {
+        const authStore = useAuthStore()
+        if (authStore.isLoggedIn) {
+          authStore.clearSession()
+          import('@/stores/chat').then(({ useChatStore }) => {
+            const chatStore = useChatStore()
+            chatStore.disconnect()
+          })
+
+          const { confirmDialog } = await import('@/components/ConfirmDialog.vue')
+          const goLogin = await confirmDialog({
+            title: '登录已过期',
+            message: '您的登录状态已失效，是否前往登录页面重新登录？',
+            confirmText: '去登录',
+            cancelText: '以游客身份浏览'
+          })
+
+          if (goLogin) {
+            const router = (await import('@/router')).default
+            const currentPath = router.currentRoute.value.fullPath
+            router.push(`/login?redirect=${encodeURIComponent(currentPath)}`)
+          }
+        }
+      })
+    }
+    return Promise.reject(error)
+  }
+)
+
 export default api
 
 // 认证

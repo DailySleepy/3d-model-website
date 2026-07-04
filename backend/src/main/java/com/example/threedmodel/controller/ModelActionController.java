@@ -45,6 +45,9 @@ public class ModelActionController {
 
         String token = authHeader.substring(7).trim();
         String username = jwtUtil.extractUsername(token);
+        if (username == null) {
+            return null;
+        }
 
         User user = userService.getOne(
                 new QueryWrapper<User>().eq("username", username)
@@ -87,8 +90,8 @@ public class ModelActionController {
         dto.setLikeCount(model.getLikeCount() == null ? 0 : model.getLikeCount());
         dto.setCollectCount(model.getCollectCount() == null ? 0 : model.getCollectCount());
 
-        dto.setLikedByUser(modelLikeService.isLiked(id, userId));
-        dto.setCollectedByUser(modelCollectService.isCollected(id, userId));
+        dto.setLikedByUser(userId != null && modelLikeService.isLiked(id, userId));
+        dto.setCollectedByUser(userId != null && modelCollectService.isCollected(id, userId));
 
         return ResponseEntity.ok(dto);
     }
@@ -103,7 +106,7 @@ public class ModelActionController {
     ) {
         Long userId = getUserIdFromRequest(request);
         if (userId == null) {
-            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+            return ResponseEntity.status(401).body("用户未登录或 Token 无效");
         }
 
         if (!modelLikeService.isLiked(id, userId)) {
@@ -122,7 +125,7 @@ public class ModelActionController {
     ) {
         Long userId = getUserIdFromRequest(request);
         if (userId == null) {
-            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+            return ResponseEntity.status(401).body("用户未登录或 Token 无效");
         }
 
         if (modelLikeService.isLiked(id, userId)) {
@@ -156,7 +159,7 @@ public class ModelActionController {
     ) {
         Long userId = getUserIdFromRequest(request);
         if (userId == null) {
-            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+            return ResponseEntity.status(401).body("用户未登录或 Token 无效");
         }
 
         if (!modelCollectService.isCollected(id, userId)) {
@@ -175,7 +178,7 @@ public class ModelActionController {
     ) {
         Long userId = getUserIdFromRequest(request);
         if (userId == null) {
-            return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
+            return ResponseEntity.status(401).body("用户未登录或 Token 无效");
         }
 
         if (modelCollectService.isCollected(id, userId)) {

@@ -11,7 +11,7 @@ import java.util.Date;
 public class JwtUtil {
     private static final SecretKey SECRET_KEY =
             Keys.hmacShaKeyFor("mysecretkeymysecretkeymysecretkey".getBytes());
-    private static final long EXPIRATION_TIME = 86400000; // 1天
+    private static final long EXPIRATION_TIME = 7 * 86400000; // 7天
 
     public String generateToken(String username) {
         return Jwts.builder()
@@ -23,12 +23,16 @@ public class JwtUtil {
     }
 
     public String extractUsername(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(SECRET_KEY)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(SECRET_KEY)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // 修复异常捕获逻辑：只保留父类JwtException + 非继承关系的IllegalArgumentException
@@ -58,11 +62,15 @@ public class JwtUtil {
      * 提取令牌过期时间（可选，用于前端提示）
      */
     public Date extractExpiration(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(SECRET_KEY)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getExpiration();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(SECRET_KEY)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getExpiration();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

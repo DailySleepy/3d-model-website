@@ -95,7 +95,7 @@
                 :min="1"
                 :max="10000"
                 :step="1"
-                class="w-20 h-5"
+                class="w-24 h-5"
               />
             </div>
 

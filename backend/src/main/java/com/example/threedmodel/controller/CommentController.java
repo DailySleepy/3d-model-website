@@ -42,6 +42,9 @@ public class CommentController {
 
         // 2. 解析用户名并查询用户
         String username = jwtUtil.extractUsername(token);
+        if (username == null) {
+            throw new RuntimeException("Token无效或已过期");
+        }
         User user = userService.getOne(new QueryWrapper<User>().eq("username", username));
         if (user == null) {
             throw new RuntimeException("用户不存在");
