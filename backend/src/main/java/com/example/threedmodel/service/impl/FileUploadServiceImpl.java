@@ -1,6 +1,7 @@
 package com.example.threedmodel.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.threedmodel.constants.ConvertStatus;
 import com.example.threedmodel.dto.UploadInitRequest;
 import com.example.threedmodel.dto.UploadInitResponse;
 import com.example.threedmodel.entity.FileChunk;
@@ -8,6 +9,7 @@ import com.example.threedmodel.entity.FileInfo;
 import com.example.threedmodel.mapper.FileChunkMapper;
 import com.example.threedmodel.mapper.FileInfoMapper;
 import com.example.threedmodel.service.FileUploadService;
+import com.example.threedmodel.service.TaskProducer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,6 +33,9 @@ public class FileUploadServiceImpl implements FileUploadService {
 
     @Autowired
     private FileChunkMapper fileChunkMapper;
+
+    @Autowired
+    private TaskProducer taskProducer;
 
     @Value("${app.file-root-path}")
     private String fileRootPath;
@@ -129,7 +135,6 @@ public class FileUploadServiceImpl implements FileUploadService {
         }
 
         // 2. 构建最终存储路径（放在 /uploads/models/ 下）
-        //    为了保留原始文件名，可以从 file_info 中取 originalName
         FileInfo fileInfo = fileInfoMapper.selectOne(
                 new LambdaQueryWrapper<FileInfo>().eq(FileInfo::getFileMd5, uploadId)
         );
@@ -138,7 +143,6 @@ public class FileUploadServiceImpl implements FileUploadService {
         }
         String originalName = fileInfo.getOriginalName();
         String suffix = originalName.substring(originalName.lastIndexOf("."));
-        // 使用时间戳+随机数避免重名，但你也可以用MD5+时间戳，这里简单处理
         String finalFileName = uploadId + "_" + System.currentTimeMillis() + suffix;
         Path finalPath = Paths.get(storagePath, "models", finalFileName);
         try {
@@ -148,11 +152,10 @@ public class FileUploadServiceImpl implements FileUploadService {
         }
 
         // 3. 合并分片
-        try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(finalPath.toFile(), "rw")) {
+        try (RandomAccessFile raf = new RandomAccessFile(finalPath.toFile(), "rw")) {
             for (FileChunk chunk : chunks) {
                 Path chunkPath = Paths.get(chunk.getChunkTempPath());
                 byte[] bytes = Files.readAllBytes(chunkPath);
-                // 根据分片索引计算偏移量：chunkIndex * chunkSize（使用配置的固定大小）
                 raf.seek(chunk.getChunkIndex() * chunkSize);
                 raf.write(bytes);
             }
@@ -160,16 +163,19 @@ public class FileUploadServiceImpl implements FileUploadService {
             throw new RuntimeException("合并失败", e);
         }
 
-        // 4. 更新 file_info 记录
+        // 4. 更新 file_info 记录：状态设为 PENDING（0），表示待转换
         fileInfo.setStoragePath(finalPath.toString());
-        fileInfo.setConvertStatus(2); // 假设glb已就绪
+        fileInfo.setConvertStatus(ConvertStatus.PENDING);  // 使用常量，值为 0
         fileInfo.setUpdateAt(LocalDateTime.now());
         fileInfoMapper.updateById(fileInfo);
 
-        // 5. 清理临时分片（可选，建议异步或定时清理）
+        // 5. 投递异步转换任务（格式转换 + 缩略图生成）
+        taskProducer.sendConvertTask(fileInfo.getId());
+
+        // 6. 清理临时分片（可选，建议用异步定时任务）
         // cleanChunks(uploadId);
 
-        // 6. 返回文件ID（或访问URL）
+        // 7. 返回文件ID（前端可用此ID轮询状态）
         return fileInfo.getId().toString();
     }
 
