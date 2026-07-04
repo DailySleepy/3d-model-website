@@ -16,7 +16,12 @@
       ></div>
 
       <!-- Three.js 渲染 -->
-      <div :ref="el => { store.renderingContainer = el }" class="flex-1 h-full min-w-0"></div>
+      <div :ref="el => { store.renderingContainer = el }" class="flex-1 h-full min-w-0 relative">
+        <div v-if="store.showFPS" class="absolute top-4 right-4 bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-lg px-2.5 py-1 text-xs font-mono text-emerald-400 flex items-center gap-1.5 z-10 pointer-events-none shadow-lg">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>{{ store.fps }} FPS <span class="text-zinc-500 mx-0.5">·</span> {{ store.frameMs }} ms</span>
+        </div>
+      </div>
     </div>
 
     <ToastMessage :ref="el => { store.toastRef = el }" />
@@ -67,11 +72,8 @@ onMounted(async () => {
     // 从上传页跳转过来编辑，不需要重置画布数据，直接渲染当前模型
     await store.initEngineInstance()
   } else {
-    // 全新进入，只有在画布没有实质内容时，才强行重置画布和模型状态
-    const isGraphClean = store.matNodes.length <= 1 && store.matEdges.length === 0
-    if (isGraphClean) {
-      store.clearGraphState()
-    }
+    // 全新进入，直接重置画布和模型状态
+    store.clearGraphState()
     await store.initEngineInstance()
   }
 })

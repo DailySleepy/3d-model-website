@@ -18,6 +18,9 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const customModelFile = ref(null)
   const customTextures = ref([])
   const isDirty = ref(false)
+  const showFPS = ref(false)
+  const fps = ref(0)
+  const frameMs = ref(0)
 
   const publishData = ref(null)
   const forkData = ref(null)
@@ -297,6 +300,10 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const initEngineInstance = async () => {
     if (renderingContainer.value) {
       engineInstance = new ShaderGraphEngine();
+      engineInstance.fpsCallback = ({ fps: calculatedFps, ms: averageMs }) => {
+        fps.value = calculatedFps
+        frameMs.value = averageMs
+      }
       await engineInstance.init(renderingContainer.value, {
         particleCount: particleCount.value,
         selectedGeometry: selectedGeometry.value,
@@ -425,13 +432,14 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
-  const onCustomModelUpload = (file, shouldCompile = true) => {
+  const onCustomModelUpload = async (file, shouldCompile = true) => {
+    selectedGeometry.value = 'custom'
     customModelFile.value = file
     if (customModelUrl.value && customModelUrl.value.startsWith('blob:')) {
       URL.revokeObjectURL(customModelUrl.value)
     }
     customModelUrl.value = URL.createObjectURL(file)
-    onGeometryChange(shouldCompile)
+    await onGeometryChange(shouldCompile)
   }
 
   const onParticleCountChange = async (shouldCompile = true) => {
@@ -567,6 +575,11 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
     if (fileUrl) {
       customModelUrl.value = buildUrl(fileUrl)
+
+      if (!parsedData) {
+        selectedGeometry.value = 'custom'
+        await onGeometryChange(false)
+      }
     }
 
     // 1. 加载全局配置
@@ -627,6 +640,8 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       compileSimulation()
     }
     fitCanvasView()
+
+    isDirty.value = false
   }
 
   const updatePublishData = () => {
@@ -682,6 +697,9 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     forkData.value = null
     selectedGeometry.value = 'sphere'
     enableSimulation.value = false
+    showFPS.value = false
+    fps.value = 0
+    frameMs.value = 0
 
     matNodes.value = [createNode('mat-output', { x: 750, y: 300 })]
     matEdges.value = []
@@ -697,7 +715,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
   return {
     activeTab, isMat, enableSimulation, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures,
-    publishData, forkData, uploadPageState, isDirty,
+    publishData, forkData, uploadPageState, isDirty, showFPS, fps, frameMs,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
     inputSocketsAcitveMap, outputSocketsAcitveMap,

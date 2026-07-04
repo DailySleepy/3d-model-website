@@ -43,6 +43,12 @@ export class ShaderGraphEngine {
 
     // Shader Terminal
     this.simulationKernel = null
+
+    // FPS
+    this.fpsCallback = null
+    this.frameCount = 0
+    this.lastFpsUpdate = 0
+    this.accumulatedRenderTime = 0
   }
 
   /**
@@ -124,7 +130,16 @@ export class ShaderGraphEngine {
   startLoop() {
     if (!this.renderer) return
 
+    this.frameCount = 0
+    this.lastFpsUpdate = performance.now()
+    this.accumulatedRenderTime = 0
+
     this.renderer.setAnimationLoop(() => {
+      let frameStart = 0
+      if (this.fpsCallback) {
+        frameStart = performance.now()
+      }
+
       this.timer.update()
       let deltaTime = this.timer.getDelta()
       if (deltaTime > 0.05) deltaTime = 0.05
@@ -143,7 +158,47 @@ export class ShaderGraphEngine {
       }
 
       this.renderer.render(this.scene, this.camera)
+
+      if (this.fpsCallback) {
+        this.#recordFrameTime(frameStart, true)
+      }
     })
+  }
+
+  #recordFrameTime(frameStart, useGpu = false) {
+    if (!this.fpsCallback) return
+
+    const record = () => {
+      if (!this.fpsCallback) return
+      const frameCost = performance.now() - frameStart
+      this.accumulatedRenderTime += frameCost
+      this.frameCount++
+
+      const now = performance.now()
+      if (now - this.lastFpsUpdate >= 1000) {
+        const calculatedFps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate))
+        const averageMs = this.accumulatedRenderTime / this.frameCount
+        this.frameCount = 0
+        this.accumulatedRenderTime = 0
+        this.lastFpsUpdate = now
+
+        // 使用帧间隔（1000/FPS）作为上限进行裁剪：当 GPU 满载掉帧时，队列积压会导致 measuredLatency 虚高。
+        // 此时真实的单帧渲染工作开销等于帧输出间隔。此限制可消除积压误差并自适应所有屏幕刷新率。
+        const frameInterval = calculatedFps > 0 ? (1000 / calculatedFps) : 0
+        const finalMs = calculatedFps > 0 ? Math.min(averageMs, frameInterval) : averageMs
+        this.fpsCallback({ fps: calculatedFps, ms: parseFloat(finalMs.toFixed(1)) })
+      }
+    }
+
+    if (useGpu) {
+      const device = this.renderer && this.renderer.backend && this.renderer.backend.device
+      if (device) {
+        device.queue.onSubmittedWorkDone().then(record)
+        return
+      }
+    }
+
+    record()
   }
 
   stopLoop() {

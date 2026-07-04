@@ -49,6 +49,8 @@ let shaderGraphEngine = null
 
 const isLoading = ref(false)
 const loadingProgress = ref(0)
+const isFullscreen = ref(false)
+let resizeObserver = null
 
 const backendBase = import.meta.env.VITE_API_BASE_URL || ''
 const buildUrl = (url) => {
@@ -189,13 +191,78 @@ watch(() => [props.modelUrl, props.shaderGraphJson], async () => {
   }
 })
 
+const toggleFullscreen = () => {
+  if (!container.value) return
+  if (!document.fullscreenElement) {
+    container.value.requestFullscreen()
+      .then(() => {
+        isFullscreen.value = true
+      })
+      .catch((err) => {
+        console.error(`请求全屏失败: ${err.message}`)
+      })
+  } else {
+    document.exitFullscreen()
+  }
+}
+
+const handleFullscreenChange = () => {
+  isFullscreen.value = document.fullscreenElement === container.value
+}
+
+const handleKeyDown = (e) => {
+  const activeEl = document.activeElement
+  if (
+    activeEl && 
+    (activeEl.tagName === 'INPUT' || 
+     activeEl.tagName === 'TEXTAREA' || 
+     activeEl.isContentEditable)
+  ) {
+    return
+  }
+
+  if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault()
+    toggleFullscreen()
+  }
+}
+
+const handleDblClick = () => {
+  toggleFullscreen()
+}
+
 onMounted(async () => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  window.addEventListener('keydown', handleKeyDown)
+
+  if (container.value) {
+    container.value.addEventListener('dblclick', handleDblClick)
+
+    resizeObserver = new ResizeObserver(() => {
+      if (shaderGraphEngine) {
+        shaderGraphEngine.resize()
+      }
+    })
+    resizeObserver.observe(container.value)
+  }
+
   if (props.shaderGraphJson || props.modelUrl) {
     await startRenderEngine()
   }
 })
 
 onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  window.removeEventListener('keydown', handleKeyDown)
+
+  if (container.value) {
+    container.value.removeEventListener('dblclick', handleDblClick)
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+
   cleanResources()
 })
 

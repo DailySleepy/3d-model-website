@@ -28,7 +28,7 @@
                   class="w-full h-full"
                 />
                 <img v-show="!isRendering" :src="model.thumbnailUrl || '/placeholder.png'" alt="cover"
-                  class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  class="w-full h-full object-cover transition-transform duration-700" />
                 <button @click="toggleRender"
                   class="absolute top-4 left-4 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2">
                   <svg v-if="!isRendering" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,6 +42,17 @@
                   </svg>
                   {{ isRendering ? '关闭3D预览' : '预览3D模型' }}
                 </button>
+                <!-- 操作说明 -->
+                <div v-show="isRendering" class="absolute bottom-4 left-4 flex items-center select-none z-10 group/tooltip">
+                  <div class="w-7 h-7 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 flex items-center justify-center cursor-help shadow-md hover:bg-black/80 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-300">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                    </svg>
+                  </div>
+                  <div class="absolute left-9 bg-black/75 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-[10px] border border-white/5 shadow-lg whitespace-nowrap pointer-events-none select-none opacity-0 translate-x-[-8px] transition-all duration-200 group-hover/tooltip:opacity-100 group-hover/tooltip:translate-x-0">
+                    操作说明：左键旋转 | 右键平移 | 滚轮缩放 | 双击或按 F 键全屏
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -193,7 +204,9 @@
                   <p class="text-gray-500 max-w-2xl">{{ model.author?.bio || '这位作者很懒，什么都没写~' }}</p>
                 </div>
               </div>
-              <button @click="handleFollow"
+              <button
+                v-if="model.author?.id !== authStore.userId"
+                @click="handleFollow"
                 class="px-8 py-3 rounded-xl font-medium transition-all flex items-center gap-2 whitespace-nowrap"
                 :class="isFollowing ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'">
                 <svg v-if="!isFollowing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +322,7 @@ import ImageModal from '@/components/ImageModal.vue'
 import { useGraphIO } from '@/shader-graph/composables/useGraphIO'
 import { useAuthStore } from '@/stores/auth'
 import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph'
-import { computed, nextTick, onMounted, onUnmounted, provide, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const imageModal = ref({
@@ -580,6 +593,15 @@ const loadModel = async () => {
     showToast('获取模型详情失败', 'error')
   }
 }
+
+watch(modelId, (newId) => {
+  if (newId) {
+    hasRendered.value = false
+    isRendering.value = false
+    activeTab.value = 'info'
+    loadModel()
+  }
+})
 
 onMounted(() => {
   document.documentElement.classList.add('stable-gutter')

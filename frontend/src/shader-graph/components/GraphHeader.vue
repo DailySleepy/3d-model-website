@@ -43,7 +43,7 @@
         </template>
         <template #content>
           <div class="flex flex-col gap-4">
-            <h4 class="text-[13px] font-semibold text-zinc-200 border-b border-zinc-800 pb-2">3D 场景配置</h4>
+            <h4 class="text-[13px] font-semibold text-zinc-200 border-b border-zinc-700 pb-2">3D 场景配置</h4>
 
             <!-- 几何形状 -->
             <div class="flex items-center justify-between gap-4">
@@ -73,7 +73,7 @@
               </button>
             </div>
 
-            <div class="border-t border-zinc-800"></div>
+            <div class="border-t border-zinc-700"></div>
 
             <!-- 粒子模拟开关 -->
             <div class="flex items-center justify-between gap-4">
@@ -89,13 +89,13 @@
             <!-- (if 开启粒子模拟) 粒子数量 -->
             <div v-if="store.enableSimulation" class="flex items-center justify-between gap-4">
               <span class="text-zinc-400">实例化数量</span>
-              <input
-                type="number"
-                v-model.number="store.particleCount"
-                @change="store.onParticleCountChange"
-                min="1"
-                max="10000"
-                class="w-20 px-2 py-1 bg-zinc-900 border border-zinc-800 text-white rounded text-xs text-center focus:outline-none focus:border-indigo-500"
+              <NumberDragInput
+                v-model="store.particleCount"
+                @update:modelValue="store.onParticleCountChange"
+                :min="1"
+                :max="10000"
+                :step="1"
+                class="w-20 h-5"
               />
             </div>
 
@@ -108,6 +108,18 @@
               >
                 立即重置
               </button>
+            </div>
+
+            <div class="border-t border-zinc-700"></div>
+
+            <!-- 显示 FPS 开关 -->
+            <div class="flex items-center justify-between gap-4">
+              <span class="text-zinc-400">显示 FPS</span>
+              <input
+                type="checkbox"
+                v-model="store.showFPS"
+                class="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
+              />
             </div>
           </div>
         </template>
@@ -193,6 +205,7 @@ import { useRouter } from 'vue-router'
 import { useShaderGraphStore } from '../stores/shaderGraph'
 import { useGraphIO } from '../composables/useGraphIO'
 import Popover from '@/components/Popover.vue'
+import NumberDragInput from './NumberDragInput.vue'
 
 const store = useShaderGraphStore()
 const router = useRouter()
@@ -212,7 +225,6 @@ const triggerModelInput = () => {
 const handleModelFileChange = (event) => {
   const file = event.target.files[0]
   if (!file) return
-  store.selectedGeometry = 'custom'
   store.onCustomModelUpload(file)
   event.target.value = ''
 }

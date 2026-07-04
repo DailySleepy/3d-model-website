@@ -136,6 +136,10 @@ export function useGraphIO() {
     }
 
     store.fitCanvasView()
+
+    if (mode === 'all') {
+      store.isDirty = false
+    }
   }
 
   const handleImportZip = async (file, mode) => {
@@ -201,7 +205,7 @@ export function useGraphIO() {
       }
     }
     if (loadedModelFile) {
-      store.onCustomModelUpload(loadedModelFile, false)
+      await store.onCustomModelUpload(loadedModelFile, false)
     }
 
     // 最终应用节点图数据
