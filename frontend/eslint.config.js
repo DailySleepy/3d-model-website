@@ -5,26 +5,23 @@ import pluginVue from 'eslint-plugin-vue'
 import skipFormatting from '@vue/eslint-config-prettier/skip-formatting'
 
 export default defineConfig([
-  {
-    name: 'app/files-to-lint',
-    files: ['**/*.{js,mjs,jsx,vue}'],
-  },
-
   globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
 
+  js.configs.recommended,
+  ...pluginVue.configs['flat/essential'],
+
   {
+    name: 'app/main-config',
+    files: ['**/*.{js,mjs,jsx,vue}'],
     languageOptions: {
       globals: {
         ...globals.browser,
       },
     },
+    rules: {
+      'no-unused-vars': 'off',
+    },
   },
 
-  rules: {
-    'no-unused-vars': 'off',
-  },
-
-  js.configs.recommended,
-  ...pluginVue.configs['flat/essential'],
   skipFormatting,
 ])

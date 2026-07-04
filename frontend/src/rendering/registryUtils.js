@@ -1,6 +1,26 @@
 import * as tsl from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
+// WebGPU WGSL Float Literal Polyfill
+// 解决 Firefox 的 Naga 编译器未能识别抽象浮点数实际上是编译期常量而报错: Abstract types may only appear in constant expressions
+const FLOAT_LITERAL_REGEX = /^-?[\d.]+([eE][-+]?\d+)?$/
+const originalGenerateConst = THREE.NodeBuilder.prototype.generateConst
+
+THREE.NodeBuilder.prototype.generateConst = function ( type, value = null ) {
+  let result = originalGenerateConst.call( this, type, value )
+
+  if ( type === 'float' ) {
+    // 规避生产环境代码混淆问题 (WGSLNodeBuilder 被混淆为其他的名称)：通过 WGSL 独有的 directives 属性判定
+    const isWGSL = this.directives !== undefined || this.constructor.name === 'WGSLNodeBuilder'
+    if ( isWGSL && typeof result === 'string' && !result.endsWith( 'f' ) ) {
+      if ( FLOAT_LITERAL_REGEX.test( result ) ) {
+        result = result + 'f'
+      }
+    }
+  }
+  return result
+}
+
 export const TYPE_METADATA_REGISTRY = {
   'float': { dim: 1, wgslType: 'f32' },
   'int': { dim: 1, wgslType: 'i32' },
