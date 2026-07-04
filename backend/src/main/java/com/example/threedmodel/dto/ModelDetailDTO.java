@@ -13,7 +13,7 @@ public class ModelDetailDTO {
     private String fileUrl;
     private String thumbnailUrl;
     private String[] previewUrls;
-
+    private String shaderGraphJson;
     private int likeCount;
     private int collectCount;
     private boolean likedByUser;

@@ -2,7 +2,9 @@ package com.example.threedmodel.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.threedmodel.dto.ModelCreateDTO;
+import com.example.threedmodel.entity.FileInfo;
 import com.example.threedmodel.entity.Model;
+import com.example.threedmodel.mapper.FileInfoMapper;
 import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.ModelService;
 import com.example.threedmodel.service.UserService;
@@ -27,6 +29,9 @@ public class ModelController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private FileInfoMapper fileInfoMapper;  // 新增
 
     /**
      * 从 JWT 中获取 userId（与其他 Controller 统一）
@@ -90,6 +95,20 @@ public class ModelController {
 
         // 3. 既没指定作者，也没登录，返回错误或空列表
         return ResponseEntity.badRequest().body("请指定 authorId 或先登录");
+    }
+
+    /**
+     * 查询文件转换状态（供前端轮询）
+     * @param fileId file_info 表的主键 ID
+     * @return 状态码：0-待处理，1-处理中，2-成功，3-失败
+     */
+    @GetMapping("/file/status/{fileId}")
+    public ResponseEntity<Integer> getConvertStatus(@PathVariable Long fileId) {
+        FileInfo fileInfo = fileInfoMapper.selectById(fileId);
+        if (fileInfo == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(fileInfo.getConvertStatus());
     }
 
     record Response(Long id, String message) {}
