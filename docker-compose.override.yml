@@ -5,6 +5,11 @@ services:
     volumes:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql # 数据库启动时自动执行建表脚本
 
+  my-redis:
+    # 如果想在本地电脑用 Redis 可视化工具连接调试，可以在这里暴露端口
+    ports:
+      - "6379:6379"
+
   backend:
     build: ./backend
     volumes:

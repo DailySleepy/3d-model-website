@@ -20,6 +20,17 @@ services:
       - "6379:6379"
     # 如果 Redis 有密码，可添加 environment: REDIS_PASSWORD=xxx，但默认无密码
 
+#新增redis（待上线测试）
+  my-redis:
+    image: redis:7.0-alpine
+    container_name: my-redis
+    restart: always
+    # 容器内部使用的命令：直接在启动时传入密码，无需额外准备 redis.conf 文件（最省心做法）
+    command: redis-server --requirepass Ab123456 --appendonly yes
+    volumes:
+      - ./redis/data:/data # 数据持久化目录映射
+    # 注意：这里【不写】ports 映射（即不写 6379:6379），完全不对公网开放
+
   backend:
     image: backend:latest
     container_name: backend
