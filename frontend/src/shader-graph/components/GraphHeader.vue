@@ -271,11 +271,6 @@ const handleFileAction = (value) => {
 }
 
 const handlePublish = () => {
-  const success = store.updatePublishData()
-  if (!success) {
-    store.showToast('生成发布数据失败', 'error')
-    return
-  }
   router.push('/upload')
 }
 </script>

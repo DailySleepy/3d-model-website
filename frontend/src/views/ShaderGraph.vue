@@ -86,7 +86,11 @@ onUnmounted(() => {
 
 onBeforeRouteLeave(async (to, from) => {
   if (to.path.startsWith('/upload')) {
-    store.updatePublishData()
+    const success = store.updatePublishData()
+    if (!success) {
+      store.showToast('生成发布数据失败', 'error')
+      return false
+    }
   }
   else {
     if (store.isDirty) {

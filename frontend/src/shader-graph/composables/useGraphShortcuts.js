@@ -1,7 +1,7 @@
 import { useVueFlow } from '@vue-flow/core'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useShaderGraphStore } from '../stores/shaderGraph'
-import { generateExportData, useGraphIO } from './useGraphIO'
+import { generateBaseExportData, useGraphIO } from './useGraphIO'
 
 export function useGraphShortCuts({ openSearchMenu }) {
   const snapToGrid = ref(false)
@@ -63,7 +63,7 @@ export function useGraphShortCuts({ openSearchMenu }) {
       e.preventDefault()
       const subgraph = store.getSelectedSubgraph()
       if (!subgraph.nodes || subgraph.nodes.length === 0) return
-      const exportData = generateExportData({ graphs: { selection: subgraph } })
+      const exportData = generateBaseExportData({ graphs: { selection: subgraph } })
       navigator.clipboard.writeText(JSON.stringify(exportData, null, 2))
     }
 

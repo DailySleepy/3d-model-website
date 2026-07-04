@@ -1,6 +1,5 @@
-import { nextTick } from 'vue'
 import {
-  generateExportData,
+  generateBaseExportData,
   parseGraphJSON,
   remapAndRepositionGraph,
   getUsedTextures,
@@ -8,7 +7,7 @@ import {
   exportAsZip
 } from "../utils/graphIO"
 export {
-  generateExportData,
+  generateBaseExportData,
   parseGraphJSON,
   remapAndRepositionGraph,
   getUsedTextures,
@@ -18,13 +17,6 @@ export {
 import { useShaderGraphStore } from "../stores/shaderGraph"
 import { confirmDialog } from '@/components/ConfirmDialog.vue'
 import JSZip from 'jszip'
-
-const backendBase = import.meta.env.VITE_API_BASE_URL || ''
-const buildUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`
-}
 
 export function useGraphIO() {
   const store = useShaderGraphStore()
@@ -39,20 +31,6 @@ export function useGraphIO() {
       }
       reader.readAsText(file)
     }
-  }
-
-  const checkAndConfirmSimulation = async (parsedImportData, mode) => {
-    if (mode === 'all' && parsedImportData.projectSettings?.enableSimulation === true && !store.enableSimulation) {
-      const confirmed = await confirmDialog({
-        title: '粒子模拟模式启用确认',
-        type: 'warning',
-        message: '检测到导入的项目包含粒子模拟，导入后将自动启用粒子模拟',
-        confirmText: '确认启用',
-        cancelText: '取消'
-      })
-      return confirmed
-    }
-    return true
   }
 
   const applyImportedTextData = async (parsedImportData, mode) => {
@@ -172,7 +150,7 @@ export function useGraphIO() {
     }
 
     // 粒子模拟模式需要弹窗确认
-    const ok = await checkAndConfirmSimulation(parsedImportData, mode)
+    const ok = await checkAndConfirmSimulation(parsedImportData, mode, store.enableSimulation)
     if (!ok) return
 
     // 确认导入不中断后，再解压并加载物理资产
@@ -196,16 +174,15 @@ export function useGraphIO() {
 
     // 加载模型
     const modelMeta = assets.customModel
-    let loadedModelFile = null
     if (modelMeta) {
-      const modelFileInZip = zip.file(modelMeta.path)
-      if (modelFileInZip) {
-        const blob = await modelFileInZip.async('blob')
-        loadedModelFile = new File([blob], modelMeta.name, { type: 'model/gltf-binary' })
+      const modelFile = zip.file(modelMeta.path)
+      if (modelFile) {
+        const blob = await modelFile.async('blob')
+        const loadedModelFile = new File([blob], modelMeta.name, { type: 'model/gltf-binary' })
+        if (loadedModelFile) {
+          await store.onCustomModelUpload(loadedModelFile, false)
+        }
       }
-    }
-    if (loadedModelFile) {
-      await store.onCustomModelUpload(loadedModelFile, false)
     }
 
     // 最终应用节点图数据
@@ -225,7 +202,7 @@ export function useGraphIO() {
       return
     }
 
-    const ok = await checkAndConfirmSimulation(parsedImportData, mode)
+    const ok = await checkAndConfirmSimulation(parsedImportData, mode, store.enableSimulation)
     if (!ok) return
 
     await applyImportedTextData(parsedImportData, mode)
@@ -293,36 +270,29 @@ export function useGraphIO() {
       filename = `shadergraph-selection-${Date.now()}`
     }
 
-    const exportData = generateExportData({ graphs: graphsToExport, projectSettings })
+    const baseExportData = generateBaseExportData({ graphs: graphsToExport, projectSettings })
 
-    if (!exportData) {
+    if (!baseExportData) {
       store.showToast('导出文件失败', 'error')
       return
     }
 
-    let usedCustomTextures = []
+    let usedTextures = []
     if (store.customTextures.length > 0) {
-      usedCustomTextures = getUsedTextures(exportData, store.customTextures)
+      usedTextures = getUsedTextures(baseExportData.graphs, store.customTextures)
     }
 
-    const hasCustomTextures = usedCustomTextures.length > 0
-    const hasCustomModel = store.selectedGeometry === 'custom' && store.customModelFile
+    const customModelInfo = store.selectedGeometry === 'custom'
+      ? { file: store.customModelFile, url: store.customModelUrl }
+      : null
 
-    let exportSuccess = false
-    if (hasCustomTextures || hasCustomModel) {
-      const modelFile = hasCustomModel ? store.customModelFile : null
-      try {
-        await exportAsZip(exportData, filename, usedCustomTextures, modelFile)
-        store.showToast('项目配置及自定义资产已成功打包为 ZIP 导出', 'success')
-        exportSuccess = true
-      } catch (e) {
-        store.showToast('生成 ZIP 失败', 'error')
-      }
-    } else {
-      exportAsJSON(exportData, filename)
-      store.showToast('项目配置已成功导出并下载', 'success')
-      exportSuccess = true
-    }
+    const exportSuccess = await downloadAssetsAndExport({
+      baseExportData,
+      filename,
+      textures: usedTextures,
+      customModel: customModelInfo,
+      showToast: store.showToast
+    })
 
     if (exportSuccess && (mode === 'all' || mode === 'current')) {
       store.isDirty = false
@@ -337,9 +307,9 @@ export function useGraphIO() {
    * @param {Function} showToast 弹窗提示回调函数 (message, type) => void
    */
   const exportGraphFromModelDetail = async (shaderGraphJson, title, modelFileUrl, showToast) => {
-    let exportData = null
+    let baseExportData = null
     try {
-      exportData = typeof shaderGraphJson === 'string'
+      baseExportData = typeof shaderGraphJson === 'string'
         ? JSON.parse(shaderGraphJson)
         : JSON.parse(JSON.stringify(shaderGraphJson))
     } catch (e) {
@@ -347,63 +317,26 @@ export function useGraphIO() {
       return
     }
 
-    const projectSettings = exportData.projectSettings || {}
-    const assets = exportData.assets || {}
+    const projectSettings = baseExportData.projectSettings || {}
+    const assets = baseExportData.assets || {}
 
-    const usedTextures = getUsedTextures(exportData)
-
+    const usedTextures = baseExportData?.assets?.customTextures || []
     const modelUrl = modelFileUrl || assets.customModel?.path
-    const hasCustomTextures = usedTextures.length > 0
-    const hasCustomModel = projectSettings.selectedGeometry === 'custom' && modelUrl
+    const isCustomModel = projectSettings.selectedGeometry === 'custom' && modelUrl
 
     const filename = `${title || 'project'}`
 
-    if (hasCustomTextures || hasCustomModel) {
-      try {
-        // fetch 自定义贴图
-        const resolvedTextures = []
-        for (const tex of usedTextures) {
-          const texUrl = tex.path
-          if (!texUrl) continue
+    const customModelInfo = isCustomModel
+      ? { file: null, url: modelUrl, name: assets.customModel?.name || `${title || 'model'}.glb` }
+      : null
 
-          const resolvedUrl = buildUrl(texUrl)
-          try {
-            const res = await fetch(resolvedUrl)
-            const blob = await res.blob()
-            resolvedTextures.push({
-              id: tex.id,
-              name: tex.name,
-              file: blob
-            })
-          } catch (err) {
-            console.error(`下载贴图 ${tex.name} 失败`, err)
-            throw new Error(`贴图 ${tex.name} 下载失败`)
-          }
-        }
-
-        // fetch 自定义模型
-        let modelFile = null
-        if (hasCustomModel) {
-          try {
-            const resolvedModelUrl = buildUrl(modelUrl)
-            const res = await fetch(resolvedModelUrl)
-            modelFile = await res.blob()
-            modelFile.name = assets.customModel?.name || `${title || 'model'}.glb`
-          } catch (err) {
-            console.error(`下载自定义模型失败`, err)
-            throw new Error('自定义模型下载失败')
-          }
-        }
-
-        await exportAsZip(exportData, filename, resolvedTextures, modelFile)
-        showToast('项目配置及资产已成功打包为 ZIP 导出', 'success')
-      } catch (err) {
-        showToast('打包 ZIP 失败: ' + err.message, 'error')
-      }
-    } else {
-      exportAsJSON(exportData, filename)
-      showToast('项目配置已成功导出为 JSON 下载', 'success')
-    }
+    await downloadAssetsAndExport({
+      baseExportData,
+      filename,
+      textures: usedTextures,
+      customModel: customModelInfo,
+      showToast
+    })
   }
 
   return {
@@ -414,3 +347,112 @@ export function useGraphIO() {
     exportGraphFromModelDetail
   }
 }
+
+const backendBase = import.meta.env.VITE_API_BASE_URL || ''
+const buildUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`
+}
+
+const downloadTextures = async (textures) => {
+  const resolvedTextures = []
+  for (const tex of textures) {
+    const texUrl = tex.url || tex.path
+    if (!texUrl) continue
+
+    const resolvedUrl = buildUrl(texUrl)
+    try {
+      const res = await fetch(resolvedUrl)
+      const blob = await res.blob()
+      resolvedTextures.push({
+        id: tex.id,
+        name: tex.name,
+        file: blob
+      })
+    } catch (err) {
+      console.error(`下载贴图 ${tex.name} 失败`, err)
+      throw new Error(`贴图 ${tex.name} 下载失败`)
+    }
+  }
+  return resolvedTextures
+}
+
+const downloadModelFile = async (modelUrl, fallbackName = 'model.glb') => {
+  try {
+    const resolvedModelUrl = buildUrl(modelUrl)
+    const res = await fetch(resolvedModelUrl)
+    const blob = await res.blob()
+    let modelName = fallbackName
+    try {
+      const urlObj = new URL(resolvedModelUrl, window.location.href)
+      const pathSegments = urlObj.pathname.split('/')
+      modelName = pathSegments[pathSegments.length - 1] || fallbackName
+    } catch (_) {}
+    blob.name = modelName
+    return blob
+  } catch (err) {
+    console.error(`下载自定义模型失败`, err)
+    throw new Error('自定义模型下载失败')
+  }
+}
+
+const downloadAssetsAndExport = async ({
+  baseExportData,
+  filename,
+  textures = [],
+  customModel = null,
+  showToast
+}) => {
+  try {
+    let resolvedTextures = []
+    let modelFile = null
+
+    // 1. 处理贴图下载
+    if (textures.length > 0) {
+      const toDownload = textures.filter(t => !t.file)
+      const localTextures = textures.filter(t => t.file)
+
+      const downloaded = await downloadTextures(toDownload)
+      resolvedTextures = [...localTextures, ...downloaded]
+    }
+
+    // 2. 处理模型下载
+    if (customModel) {
+      if (customModel.file) {
+        modelFile = customModel.file
+      } else if (customModel.url) {
+        modelFile = await downloadModelFile(customModel.url, customModel.name)
+      }
+    }
+
+    // 3. 决定打包格式并导出
+    const hasAssets = resolvedTextures.length > 0 || modelFile !== null
+    if (hasAssets) {
+      await exportAsZip(baseExportData, filename, resolvedTextures, modelFile)
+      showToast('项目配置及资产已成功打包为 ZIP 导出', 'success')
+    } else {
+      exportAsJSON(baseExportData, filename)
+      showToast('项目配置已成功导出并下载', 'success')
+    }
+    return true
+  } catch (err) {
+    showToast('导出失败: ' + err.message, 'error')
+    return false
+  }
+}
+
+const checkAndConfirmSimulation = async (parsedImportData, mode, enableSimulation) => {
+  if (mode === 'all' && parsedImportData.projectSettings?.enableSimulation === true && !enableSimulation) {
+    const confirmed = await confirmDialog({
+      title: '粒子模拟模式启用确认',
+      type: 'warning',
+      message: '检测到导入的项目包含粒子模拟，导入后将自动启用粒子模拟',
+      confirmText: '确认启用',
+      cancelText: '取消'
+    })
+    return confirmed
+  }
+  return true
+}
+

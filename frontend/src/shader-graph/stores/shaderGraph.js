@@ -2,7 +2,7 @@ import { defineStore, acceptHMRUpdate } from 'pinia';
 import { computed, ref, nextTick } from 'vue';
 import { ShaderGraphEngine } from "@/rendering/engine";
 import { createNode } from '../utils/nodeFactory';
-import { remapAndRepositionGraph, generateExportData, getUsedTextures } from '../utils/graphIO';
+import { remapAndRepositionGraph, generateBaseExportData, getUsedTextures } from '../utils/graphIO';
 import { loadThreeTexture } from '@/rendering/utils';
 import * as THREE from 'three/webgpu';
 
@@ -665,13 +665,13 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       enableSimulation: enableSimulation.value
     }
 
-    const exportData = generateExportData({ graphs: graphsToExport, projectSettings })
+    const exportData = generateBaseExportData({ graphs: graphsToExport, projectSettings })
 
     if (!exportData) {
       return false
     }
 
-    const usedCustomTextures = getUsedTextures(exportData, customTextures.value)
+    const usedCustomTextures = getUsedTextures(exportData.graphs, customTextures.value)
 
     publishData.value = {
       shaderGraphJson: exportData,

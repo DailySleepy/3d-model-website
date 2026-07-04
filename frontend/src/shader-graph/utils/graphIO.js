@@ -128,7 +128,7 @@ function checkGraph(graph, targetTab) {
 }
 
 /**
- * 生成导出或复制使用的标准统一 JSON 对象
+ * 生成导出或复制使用的标准统一基础 JSON 对象
  * @param {Object} options 配置对象
  * @param {Object} [options.graphs] 包含需要处理的图集合，具体格式为：
  *   {
@@ -138,7 +138,7 @@ function checkGraph(graph, targetTab) {
  *   }
  * @param {Object} [options.projectSettings] 全局环境参数（如几何体、粒子数等）
  */
-export function generateExportData({ graphs = {}, projectSettings = {} } = {}) {
+export function generateBaseExportData({ graphs = {}, projectSettings = {} } = {}) {
   const cleanedGraphs = {}
   const validKeys = ['material', 'simulation', 'selection']
 
@@ -158,6 +158,7 @@ export function generateExportData({ graphs = {}, projectSettings = {} } = {}) {
     graphs: cleanedGraphs
   }
 }
+
 
 function cleanNodesForExport(nodes) {
   if (!Array.isArray(nodes)) return []
@@ -242,15 +243,15 @@ export function remapAndRepositionGraph(incomingNodes, incomingEdges, mousePos) 
 
 /**
  * 提取节点图中被 textureSample 节点引用的贴图 ID 集合
- * @param {Object} exportData 导出的 JSON 对象数据
+ * @param {Object} graphs 节点图集合
  * @returns {Set<string>}
  */
-export function getUsedTextureIds(exportData) {
+export function getUsedTextureIds(graphs) {
   const usedIds = new Set()
-  if (!exportData || !exportData.graphs) return usedIds
+  if (!graphs) return usedIds
 
-  for (const key of Object.keys(exportData.graphs)) {
-    const graph = exportData.graphs[key]
+  for (const key of Object.keys(graphs)) {
+    const graph = graphs[key]
     if (graph && Array.isArray(graph.nodes)) {
       for (const node of graph.nodes) {
         if (node.type === 'textureSample') {
@@ -266,14 +267,14 @@ export function getUsedTextureIds(exportData) {
 }
 
 /**
- * 提取节点图中被引用且在给定贴图列表（或 exportData.assets.customTextures）中的贴图对象
- * @param {Object} exportData 导出的 JSON 对象数据
- * @param {Array} [customTextures] 可选的贴图列表，若不传则从 exportData.assets.customTextures 获取
+ * 提取节点图中被引用且在给定贴图列表中的贴图对象
+ * @param {Object} graphs 节点图集合
+ * @param {Array} customTextures 贴图列表
  * @returns {Array} 过滤后实际使用的贴图对象数组
  */
-export function getUsedTextures(exportData, customTextures = null) {
-  const usedIds = getUsedTextureIds(exportData)
-  const textures = customTextures || exportData?.assets?.customTextures || []
+export function getUsedTextures(graphs, customTextures) {
+  const usedIds = getUsedTextureIds(graphs)
+  const textures = customTextures || []
   return textures.filter(tex => usedIds.has(tex.id))
 }
 
