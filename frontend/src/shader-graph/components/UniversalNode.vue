@@ -95,7 +95,7 @@
 <script setup>
 import { computed, inject, onUnmounted } from 'vue';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
-import { getDimension, nodeRegistry } from '@/rendering/shader-graph/nodeRegistry';
+import { getDimension, nodeRegistry } from '@/rendering/nodeRegistry';
 import { useShaderGraphStore } from '../stores/shaderGraph.js';
 
 import NumberDragInput from './NumberDragInput.vue';

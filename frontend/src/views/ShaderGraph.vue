@@ -28,12 +28,12 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { confirmDialog } from '@/components/ConfirmDialog.vue'
 
-import GraphCanvas from './components/GraphCanvas.vue'
-import GraphHeader from './components/GraphHeader.vue'
+import GraphCanvas from '@/shader-graph/components/GraphCanvas.vue'
+import GraphHeader from '@/shader-graph/components/GraphHeader.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
 
-import { useGraphResize } from './composables/useGraphResize.js'
-import { useShaderGraphStore } from './stores/shaderGraph.js'
+import { useGraphResize } from '@/shader-graph/composables/useGraphResize.js'
+import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph.js'
 
 const store = useShaderGraphStore()
 

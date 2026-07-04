@@ -19,8 +19,8 @@
 </template>
 
 <script setup>
-import { ShaderGraphEngine } from '@/rendering/shader-graph/engine.js'
-import { useShaderGraphStore } from '@/views/ShaderGraph/stores/shaderGraph.js'
+import { ShaderGraphEngine } from '@/rendering/engine.js'
+import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph.js'
 import { loadThreeTexture } from '@/rendering/utils.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 

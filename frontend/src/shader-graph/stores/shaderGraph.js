@@ -1,6 +1,6 @@
 import { defineStore, acceptHMRUpdate } from 'pinia';
 import { computed, ref, nextTick } from 'vue';
-import { ShaderGraphEngine } from "@/rendering/shader-graph/engine";
+import { ShaderGraphEngine } from "@/rendering/engine";
 import { createNode } from '../utils/nodeFactory';
 import { remapAndRepositionGraph, generateExportData, getUsedTextures } from '../utils/graphIO';
 import { loadThreeTexture } from '@/rendering/utils';

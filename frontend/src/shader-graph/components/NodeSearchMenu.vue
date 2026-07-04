@@ -42,7 +42,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { pinyin } from 'pinyin-pro'
-import { nodeRegistry } from '@/rendering/shader-graph/nodeRegistry';
+import { nodeRegistry } from '@/rendering/nodeRegistry';
 
 const props = defineProps({
   searchMenu: {

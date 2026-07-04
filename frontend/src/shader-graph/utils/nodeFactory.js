@@ -1,4 +1,4 @@
-import { nodeRegistry } from "@/rendering/shader-graph/nodeRegistry"
+import { nodeRegistry } from "@/rendering/nodeRegistry"
 
 /**
  * @param {string} type 节点类型 (如 'float', 'add' 等)

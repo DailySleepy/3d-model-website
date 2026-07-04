@@ -2,7 +2,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as tsl from 'three/tsl'
 import * as THREE from 'three/webgpu'
-import { disposeScene } from '../utils.js'
+import { disposeScene } from './utils.js'
 import { CompilerContext } from './compiler.js'
 
 export class ShaderGraphEngine {

@@ -40,7 +40,7 @@ import { Controls } from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
-import { nodeRegistry } from '@/rendering/shader-graph/nodeRegistry.js'
+import { nodeRegistry } from '@/rendering/nodeRegistry.js'
 import { useGraphShortCuts } from '../composables/useGraphShortcuts.js'
 import { useNodeSearch } from '../composables/useNodeSearch.js'
 import { useShaderGraphStore } from '../stores/shaderGraph.js'

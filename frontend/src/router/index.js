@@ -11,7 +11,7 @@ import UploadPage from '@/views/UploadPage.vue'
 import NotificationPage from '@/views/NotificationPage.vue'
 import RankingPage from '@/views/RankingPage.vue'
 import RenderLab from '@/views/RenderLab.vue'
-import ShaderGraph from '@/views/ShaderGraph/ShaderGraph.vue'
+import ShaderGraph from '@/views/ShaderGraph.vue'
 // TODO: 添加其他路由
 
 const routes = [
