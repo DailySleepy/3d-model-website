@@ -1,21 +1,25 @@
 services:
   postgres:
     ports:
-      - "5433:5432" # 将容器的 5432 端口映射到宿主机的 5433 端口，避免与本地 5432 端口的 PostgreSQL 冲突
+      - "5432:5432"  # 保持与主配置一致，避免混淆
     volumes:
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql # 数据库启动时自动执行建表脚本
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql  # 如果不需要，可删除
 
-  my-redis:
-    # 如果想在本地电脑用 Redis 可视化工具连接调试，可以在这里暴露端口
+  redis:
     ports:
-      - "6379:6379"
+      - "6379:6379"  # 保持与主配置一致
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf  # 如果主配置已有，可省略
+      - ./redis/data:/data
 
   backend:
     build: ./backend
     volumes:
-      - ./backend/uploads:/data # 将宿主机本地的 uploads 目录直接挂载为后端文件路径
+      - ./backend/uploads:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-Ab123456}  # 统一密码
 
   frontend:
     build: ./frontend
     volumes:
-      - ./backend/uploads:/usr/share/nginx/html/uploads # 将前端静态服务挂载指向相同的宿主机本地目录
+      - ./backend/uploads:/usr/share/nginx/html/uploads

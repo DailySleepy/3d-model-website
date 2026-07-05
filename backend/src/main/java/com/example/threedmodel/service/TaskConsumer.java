@@ -31,17 +31,25 @@ public class TaskConsumer {
      */
     @Scheduled(fixedDelay = 2000)
     public void pollTask() {
-        // 从队列左侧弹出一个任务（非阻塞）
-        Object task = redisTemplate.opsForList().leftPop(CONVERT_QUEUE);
-        if (task != null) {
-            String fileIdStr = task.toString();
-            try {
-                Long fileId = Long.parseLong(fileIdStr);
-                // 异步执行转换
-                processConvert(fileId);
-            } catch (NumberFormatException e) {
-                System.err.println("非法任务格式: " + fileIdStr);
+        try {
+            Object task = redisTemplate.opsForList().leftPop(CONVERT_QUEUE);
+            if (task != null) {
+                String fileIdStr = task.toString();
+                try {
+                    Long fileId = Long.parseLong(fileIdStr);
+                    processConvert(fileId);  // 异步提交，但如果线程池满，CallerRunsPolicy 会让当前线程执行，不会抛出异常
+                } catch (NumberFormatException e) {
+                    System.err.println("非法任务格式: " + fileIdStr);
+                } catch (Exception e) {
+                    // 兜底捕获所有异常（包括 RejectedExecutionException 等）
+                    System.err.println("处理任务失败: " + fileIdStr + ", 原因: " + e.getMessage());
+                    // 可选：将任务重新放回队列或记录失败
+                    // redisTemplate.opsForList().rightPush(CONVERT_QUEUE, task); // 重试（需防止死循环）
+                }
             }
+        } catch (Exception e) {
+            // 捕获 pollTask 自身的异常（如 Redis 连接失败）
+            System.err.println("轮询任务异常: " + e.getMessage());
         }
     }
 

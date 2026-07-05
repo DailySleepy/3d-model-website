@@ -1,9 +1,12 @@
 package com.example.threedmodel.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.threedmodel.dto.PresignedUrlRequest;
 import com.example.threedmodel.dto.PresignedUrlResponse;
 import com.example.threedmodel.entity.FileInfo;
+import com.example.threedmodel.entity.ModelMainFile;
 import com.example.threedmodel.mapper.FileInfoMapper;
+import com.example.threedmodel.mapper.ModelMainFileMapper;
 import com.example.threedmodel.utils.PresignedUrlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +29,9 @@ public class PresignedUrlController {
     private FileInfoMapper fileInfoMapper;
 
     @Autowired
+    private ModelMainFileMapper modelMainFileMapper;  // 新增注入
+
+    @Autowired
     private PresignedUrlUtil presignedUrlUtil;
 
     @Value("${app.base-url}")
@@ -40,9 +46,32 @@ public class PresignedUrlController {
     @PostMapping("/generate")
     public ResponseEntity<PresignedUrlResponse> generatePresignedUrl(
             @RequestBody PresignedUrlRequest request) {
-        FileInfo fileInfo = fileInfoMapper.selectById(request.getFileId());
+
+        Long fileId = request.getFileId();
+        Long modelId = request.getModelId();
+        FileInfo fileInfo = null;
+
+        // 1. 优先使用 fileId
+        if (fileId != null) {
+            fileInfo = fileInfoMapper.selectById(fileId);
+        }
+        // 2. 如果 fileId 为空，尝试通过 modelId 查询
+        else if (modelId != null) {
+            LambdaQueryWrapper<ModelMainFile> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ModelMainFile::getModelId, modelId);
+            ModelMainFile relation = modelMainFileMapper.selectOne(wrapper);
+            if (relation != null) {
+                fileInfo = fileInfoMapper.selectById(relation.getFileInfoId());
+            }else {
+                // 表为空或未关联时的友好提示
+                throw new RuntimeException("未找到该模型对应的文件，请使用 fileId 或先执行数据迁移");
+            }
+        }else {
+            throw new RuntimeException("请提供 fileId 或 modelId");
+        }
+
         if (fileInfo == null) {
-            throw new RuntimeException("文件不存在");
+            throw new RuntimeException("文件不存在，请提供有效的 fileId 或 modelId");
         }
 
         String resourcePath = "/uploads/models/" +
@@ -76,12 +105,11 @@ public class PresignedUrlController {
 
         // ----- 安全防护：防止路径穿越 -----
         Path basePath = Paths.get(fileRootPath).normalize();
-        // resourcePath 格式如 "/uploads/models/xxx.glb"，去掉前导 "/" 后解析
         String safeRelativePath = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;
         Path requestedPath = basePath.resolve(safeRelativePath).normalize();
 
         if (!requestedPath.startsWith(basePath)) {
-            return ResponseEntity.status(403).build(); // 非法路径
+            return ResponseEntity.status(403).build();
         }
 
         // ----- 读取文件 -----

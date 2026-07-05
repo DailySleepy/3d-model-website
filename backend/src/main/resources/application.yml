@@ -21,7 +21,7 @@ app:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_URL:localhost:5433/threed_model_db} #先创建你的数据库 createdb xx_db
+    url: jdbc:postgresql://${DB_URL:localhost:5432/threed_model_db} #先创建你的数据库 createdb xx_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:123}
     driver-class-name: org.postgresql.Driver
@@ -46,10 +46,16 @@ spring:
         - classpath:/public/
   data:
     redis:
-      host: 127.0.0.1       # 本地测用 127.0.0.1，云服务器上如果是同台机器也用 127.0.0.1
-      port: 6379
-      # password: Ab123456  # 必须和 redis.conf 中的 requirepass 完全一致
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}  # 从环境变量读取，支持空值
       timeout: 5000ms
+    #后端调试还是建议用下方的写死密码
+    #redis:
+      #host: 127.0.0.1
+      #port: 6379
+      #password: Ab123456
+      #timeout: 5000ms
 
 
 mybatis-plus:
