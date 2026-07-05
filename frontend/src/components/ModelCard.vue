@@ -14,11 +14,12 @@
       <div
         class="grid grid-rows-[1fr] opacity-100 transition-all duration-300 ease-in-out group-hover:grid-rows-[0fr] group-hover:opacity-0">
         <div class="overflow-hidden">
-          <p class="text-gray-600 text-sm mb-2 mt-1">
-            {{ model.description ? model.description.slice(0, 50) + (model.description.length > 50 ? '...' : '') :
-              '暂无简介' }}
+          <p class="text-gray-600 text-sm mb-2 mt-1 truncate">
+            {{ model.description || '暂无简介' }}
           </p>
-          <p class="text-sm text-gray-500"> 作者: {{ authorName || 'Unknown' }}</p>
+          <p class="text-sm text-gray-500 truncate">
+            作者: {{ authorName || 'Unknown' }}
+          </p>
         </div>
       </div>
     </div>
