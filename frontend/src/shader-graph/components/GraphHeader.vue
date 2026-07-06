@@ -1,15 +1,15 @@
 <template>
   <header class="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-6 z-20 shrink-0">
     <div class="flex items-center gap-3">
-      <!-- 返回主页 -->
-      <router-link to="/"
+      <!-- 返回 -->
+      <button @click="handleBack"
         class="group flex items-center justify-center w-10 h-10 rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all duration-150 cursor-pointer"
-        title="返回主页">
+        title="返回">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"
           class="w-5 h-5 transition-transform duration-150 group-hover:-translate-x-0.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
-      </router-link>
+      </button>
 
       <!-- 标签页切换 -->
       <div class="flex items-center gap-1 p-1 bg-zinc-950 rounded-lg border border-zinc-800 shrink-0">
@@ -209,6 +209,14 @@ import NumberDragInput from './NumberDragInput.vue'
 
 const store = useShaderGraphStore()
 const router = useRouter()
+
+const handleBack = () => {
+  if (window.history.state && window.history.state.back) {
+    router.back()
+  } else {
+    router.push('/')
+  }
+}
 
 const { handleImportFile, handleExportFile } = useGraphIO()
 

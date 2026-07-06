@@ -722,6 +722,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const clearGraphState = () => {
     currentLoadId++
     isUpdating = false
+    loadingProgress.value = 0
     stopProgressAnimation()
     clearBlobResources()
 

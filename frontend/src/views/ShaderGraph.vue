@@ -52,6 +52,10 @@ import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph.js'
 const store = useShaderGraphStore()
 const router = useRouter()
 
+if (store.forkData) {
+  store.isLoading = true
+}
+
 const handleCancelLoading = () => {
   store.cancelLoading()
   router.back()
