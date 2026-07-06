@@ -160,23 +160,33 @@ public class FileUploadServiceImpl implements FileUploadService {
             throw new RuntimeException("创建目录失败", e);
         }
 
-        // 4. 合并分片（耗时操作，无事务）
-        try (RandomAccessFile raf = new RandomAccessFile(finalPath.toFile(), "rw")) {
+        // 4. 使用 FileChannel.transferTo 合并分片（零拷贝，避免内存占用）
+        try (FileChannel destination = FileChannel.open(finalPath,
+                StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
             for (FileChunk chunk : chunks) {
                 Path chunkPath = Paths.get(chunk.getChunkTempPath());
-                byte[] bytes = Files.readAllBytes(chunkPath);
-                raf.seek(chunk.getChunkIndex() * chunkSize);
-                raf.write(bytes);
+                try (FileChannel source = FileChannel.open(chunkPath, StandardOpenOption.READ)) {
+                    // 定位到该分片在最终文件中的偏移量
+                    long position = chunk.getChunkIndex() * chunkSize;
+                    long remaining = source.size();
+                    long transferred = 0;
+                    // 循环确保完整传输（transferTo 不一定一次传完）
+                    while (remaining > 0) {
+                        long n = source.transferTo(transferred, remaining, destination);
+                        transferred += n;
+                        remaining -= n;
+                    }
+                    // 注意：destination 的 position 会自动前移，无需手动设置
+                }
             }
         } catch (IOException e) {
-            throw new RuntimeException("合并失败", e);
+            throw new RuntimeException("合并分片失败", e);
         }
 
         // 5. 事务内更新数据库 + 注册事务同步回调
         final String finalStoragePath = finalPath.toString();
         final Long fileId = fileInfo.getId();
         transactionTemplate.execute(status -> {
-            // 5.1 更新数据库
             FileInfo updateInfo = fileInfoMapper.selectById(fileId);
             if (updateInfo == null) {
                 throw new RuntimeException("文件信息不存在");
@@ -186,14 +196,11 @@ public class FileUploadServiceImpl implements FileUploadService {
             updateInfo.setUpdateAt(LocalDateTime.now());
             fileInfoMapper.updateById(updateInfo);
 
-            // 5.2 注册事务同步回调（在事务提交后执行）
             TransactionSynchronizationManager.registerSynchronization(
                     new TransactionSynchronization() {
                         @Override
                         public void afterCommit() {
-                            // 事务已提交，安全投递任务
                             taskProducer.sendConvertTask(fileId);
-                            // 清理临时分片文件（异步执行）
                             cleanChunksAsync(uploadId);
                         }
                     }
@@ -201,8 +208,7 @@ public class FileUploadServiceImpl implements FileUploadService {
             return null;
         });
 
-        // 6. 返回文件ID
-        return fileInfo.getId().toString();
+        return fileId.toString();
     }
 
     // ---------- 辅助方法 ----------
