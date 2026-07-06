@@ -78,7 +78,7 @@ const generatePinyinSearchStr = (label) => {
 }
 
 const allAvailableNodes = Object.entries(nodeRegistry)
-  .filter(([, config]) => config.category !== 'OUTPUT')
+  .filter(([, config]) => config.category !== 'OUTPUT' && !config.hidden)
   .map(([type, config]) => ({
     type,
     label: config.label || type,

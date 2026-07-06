@@ -327,8 +327,21 @@ export const geometryNodes = {
 
 // --- Vector Nodes ---
 export const vectorNodes = {
-  'combineVec3': {
-    label: '合并三维向量 (combineVec3)',
+  'vec2': {
+    label: '二维向量 (vec2)',
+    category: 'VECTOR',
+    inputs: [
+      { id: 'in-x', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-y', defaultType: 'float', defaultValue: 0.0 }
+    ],
+    outputs: [
+      { id: 'out', defaultType: 'vec2' }
+    ],
+    inferType() { return 'vec2' },
+    compile: ({ inputs }) => tsl.vec2(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'))
+  },
+  'vec3': {
+    label: '三维向量 (vec3)',
     category: 'VECTOR',
     inputs: [
       { id: 'in-x', defaultType: 'float', defaultValue: 0.0 },
@@ -341,25 +354,93 @@ export const vectorNodes = {
     inferType() { return 'vec3' },
     compile: ({ inputs }) => tsl.vec3(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'), inputs.compiledNode('in-z'))
   },
-  'splitVec3': {
-    label: '分解三维向量 (splitVec3)',
+  'vec4': {
+    label: '四维向量 (vec4)',
     category: 'VECTOR',
     inputs: [
-      { id: 'in', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0] }
+      { id: 'in-x', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-y', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-z', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-w', defaultType: 'float', defaultValue: 0.0 }
+    ],
+    outputs: [
+      { id: 'out', defaultType: 'vec4' }
+    ],
+    inferType() { return 'vec4' },
+    compile: ({ inputs }) => tsl.vec4(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'), inputs.compiledNode('in-z'), inputs.compiledNode('in-w'))
+  },
+  'swizzle': {
+    label: '分量重组 (swizzle)',
+    category: 'VECTOR',
+    properties: {
+      mask: {
+        type: 'string',
+        default: 'xyz',
+        label: '分量'
+      }
+    },
+    inputs: [
+      { id: 'in', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true }
+    ],
+    outputs: [
+      {
+        id: 'out',
+        defaultType: (properties) => {
+          const mask = (properties?.mask || 'xyz').trim()
+          const len = mask.length
+          if (len === 1) return 'float'
+          if (len === 2) return 'vec2'
+          if (len === 3) return 'vec3'
+          if (len === 4) return 'vec4'
+          return 'vec3'
+        },
+        isDynamic: true
+      }
+    ],
+    inferType({ nodeProps }) {
+      const mask = (nodeProps?.mask || 'xyz').trim()
+      const len = mask.length
+      if (len === 1) return 'float'
+      if (len === 2) return 'vec2'
+      if (len === 3) return 'vec3'
+      if (len === 4) return 'vec4'
+      return 'vec3'
+    },
+    compile({ nodeProps, inputs }) {
+      const val = inputs.compiledNode('in')
+      const mask = (nodeProps?.mask || 'xyz').trim()
+      if (!mask) return val
+      return val[mask] ?? val
+    }
+  },
+  'splitVec': {
+    label: '分解向量 (splitVec)',
+    category: 'VECTOR',
+    properties: {
+      type: {
+        options: ['vec2', 'vec3', 'vec4'],
+        default: 'vec3',
+        label: '向量类型'
+      }
+    },
+    inputs: [
+      { id: 'in', defaultType: (properties) => properties.type || 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true }
     ],
     outputs: [
       { id: 'out-x', defaultType: 'float' },
       { id: 'out-y', defaultType: 'float' },
-      { id: 'out-z', defaultType: 'float' }
+      { id: 'out-z', defaultType: 'float', visible: (properties) => ['vec3', 'vec4'].includes(properties.type) },
+      { id: 'out-w', defaultType: 'float', visible: (properties) => properties.type === 'vec4' }
     ],
     inferType() { return 'float' },
     compile: ({ inputs, outputSocketId }) => {
-      const inputVec3 = inputs.compiledNode('in')
+      const inputVec = inputs.compiledNode('in')
       switch (outputSocketId) {
-        case 'out-x': return inputVec3.x
-        case 'out-y': return inputVec3.y
-        case 'out-z': return inputVec3.z
-        default: return inputVec3.x
+        case 'out-x': return inputVec.x
+        case 'out-y': return inputVec.y
+        case 'out-z': return inputVec.z
+        case 'out-w': return inputVec.w
+        default: return inputVec.x
       }
     }
   },
@@ -994,6 +1075,48 @@ export const customNodes = {
   }
 }
 
+// --- Legacy Nodes ---
+export const legacyNodes = {
+  'combineVec3': {
+    label: '合并三维向量 (combineVec3)',
+    category: 'VECTOR',
+    hidden: true,
+    inputs: [
+      { id: 'in-x', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-y', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-z', defaultType: 'float', defaultValue: 0.0 }
+    ],
+    outputs: [
+      { id: 'out', defaultType: 'vec3' }
+    ],
+    inferType() { return 'vec3' },
+    compile: ({ inputs }) => tsl.vec3(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'), inputs.compiledNode('in-z'))
+  },
+  'splitVec3': {
+    label: '分解三维向量 (splitVec3)',
+    category: 'VECTOR',
+    hidden: true,
+    inputs: [
+      { id: 'in', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0] }
+    ],
+    outputs: [
+      { id: 'out-x', defaultType: 'float' },
+      { id: 'out-y', defaultType: 'float' },
+      { id: 'out-z', defaultType: 'float' }
+    ],
+    inferType() { return 'float' },
+    compile: ({ inputs, outputSocketId }) => {
+      const inputVec3 = inputs.compiledNode('in')
+      switch (outputSocketId) {
+        case 'out-x': return inputVec3.x
+        case 'out-y': return inputVec3.y
+        case 'out-z': return inputVec3.z
+        default: return inputVec3.x
+      }
+    }
+  }
+}
+
 // --- Registry ---
 export const nodeRegistry = {
   ...outputNodes,
@@ -1002,9 +1125,11 @@ export const nodeRegistry = {
   ...vectorNodes,
   ...mathNodes,
   ...advancedNodes,
-  ...customNodes
+  ...customNodes,
+  ...legacyNodes
 }
 
 export function getNodeRegistryKeys() {
   return Object.keys(nodeRegistry)
 }
+
