@@ -5,6 +5,8 @@ import { createNode } from '../utils/nodeFactory';
 import { remapAndRepositionGraph, generateBaseExportData, getUsedTextures } from '../utils/graphIO';
 import { loadThreeTexture } from '@/rendering/utils';
 import { useLoadingProgress } from '@/composables/useLoadingProgress.js';
+import { nodeRegistry } from '@/rendering/nodeRegistry';
+import { getDefaultValueForType } from '@/rendering/registryUtils';
 
 export const useShaderGraphStore = defineStore('shaderGraph', () => {
   // ----------------------------------------
@@ -280,7 +282,36 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       canTakeSnapshot = false
     }
 
-    if (newData.properties) Object.assign(node.data.properties, newData.properties)
+    if (newData.properties) {
+      const nodeConfig = nodeRegistry[node.type]
+      if (nodeConfig && nodeConfig.inputs) {
+        const oldProps = { ...node.data.properties }
+        const newProps = { ...node.data.properties, ...newData.properties }
+
+        nodeConfig.inputs.forEach(input => {
+          if (typeof input.defaultType === 'function') {
+            const oldType = input.defaultType(oldProps)
+            const newType = input.defaultType(newProps)
+
+            // 如果动态计算出来的类型不同，重置或强转其在 inputs 里的缓存值
+            if (oldType !== newType) {
+              let defaultVal = typeof input.defaultValue === 'function'
+                ? input.defaultValue(newProps)
+                : input.defaultValue
+
+              if (defaultVal === undefined) {
+                defaultVal = getDefaultValueForType(newType)
+              }
+
+              if (node.data.inputs) {
+                node.data.inputs[input.id] = defaultVal
+              }
+            }
+          }
+        })
+      }
+      Object.assign(node.data.properties, newData.properties)
+    }
     if (newData.inputs) Object.assign(node.data.inputs, newData.inputs)
 
     compileActiveTab() // TODO: 只修改值时不重编译, 而是设置 uniform

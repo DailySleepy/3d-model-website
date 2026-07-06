@@ -527,12 +527,9 @@ export class ShaderGraphEngine {
       material.normalNode = inNormal || null
       material.aoNode = inAO || null
 
-      let pos = null
+      let pos = userVertexDeformation ? userVertexDeformation : tsl.positionLocal
       if (this.mode === 'particle' && this.positionBuffer) {
-        pos = tsl.positionLocal.add(this.positionBuffer.toAttribute())
-      }
-      if (userVertexDeformation) {
-        pos = (pos || tsl.positionLocal).add(userVertexDeformation)
+        pos = pos.add(this.positionBuffer.toAttribute())
       }
       material.positionNode = pos
 

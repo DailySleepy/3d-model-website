@@ -22,12 +22,12 @@ THREE.NodeBuilder.prototype.generateConst = function ( type, value = null ) {
 }
 
 export const TYPE_METADATA_REGISTRY = {
-  'float': { dim: 1, wgslType: 'f32' },
-  'int': { dim: 1, wgslType: 'i32' },
-  'bool': { dim: 1, wgslType: 'bool' },
-  'vec2': { dim: 2, wgslType: 'vec2<f32>' },
-  'vec3': { dim: 3, wgslType: 'vec3<f32>' },
-  'vec4': { dim: 4, wgslType: 'vec4<f32>' },
+  'float': { dim: 1, wgslType: 'f32', defaultValue: 0.0 },
+  'int': { dim: 1, wgslType: 'i32', defaultValue: 0 },
+  'bool': { dim: 1, wgslType: 'bool', defaultValue: false },
+  'vec2': { dim: 2, wgslType: 'vec2<f32>', defaultValue: [0.0, 0.0] },
+  'vec3': { dim: 3, wgslType: 'vec3<f32>', defaultValue: [0.0, 0.0, 0.0] },
+  'vec4': { dim: 4, wgslType: 'vec4<f32>', defaultValue: [0.0, 0.0, 0.0, 0.0] },
 }
 
 export const SEMANTIC_TO_DATA_TYPE = {
@@ -49,6 +49,8 @@ export const SEMANTIC_TO_DATA_TYPE = {
   'materialAO': 'float',
   'positionLocal': 'vec3',
   'uv': 'vec2',
+  'normalWorld': 'vec3',
+  'viewDir': 'vec3',
 }
 
 export const DEFAULT_NODE_CONSTRUCTORS = {
@@ -66,7 +68,6 @@ export const DEFAULT_NODE_CONSTRUCTORS = {
     if (typeof v === 'string') return tsl.color(v)
     return tsl.color(new THREE.Color(v.r ?? 1.0, v.g ?? 1.0, v.b ?? 1.0))
   },
-  'uv': () => tsl.uv(),
   'materialColor': () => null,
   'materialRoughness': () => null,
   'materialMetalness': () => null,
@@ -74,10 +75,19 @@ export const DEFAULT_NODE_CONSTRUCTORS = {
   'materialNormal': () => null,
   'materialAO': () => null,
   'positionLocal': () => null,
+  'uv': () => tsl.uv(),
+  'normalWorld': () => tsl.normalWorld,
+  'viewDir': () => tsl.cameraPosition.sub(tsl.positionWorld).normalize(),
 }
 
 export const getDimension = (type) => TYPE_METADATA_REGISTRY[SEMANTIC_TO_DATA_TYPE[type] || type]?.dim || 1
 export const getWgslType = (type) => TYPE_METADATA_REGISTRY[SEMANTIC_TO_DATA_TYPE[type] || type]?.wgslType || 'f32'
+
+export function getDefaultValueForType(type) {
+  const dataType = SEMANTIC_TO_DATA_TYPE[type] || type
+  const val = TYPE_METADATA_REGISTRY[dataType]?.defaultValue ?? 0.0
+  return Array.isArray(val) ? [...val] : val
+}
 
 export function getSocketDefaultResult(vueNode, socketId, registry) {
   const nodeProps = vueNode.data?.properties || {}

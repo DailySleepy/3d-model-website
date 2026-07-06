@@ -526,6 +526,54 @@ export const vectorNodes = {
     inferType({ inputs }) { return inputs.type('in-i') },
     compile: ({ inputs }) => tsl.refract(inputs.compiledNode('in-i'), inputs.compiledNode('in-n'), inputs.compiledNode('in-eta'))
   },
+  'rotateUV': {
+    label: 'UV旋转 (rotateUV)',
+    category: 'VECTOR',
+    inputs: [
+      { id: 'uv', defaultType: 'uv' },
+      { id: 'rotation', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'center', defaultType: 'vec2', defaultValue: [0.5, 0.5] }
+    ],
+    outputs: [{ id: 'out', defaultType: 'vec2' }],
+    inferType() { return 'vec2' },
+    compile: ({ inputs }) => tsl.rotateUV(inputs.compiledNode('uv'), inputs.compiledNode('rotation'), inputs.compiledNode('center'))
+  },
+  'rotate': {
+    label: '空间旋转 (rotate)',
+    category: 'VECTOR',
+    properties: {
+      mode: {
+        options: ['2D', '3D'],
+        default: '3D',
+        label: '维度模式'
+      }
+    },
+    inputs: [
+      {
+        id: 'in-position',
+        defaultType: (properties) => properties.mode === '2D' ? 'vec2' : 'vec3',
+        defaultValue: (properties) => properties.mode === '2D' ? [0.0, 0.0] : [0.0, 0.0, 0.0],
+        isDynamic: true
+      },
+      {
+        id: 'in-rotation',
+        defaultType: (properties) => properties.mode === '2D' ? 'float' : 'vec3',
+        defaultValue: (properties) => properties.mode === '2D' ? 0.0 : [0.0, 0.0, 0.0],
+        isDynamic: true
+      }
+    ],
+    outputs: [
+      {
+        id: 'out',
+        defaultType: (properties) => properties.mode === '2D' ? 'vec2' : 'vec3',
+        isDynamic: true
+      }
+    ],
+    inferType({ nodeProps }) {
+      return nodeProps?.mode === '2D' ? 'vec2' : 'vec3'
+    },
+    compile: ({ inputs }) => tsl.rotate(inputs.compiledNode('in-position'), inputs.compiledNode('in-rotation'))
+  },
 }
 
 // --- Math Nodes ---
@@ -757,6 +805,22 @@ export const mathNodes = {
     outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.max(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
+  },
+  'oneMinus': {
+    label: '一减 (oneMinus)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 1.0, isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') || 'float' },
+    compile: ({ inputs }) => tsl.float(1.0).sub(inputs.compiledNode('in'))
+  },
+  'luminance': {
+    label: '亮度 (luminance)',
+    category: 'MATH',
+    inputs: [{ id: 'in-color', defaultType: 'vec3', defaultValue: [1.0, 1.0, 1.0], isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float' }],
+    inferType() { return 'float' },
+    compile: ({ inputs }) => tsl.dot(inputs.compiledNode('in-color'), tsl.vec3(0.299, 0.587, 0.114))
   },
 }
 
@@ -1021,6 +1085,78 @@ export const advancedNodes = {
       }
       // float
       return min.add(tsl.hash(seed).mul(range))
+    }
+  },
+  'fresnel': {
+    label: '菲涅尔 (fresnel)',
+    category: 'ADVANCED',
+    inputs: [
+      { id: 'normal', defaultType: 'normalWorld' },
+      { id: 'viewDir', defaultType: 'viewDir' },
+      { id: 'power', defaultType: 'float', defaultValue: 5.0 }
+    ],
+    outputs: [{ id: 'out', defaultType: 'float' }],
+    inferType() { return 'float' },
+    compile: ({ inputs }) => {
+      const n = inputs.compiledNode('normal')
+      const v = inputs.compiledNode('viewDir')
+      const p = inputs.compiledNode('power')
+      return tsl.pow(tsl.float(1.0).sub(tsl.dot(n, v).saturate()), p)
+    }
+  },
+  'noise': {
+    label: '噪声 (noise)',
+    category: 'ADVANCED',
+    properties: {
+      noiseType: {
+        options: ['float', 'vec3', 'vec4'],
+        default: 'float',
+        label: '噪波通道'
+      }
+    },
+    inputs: [
+      {
+        id: 'coord',
+        defaultType: 'vec2',
+        defaultValue: [0.0, 0.0],
+        isDynamic: true
+      },
+      { id: 'scale', defaultType: 'float', defaultValue: 5.0 },
+      { id: 'amplitude', defaultType: 'float', defaultValue: 1.0 }
+    ],
+    outputs: [
+      {
+        id: 'out',
+        defaultType: (properties) => properties.noiseType || 'float',
+        isDynamic: true
+      }
+    ],
+    inferType({ nodeProps }) {
+      return nodeProps?.noiseType || 'float'
+    },
+    compile({ nodeProps, inputs }) {
+      let uv = inputs.compiledNode('coord')
+      const scale = inputs.compiledNode('scale')
+      const amplitude = inputs.compiledNode('amplitude')
+      const type = nodeProps?.noiseType || 'float'
+
+      const coordType = inputs.type('coord')
+      if (coordType === 'float') { // TODO: 编译器报错
+        uv = tsl.vec2(uv, 0.0)
+      }
+
+      const scaledUv = uv.mul(scale)
+
+      let noiseNode
+      if (type === 'vec3') {
+        noiseNode = tsl.mx_noise_vec3(scaledUv)
+      } else if (type === 'vec4') {
+        noiseNode = tsl.mx_noise_vec4(scaledUv)
+      } else {
+        noiseNode = tsl.mx_noise_float(scaledUv)
+      }
+
+      return noiseNode.mul(amplitude)
     }
   },
 }
