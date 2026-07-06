@@ -45,3 +45,9 @@ __screenshots__/
 
 # stash
 stash/
+
+# 后端临时文件
+backend/temp/
+
+#redis文件
+redis/

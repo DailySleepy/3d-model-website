@@ -9,12 +9,25 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass Ab123456 --appendonly yes
+    volumes:
+      - ./redis/data:/data
 
   backend:
     image: backend:latest
     container_name: backend
     depends_on:
       - postgres
+      - redis
     ports:
       - "8080:8080"
     environment:
@@ -24,6 +37,9 @@ services:
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:5173,http://127.0.0.1:5173}
       FILE_PATH: /data
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-Ab123456}  # 改为有密码
     volumes:
       - uploads:/data
 
