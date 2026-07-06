@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 font-sans overflow-hidden select-none">
+  <div class="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 font-sans overflow-hidden select-none relative">
     <GraphHeader />
 
     <!-- Workspace -->
@@ -25,22 +25,37 @@
     </div>
 
     <ToastMessage :ref="el => { store.toastRef = el }" />
+
+    <LoadingMask
+      :visible="store.isLoading"
+      :progress="store.loadingProgress"
+      text="loading workspace"
+      cancelable
+      @cancel="handleCancelLoading"
+    />
   </div>
 </template>
 
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { confirmDialog } from '@/components/ConfirmDialog.vue'
 
 import GraphCanvas from '@/shader-graph/components/GraphCanvas.vue'
 import GraphHeader from '@/shader-graph/components/GraphHeader.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
+import LoadingMask from '@/components/LoadingMask.vue'
 
 import { useGraphResize } from '@/shader-graph/composables/useGraphResize.js'
 import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph.js'
 
 const store = useShaderGraphStore()
+const router = useRouter()
+
+const handleCancelLoading = () => {
+  store.cancelLoading()
+  router.back()
+}
 
 const handleBeforeUnload = (e) => {
   if (store.isDirty) {
@@ -60,13 +75,20 @@ onMounted(async () => {
 
   if (store.forkData) {
     // 从模型详情页点击 Fork 跳转过来编辑，需要加载 forkData
+    store.isLoading = true
+    store.startProgressAnimation()
+
     await store.initEngineInstance()
+
     try {
       await store.loadForkData()
       store.showToast('原作资产载入成功', 'success')
     } catch (e) {
       console.error('载入原作资产失败:', e)
       store.showToast('载入原作资产失败', 'error')
+    } finally {
+      store.targetProgress = 100
+      await store.waitProgressComplete(100)
     }
   } else if (store.uploadPageState) {
     // 从上传页跳转过来编辑，不需要重置画布数据，直接渲染当前模型
@@ -80,6 +102,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  store.stopProgressAnimation()
   store.destroyEngineInstance()
   document.documentElement.classList.remove('dark')
 })

@@ -59,13 +59,15 @@ export class ShaderGraphEngine {
    * @param {'sphere'|'box'|'cylinder'|'torus'|'plane'|'custom'} [options.selectedGeometry] - 初始几何体形状
    * @param {string|null} [options.customModelUrl] - 自定义 GLTF 模型的网络或本地 URL 地址（仅在 selectedGeometry 为 'custom' 时生效）
    * @param {'particle'|'classic'} [options.mode] - 渲染模式
+   * @param {function(number): void} [options.onProgress] - 进度回调函数
    */
   async init(container, options = {}) {
     const {
       particleCount = 1,
       selectedGeometry = 'sphere',
       customModelUrl = null,
-      mode = 'classic'
+      mode = 'classic',
+      onProgress = null
     } = options
 
     this.container = container
@@ -106,7 +108,7 @@ export class ShaderGraphEngine {
       plane: new THREE.PlaneGeometry(0.3, 0.3, 1, 1)
     }
 
-    await this.updateGeometry(selectedGeometry, customModelUrl)
+    await this.updateGeometry(selectedGeometry, customModelUrl, onProgress)
 
     this.timer = new THREE.Timer()
     this.timer.getDelta()
@@ -277,9 +279,9 @@ export class ShaderGraphEngine {
   }
 
   // 加载多子 Mesh 模型, 为各 Mesh 创建共享物理 Buffer 的 InstancedMesh 粒子
-  async loadInstancedModel(url, count, loadId) {
+  async loadInstancedModel(url, count, loadId, onProgress) {
     const loader = new GLTFLoader()
-    const gltf = await loader.loadAsync(url)
+    const gltf = await loader.loadAsync(url, onProgress)
 
     if (loadId !== undefined && loadId !== this.currentLoadId) {
       disposeScene(gltf.scene)
@@ -314,9 +316,9 @@ export class ShaderGraphEngine {
   }
 
   // 直接加载层级模型
-  async loadClassicModel(url, loadId) {
+  async loadClassicModel(url, loadId, onProgress) {
     const loader = new GLTFLoader()
-    const gltf = await loader.loadAsync(url)
+    const gltf = await loader.loadAsync(url, onProgress)
 
     if (loadId !== undefined && loadId !== this.currentLoadId) {
       disposeScene(gltf.scene)
@@ -343,7 +345,7 @@ export class ShaderGraphEngine {
     this.fitCameraToObject(this.classicModel)
   }
 
-  async updateGeometry(selectedGeometry, customModelUrl = null) {
+  async updateGeometry(selectedGeometry, customModelUrl = null, onProgress = null) {
     if (!this.scene) return
 
      // 通过 loadId 避免并发加载导致的资源混乱
@@ -367,7 +369,7 @@ export class ShaderGraphEngine {
 
     if (this.mode === 'classic') {
       if (this.selectedGeometry === 'custom' && this.customModelUrl) {
-        await this.loadClassicModel(this.customModelUrl, loadId)
+        await this.loadClassicModel(this.customModelUrl, loadId, onProgress)
       }
       else {
         const geom = (this.geometries[this.selectedGeometry] || this.geometries.sphere).clone()
@@ -379,7 +381,7 @@ export class ShaderGraphEngine {
     }
     else { // particle
       if (this.selectedGeometry === 'custom' && this.customModelUrl) {
-        await this.loadInstancedModel(this.customModelUrl, this.particleCount, loadId)
+        await this.loadInstancedModel(this.customModelUrl, this.particleCount, loadId, onProgress)
       }
       else {
         const geom = (this.geometries[this.selectedGeometry] || this.geometries.sphere).clone()
@@ -400,14 +402,14 @@ export class ShaderGraphEngine {
   }
 
   /**会自动调用 updateGeometry 以按照新的粒子数量重新实例化 Mesh */
-  async updateParticleCount(newCount, simNodes, simEdges, matNodes, matEdges) {
+  async updateParticleCount(newCount, simNodes, simEdges, matNodes, matEdges, onProgress = null) {
     if (this.particleCount === newCount) return
     this.particleCount = newCount
 
     this.#clearBuffers()
     this.#allocateBuffers()
 
-    await this.updateGeometry(this.selectedGeometry, this.customModelUrl)
+    await this.updateGeometry(this.selectedGeometry, this.customModelUrl, onProgress)
 
     // 节点图可能使用了粒子数量, 故需要重新编译, 也可以选择通过传入 null 来跳过编译
     if (simNodes && simEdges) this.compileSimulation(simNodes, simEdges)

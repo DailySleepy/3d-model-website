@@ -4,7 +4,7 @@ import { ShaderGraphEngine } from "@/rendering/engine";
 import { createNode } from '../utils/nodeFactory';
 import { remapAndRepositionGraph, generateBaseExportData, getUsedTextures } from '../utils/graphIO';
 import { loadThreeTexture } from '@/rendering/utils';
-import * as THREE from 'three/webgpu';
+import { useLoadingProgress } from '@/composables/useLoadingProgress.js';
 
 export const useShaderGraphStore = defineStore('shaderGraph', () => {
   // ----------------------------------------
@@ -40,6 +40,15 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     simulation: { past: [], future: [] }
   })
   const maxHistoryDepth = 50
+
+  const {
+    isLoading,
+    loadingProgress,
+    targetProgress,
+    startProgressAnimation,
+    stopProgressAnimation,
+    waitProgressComplete
+  } = useLoadingProgress()
 
   // ----------------------------------------
   // Getters
@@ -411,13 +420,13 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }, 50)
   }
 
-  const onGeometryChange = async (shouldCompile = true) => {
+  const onGeometryChange = async (shouldCompile = true, onProgress = null) => {
     if (!engineInstance || isUpdating) return
     if (selectedGeometry.value === 'custom' && customModelUrl.value === null) return
 
     try {
       isUpdating = true
-      await engineInstance.updateGeometry(selectedGeometry.value, customModelUrl.value)
+      await engineInstance.updateGeometry(selectedGeometry.value, customModelUrl.value, onProgress)
       if (shouldCompile) {
         compileMaterial()
         if (enableSimulation.value) {
@@ -442,7 +451,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     await onGeometryChange(shouldCompile)
   }
 
-  const onParticleCountChange = async (shouldCompile = true) => {
+  const onParticleCountChange = async (shouldCompile = true, onProgress = null) => {
     if (!engineInstance || isUpdating) return
 
     try {
@@ -452,7 +461,8 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
         shouldCompile ? simNodes.value : null,
         shouldCompile ? simEdges.value : null,
         shouldCompile ? matNodes.value : null,
-        shouldCompile ? matEdges.value : null
+        shouldCompile ? matEdges.value : null,
+        onProgress
       )
       isDirty.value = true
     } finally {
@@ -500,7 +510,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
    * @param {ProjectSettings} settings - 全局项目设置对象
    * @param {boolean} [shouldCompile=true] - 是否自动重新编译节点图
    */
-  const updateProjectSettings = async (settings = {}, shouldCompile = true) => {
+  const updateProjectSettings = async (settings = {}, shouldCompile = true, onProgress = null) => {
     let modeChanged = false
     let geometryChanged = false
     let particleCountChanged = false
@@ -531,9 +541,9 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     if (engineInstance) {
       if (particleCountChanged) {
         // onParticleCountChange 内部会自动执行 updateGeometry (onGeometryChange)
-        await onParticleCountChange(shouldCompile)
+        await onParticleCountChange(shouldCompile, onProgress)
       } else if (modeChanged || geometryChanged) {
-        await onGeometryChange(shouldCompile)
+        await onGeometryChange(shouldCompile, onProgress)
       }
     }
   }
@@ -550,15 +560,21 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
-  const backendBase = import.meta.env.VITE_API_BASE_URL || ''
-  const buildUrl = (url) => {
-    if (!url) return ''
-    if (url.startsWith('http')) return url
-    return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`
+  let currentLoadId = 0
+
+  const cancelLoading = () => {
+    currentLoadId++
+    stopProgressAnimation()
+    isLoading.value = false
+    clearGraphState()
   }
+
 
   const loadForkData = async () => {
     if (!forkData.value) return
+    currentLoadId++
+    const loadId = currentLoadId
+
     const currentForkData = forkData.value
     forkData.value = null
     const { shaderGraphJson, fileUrl } = currentForkData
@@ -573,43 +589,62 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       }
     }
 
+    const handleModelProgress = (xhr) => {
+      if (loadId !== currentLoadId) return
+      if (xhr.total > 0) {
+        targetProgress.value = Math.min(60, Math.floor((xhr.loaded / xhr.total) * 60))
+      }
+    }
+
     if (fileUrl) {
       customModelUrl.value = buildUrl(fileUrl)
 
       if (!parsedData) {
         selectedGeometry.value = 'custom'
-        await onGeometryChange(false)
+        await onGeometryChange(false, handleModelProgress)
+        if (loadId !== currentLoadId) return
       }
     }
 
     // 1. 加载全局配置
     if (parsedData) {
       const projectSettings = parsedData.projectSettings || {}
-      await updateProjectSettings(projectSettings, false)
+      await updateProjectSettings(projectSettings, false, handleModelProgress)
+      if (loadId !== currentLoadId) return
     }
+    targetProgress.value = 60
 
     // 2. 下载自定义贴图
     if (parsedData) {
       const assets = parsedData.assets || {}
       const texturesMeta = assets.customTextures
       if (texturesMeta && texturesMeta.length > 0) {
+        let loaded = 0
+        const total = texturesMeta.length
         const loadPromises = texturesMeta.map(async (texMeta) => {
-          const exists = customTextures.value.some(t => t.id === texMeta.id)
-          if (exists) return
+          try {
+            const exists = customTextures.value.some(t => t.id === texMeta.id)
+            if (exists) return
 
-          const texUrl = texMeta.path
-          if (texUrl) {
-            try {
+            const texUrl = texMeta.path
+            if (texUrl) {
               const resolvedUrl = buildUrl(texUrl)
               await addCustomTextureFromUrl(resolvedUrl, texMeta.name, texMeta.id, false)
-            } catch (err) {
-              console.error("加载 fork 贴图失败:", texMeta, err)
+            }
+          } catch (err) {
+            console.error("加载 fork 贴图失败:", texMeta, err)
+          } finally {
+            loaded++
+            if (loadId === currentLoadId) {
+              targetProgress.value = Math.min(90, Math.floor(60 + (loaded / total) * 30))
             }
           }
         })
         await Promise.all(loadPromises)
+        if (loadId !== currentLoadId) return
       }
     }
+    targetProgress.value = 90
 
     // 3. 载入节点与连线数据, 通过 nextTick 延迟载入连线 (此时 vue-flow 组件初次挂载)
     if (parsedData && parsedData.graphs) {
@@ -627,6 +662,8 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       }
 
       await nextTick()
+      if (loadId !== currentLoadId) return
+
       if (graphs.material) {
         matEdges.value = graphs.material.edges || []
       }
@@ -683,6 +720,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   }
 
   const clearGraphState = () => {
+    stopProgressAnimation()
     clearBlobResources()
 
     customTextures.value.forEach(tex => {
@@ -724,9 +762,17 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     initEngineInstance, destroyEngineInstance, compileActiveTab, compileMaterial, compileSimulation,
     onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, toggleSimulationMode, updateProjectSettings, onGraphResize,
     addCustomTextureFromFile, addCustomTextureFromBlob, addCustomTextureFromUrl, loadForkData, clearGraphState, updatePublishData,
+    isLoading, loadingProgress, targetProgress, startProgressAnimation, stopProgressAnimation, waitProgressComplete, cancelLoading,
     clearBlobResources, showToast
   }
 })
+
+const backendBase = import.meta.env.VITE_API_BASE_URL || ''
+const buildUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`
+}
 
 if (import.meta.hot) {
   import.meta.hot.accept(acceptHMRUpdate(useShaderGraphStore, import.meta.hot))
