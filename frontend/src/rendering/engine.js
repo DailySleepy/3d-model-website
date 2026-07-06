@@ -7,6 +7,8 @@ import { CompilerContext } from './compiler.js'
 
 export class ShaderGraphEngine {
   constructor() {
+    this.isDestroyed = false
+
     // Core
     this.renderer = null
     this.scene = null
@@ -210,6 +212,8 @@ export class ShaderGraphEngine {
   }
 
   destroy() {
+    this.isDestroyed = true
+
     // Core & Context
     if (this.renderer) {
       this.stopLoop()
@@ -283,7 +287,7 @@ export class ShaderGraphEngine {
     const loader = new GLTFLoader()
     const gltf = await loader.loadAsync(url, onProgress)
 
-    if (loadId !== undefined && loadId !== this.currentLoadId) {
+    if (this.isDestroyed || (loadId !== undefined && loadId !== this.currentLoadId)) {
       disposeScene(gltf.scene)
       return
     }
@@ -320,7 +324,7 @@ export class ShaderGraphEngine {
     const loader = new GLTFLoader()
     const gltf = await loader.loadAsync(url, onProgress)
 
-    if (loadId !== undefined && loadId !== this.currentLoadId) {
+    if (this.isDestroyed || (loadId !== undefined && loadId !== this.currentLoadId)) {
       disposeScene(gltf.scene)
       return
     }
@@ -346,7 +350,7 @@ export class ShaderGraphEngine {
   }
 
   async updateGeometry(selectedGeometry, customModelUrl = null, onProgress = null) {
-    if (!this.scene) return
+    if (this.isDestroyed || !this.scene) return
 
      // 通过 loadId 避免并发加载导致的资源混乱
     this.currentLoadId = (this.currentLoadId || 0) + 1
@@ -403,7 +407,7 @@ export class ShaderGraphEngine {
 
   /**会自动调用 updateGeometry 以按照新的粒子数量重新实例化 Mesh */
   async updateParticleCount(newCount, simNodes, simEdges, matNodes, matEdges, onProgress = null) {
-    if (this.particleCount === newCount) return
+    if (this.isDestroyed || this.particleCount === newCount) return
     this.particleCount = newCount
 
     this.#clearBuffers()
