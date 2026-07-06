@@ -168,6 +168,46 @@ export const constantNodes = {
 
 // --- Geometry Nodes ---
 export const geometryNodes = {
+  'vertexColor': {
+    label: '顶点颜色 (vertexColor)',
+    category: 'GEOMETRY',
+    properties: {
+      index: {
+        type: 'int',
+        default: 0,
+        min: 0,
+        max: 8,
+        label: '索引'
+      }
+    },
+    inputs: [],
+    outputs: [
+      { id: 'out', defaultType: 'vec4' }
+    ],
+    inferType() { return 'vec4' },
+    compile: ({ nodeProps }) => tsl.vertexColor(nodeProps?.index ?? 0)
+  },
+  'attribute': {
+    label: '属性 (attribute)',
+    category: 'GEOMETRY',
+    properties: {
+      name: {
+        type: 'string',
+        options: (context) => context.availableAttributes || ['position', 'normal', 'uv'],
+        default: 'position',
+        label: '属性名称'
+      }
+    },
+    inputs: [],
+    outputs: [
+      { id: 'out', defaultType: 'vec4' }
+    ],
+    inferType() { return 'vec4' },
+    compile({ nodeProps }) {
+      const name = nodeProps?.name || 'color'
+      return tsl.attribute(name, 'vec4')
+    }
+  },
   'positionLocal': {
     label: '局部空间坐标 (positionLocal)',
     category: 'GEOMETRY',

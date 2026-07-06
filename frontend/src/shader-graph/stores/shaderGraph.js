@@ -18,6 +18,9 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const customModelFile = ref(null)
   const customTextures = ref([])
   const isDirty = ref(false)
+
+  const availableAttributes = ref(['position', 'normal', 'uv'])
+
   const showFPS = ref(false)
   const fps = ref(0)
   const frameMs = ref(0)
@@ -309,6 +312,9 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const initEngineInstance = async () => {
     if (renderingContainer.value) {
       engineInstance = new ShaderGraphEngine();
+      engineInstance.onAttributesSync = (attrs) => {
+        setAvailableAttributes(attrs)
+      }
       engineInstance.fpsCallback = ({ fps: calculatedFps, ms: averageMs }) => {
         fps.value = calculatedFps
         frameMs.value = averageMs
@@ -751,12 +757,21 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       material: { past: [], future: [] },
       simulation: { past: [], future: [] }
     }
+    availableAttributes.value = ['position', 'normal', 'uv']
     isDirty.value = false
+  }
+
+  const setAvailableAttributes = (attrs) => {
+    if (Array.isArray(attrs) && attrs.length > 0) {
+      availableAttributes.value = attrs
+    } else {
+      availableAttributes.value = ['position', 'normal', 'uv']
+    }
   }
 
   return {
     activeTab, isMat, enableSimulation, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures,
-    publishData, forkData, uploadPageState, isDirty, showFPS, fps, frameMs,
+    publishData, forkData, uploadPageState, isDirty, showFPS, fps, frameMs, availableAttributes,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
     inputSocketsAcitveMap, outputSocketsAcitveMap,
@@ -766,7 +781,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, toggleSimulationMode, updateProjectSettings, onGraphResize,
     addCustomTextureFromFile, addCustomTextureFromBlob, addCustomTextureFromUrl, loadForkData, clearGraphState, updatePublishData,
     isLoading, loadingProgress, targetProgress, startProgressAnimation, stopProgressAnimation, waitProgressComplete, cancelLoading,
-    clearBlobResources, showToast
+    clearBlobResources, showToast, setAvailableAttributes
   }
 })
 

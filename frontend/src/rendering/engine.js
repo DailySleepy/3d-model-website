@@ -8,6 +8,7 @@ import { CompilerContext } from './compiler.js'
 export class ShaderGraphEngine {
   constructor() {
     this.isDestroyed = false
+    this.onAttributesSync = null
 
     // Core
     this.renderer = null
@@ -282,6 +283,18 @@ export class ShaderGraphEngine {
     this.controls.update()
   }
 
+  #syncAttributesFromObject(object) {
+    const allAttributes = new Set(['position', 'normal', 'uv'])
+    object.traverse((child) => {
+      if (child.isMesh && child.geometry?.attributes) {
+        Object.keys(child.geometry.attributes).forEach(attr => allAttributes.add(attr))
+      }
+    })
+    if (typeof this.onAttributesSync === 'function') {
+      this.onAttributesSync(Array.from(allAttributes))
+    }
+  }
+
   // 加载多子 Mesh 模型, 为各 Mesh 创建共享物理 Buffer 的 InstancedMesh 粒子
   async loadInstancedModel(url, count, loadId, onProgress) {
     const loader = new GLTFLoader()
@@ -289,7 +302,7 @@ export class ShaderGraphEngine {
 
     if (this.isDestroyed || (loadId !== undefined && loadId !== this.currentLoadId)) {
       disposeScene(gltf.scene)
-      return
+      return null
     }
 
     const root = gltf.scene
@@ -316,7 +329,7 @@ export class ShaderGraphEngine {
       }
     })
 
-    this.fitCameraToObject(root)
+    return root
   }
 
   // 直接加载层级模型
@@ -326,7 +339,7 @@ export class ShaderGraphEngine {
 
     if (this.isDestroyed || (loadId !== undefined && loadId !== this.currentLoadId)) {
       disposeScene(gltf.scene)
-      return
+      return null
     }
 
     const root = gltf.scene
@@ -346,13 +359,13 @@ export class ShaderGraphEngine {
     this.scene.add(root)
     this.classicModel = root
 
-    this.fitCameraToObject(this.classicModel)
+    return root
   }
 
   async updateGeometry(selectedGeometry, customModelUrl = null, onProgress = null) {
     if (this.isDestroyed || !this.scene) return
 
-     // 通过 loadId 避免并发加载导致的资源混乱
+    // 通过 loadId 避免并发加载导致的资源混乱
     this.currentLoadId = (this.currentLoadId || 0) + 1
     const loadId = this.currentLoadId
 
@@ -371,9 +384,11 @@ export class ShaderGraphEngine {
 
     this.#clearCurrentGeometry()
 
+    let targetObject = null
+
     if (this.mode === 'classic') {
       if (this.selectedGeometry === 'custom' && this.customModelUrl) {
-        await this.loadClassicModel(this.customModelUrl, loadId, onProgress)
+        targetObject = await this.loadClassicModel(this.customModelUrl, loadId, onProgress)
       }
       else {
         const geom = (this.geometries[this.selectedGeometry] || this.geometries.sphere).clone()
@@ -381,11 +396,12 @@ export class ShaderGraphEngine {
         const mesh = new THREE.Mesh(geom, nodeMat)
         this.scene.add(mesh)
         this.classicModel = mesh
+        targetObject = mesh
       }
     }
     else { // particle
       if (this.selectedGeometry === 'custom' && this.customModelUrl) {
-        await this.loadInstancedModel(this.customModelUrl, this.particleCount, loadId, onProgress)
+        targetObject = await this.loadInstancedModel(this.customModelUrl, this.particleCount, loadId, onProgress)
       }
       else {
         const geom = (this.geometries[this.selectedGeometry] || this.geometries.sphere).clone()
@@ -401,6 +417,16 @@ export class ShaderGraphEngine {
         const instMesh = new THREE.InstancedMesh(geom, nodeMat, this.particleCount)
         this.scene.add(instMesh)
         this.instancedMeshes.push(instMesh)
+        targetObject = instMesh
+      }
+    }
+
+    if (loadId !== this.currentLoadId) return
+
+    if (targetObject) {
+      this.#syncAttributesFromObject(targetObject)
+      if (this.selectedGeometry === 'custom') {
+        this.fitCameraToObject(targetObject)
       }
     }
   }

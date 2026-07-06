@@ -32,12 +32,12 @@
           <span class="text-zinc-400 font-medium select-none">{{ property.label || key }}</span>
 
           <select
-            v-if="property.options"
+            v-if="getPropertyOptions(property).length > 0"
             :value="data.properties?.[key] ?? property.default"
             @change="e => onPropertyChange(key, e.target.value)"
             class="node-input-control nodrag bg-zinc-950 border border-zinc-800 text-zinc-200 rounded px-2 text-[10px] focus:outline-none focus:border-[var(--theme-color)] cursor-pointer"
           >
-            <option v-for="opt in property.options" :key="opt" :value="opt">
+            <option v-for="opt in getPropertyOptions(property)" :key="opt" :value="opt">
               {{ opt }}
             </option>
           </select>
@@ -47,6 +47,16 @@
             :modelValue="data.properties?.[key] ?? property.default"
             @update:modelValue="val => onPropertyChange(key, val)"
             :step="getStepSize(property)"
+            :min="property.min"
+            :max="property.max"
+            :theme-color="theme.color"
+            class="node-input-control"
+          />
+
+          <StringInput
+            v-else-if="property.type === 'string'"
+            :modelValue="data.properties?.[key] ?? property.default"
+            @update:modelValue="val => onPropertyChange(key, val)"
             :theme-color="theme.color"
             class="node-input-control"
           />
@@ -72,6 +82,8 @@
           :modelValue="data.inputs?.[input.id] ?? input.defaultValue ?? 0"
           @update:modelValue="val => onInputChange(input.id, val)"
           :step="getStepSize(input)"
+          :min="input.min"
+          :max="input.max"
           :theme-color="theme.color"
           class="node-input-control"
         />
@@ -99,6 +111,7 @@ import { getDimension, nodeRegistry } from '@/rendering/nodeRegistry';
 import { useShaderGraphStore } from '../stores/shaderGraph.js';
 
 import NumberDragInput from './NumberDragInput.vue';
+import StringInput from './StringInput.vue';
 import ColorNodePatch from './NodePatches/ColorNodePatch.vue';
 import CustomNodePatch from './NodePatches/CustomNodePatch.vue';
 import TextureSampleNodePatch from './NodePatches/TextureSampleNodePatch.vue';
@@ -178,6 +191,16 @@ const getStepSize = (config) => {
     type = type(props.data.properties || {})
   }
   return type === 'int' ? 1 : 0.1
+}
+
+const getPropertyOptions = (property) => {
+  if (!property.options) return []
+  if (typeof property.options === 'function') {
+    return property.options({
+      availableAttributes: store.availableAttributes
+    })
+  }
+  return property.options
 }
 
 const getSocketColor = (socket) => {
