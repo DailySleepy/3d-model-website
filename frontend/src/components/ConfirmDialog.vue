@@ -7,12 +7,19 @@
       <div class="px-6 py-5 text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line" v-html="state.message">
       </div>
       <div class="px-6 pb-5 flex justify-end gap-3">
-        <button class="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        <button class="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           @click="handleCancel">
           {{ state.cancelText }}
         </button>
-        <button class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-          @click="handleConfirm">
+        <button 
+          :class="[
+            'px-4 py-2 text-sm rounded-lg transition-colors cursor-pointer',
+            state.type === 'danger' 
+              ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600' 
+              : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+          ]"
+          @click="handleConfirm"
+        >
           {{ state.confirmText }}
         </button>
       </div>
@@ -28,7 +35,8 @@ const state = reactive({
   title: '提示',
   message: '',
   confirmText: '确认',
-  cancelText: '取消'
+  cancelText: '取消',
+  type: 'info' // 'info' | 'danger'
 })
 
 let resolver = null
@@ -45,6 +53,7 @@ export const confirmDialog = (options = {}) => {
   state.message = config.message || ''
   state.confirmText = config.confirmText || '确认'
   state.cancelText = config.cancelText || '取消'
+  state.type = config.type || 'info'
   state.visible = true
 
   return new Promise(resolve => {

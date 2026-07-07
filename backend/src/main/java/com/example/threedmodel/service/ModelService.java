@@ -2,10 +2,11 @@ package com.example.threedmodel.service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.threedmodel.dto.ModelCreateDTO;
-import com.example.threedmodel.entity.Model;
+import com.example.threedmodel.entity.*;
 import com.example.threedmodel.event.ModelPublishEvent;
-//import com.example.threedmodel.mapper.ModelMainFileMapper;
-import com.example.threedmodel.mapper.ModelMapper;
+import com.example.threedmodel.mapper.*;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +20,17 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
-//    @Autowired
-//    private ModelMainFileMapper modelMainFileMapper;  // 新增
+    @Autowired
+    private ModelLikeMapper modelLikeMapper;
+
+    @Autowired
+    private ModelCollectMapper modelCollectMapper;
+
+    @Autowired
+    private ModelMainFileMapper modelMainFileMapper;
+
+    @Autowired
+    private CommentMapper commentMapper;
 
 
     public Long publishModel(ModelCreateDTO dto) {
@@ -69,5 +79,19 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
                 .eq(Model::getAuthorId, authorId)
                 .orderByDesc(Model::getCreatedAt)
                 .list();
+    }
+
+    @Transactional
+    public boolean deleteModel(Long id) {
+        // 1. 删除点赞关系
+        modelLikeMapper.delete(new LambdaQueryWrapper<ModelLike>().eq(ModelLike::getModelId, id));
+        // 2. 删除收藏关系
+        modelCollectMapper.delete(new LambdaQueryWrapper<ModelCollect>().eq(ModelCollect::getModelId, id));
+        // 3. 删除主文件映射关系
+        modelMainFileMapper.delete(new LambdaQueryWrapper<ModelMainFile>().eq(ModelMainFile::getModelId, id));
+        // 4. 删除评论
+        commentMapper.delete(new LambdaQueryWrapper<Comment>().eq(Comment::getModelId, id));
+        // 5. 删除模型本身
+        return this.removeById(id);
     }
 }

@@ -129,6 +129,7 @@ export const modelsApi = {
   publish: (payload) => api.post('/api/models', payload),
   getByAuthor: (authorId) => api.get('/api/models', { params: { authorId } }),
   getById: (id) => api.get(`/api/models/${id}`),
+  delete: (id) => api.delete(`/api/models/${id}`),
   search: (params) => api.get('/api/search', { params })
 }
 

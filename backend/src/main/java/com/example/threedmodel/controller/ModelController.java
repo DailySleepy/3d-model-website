@@ -114,5 +114,36 @@ public class ModelController {
         return ResponseEntity.ok(fileInfo.getConvertStatus());
     }
 
+    /**
+     * 删除模型
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteModel(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = getUserId(request);
+        if (userId == null) {
+            return ResponseEntity.status(401).body("用户未登录或 Token 无效");
+        }
+
+        Model model = modelService.getById(id);
+        if (model == null) {
+            return ResponseEntity.status(404).body("模型不存在");
+        }
+
+        // 只有作者自己能删除作品
+        if (!model.getAuthorId().equals(userId)) {
+            return ResponseEntity.status(403).body("无权删除他人作品");
+        }
+
+        boolean success = modelService.deleteModel(id);
+        if (success) {
+            return ResponseEntity.ok(new Response(id, "删除成功"));
+        } else {
+            return ResponseEntity.status(500).body("删除失败");
+        }
+    }
+
     record Response(Long id, String message) {}
 }

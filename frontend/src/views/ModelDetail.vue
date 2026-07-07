@@ -226,7 +226,7 @@
               更多作品
             </h3>
             <div v-if="authorModels.length" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <ModelCard v-for="item in authorModels" :key="item.id" :model="item" />
+              <ModelCard v-for="item in authorModels" :key="item.id" :model="item" hide-author />
             </div>
             <div v-else class="text-center py-12 text-gray-400 bg-gray-50 rounded-xl">
               暂无其他作品

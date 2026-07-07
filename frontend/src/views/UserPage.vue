@@ -113,7 +113,14 @@
               </div>
               <div v-if="activeTab === 'models'" class="p-6">
                 <div v-if="models.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-h-[350px] overflow-y-auto">
-                  <ModelCard v-for="item in models" :key="item.id" :model="item" />
+                  <ModelCard
+                    v-for="item in models"
+                    :key="item.id"
+                    :model="item"
+                    :show-manage="isCurrentUser"
+                    hide-author
+                    @delete="handleDeleteModel"
+                  />
                 </div>
                 <div v-else class="p-12 flex flex-col items-center justify-center text-center text-sm text-gray-500 space-y-4">
                   <div class="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center text-4xl text-blue-400">
@@ -217,6 +224,7 @@ import { useChatStore } from '@/stores/chat'
 import { userApi, modelsApi, followApi } from '@/api'
 import ModelCard from '@/components/ModelCard.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
+import { confirmDialog } from '@/components/ConfirmDialog.vue'
 
 const authStore = useAuthStore()
 const chatStore = useChatStore()
@@ -232,6 +240,11 @@ const favorites = ref([])
 const comments = ref([])
 const isFollowing = ref(false)
 const toastRef = ref(null)
+
+const showToast = (message, type = 'success') => {
+  toastRef.value?.show(message, type)
+}
+
 const followModalOpen = ref(false)
 const followModalType = ref('followers')
 const followList = ref([])
@@ -525,6 +538,27 @@ const loadModels = async () => {
     console.error('加载模型列表失败', e)
     models.value = []
     setQuickStat('models', 0)
+  }
+}
+
+const handleDeleteModel = async (modelId) => {
+  const isConfirmed = await confirmDialog({
+    title: '删除确认',
+    message: '您确定要删除此作品吗？该操作将 <span class="text-red-600 font-bold dark:text-red-400">清除作品所有关联数据（点赞、收藏、评论）</span>，且 <span class="text-red-600 font-bold dark:text-red-400">无法撤销</span>！',
+    confirmText: '确定删除',
+    cancelText: '取消',
+    type: 'danger'
+  })
+  if (!isConfirmed) return
+
+  try {
+    await modelsApi.delete(modelId)
+    showToast('作品删除成功', 'success')
+    models.value = models.value.filter(m => m.id !== modelId)
+    setQuickStat('models', models.value.length)
+  } catch (e) {
+    console.error('failed to delete model', e)
+    showToast('作品删除失败', 'error')
   }
 }
 
