@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class FileUploadServiceImpl implements FileUploadService {
+public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼容图片上传
 
     @Autowired
     private FileInfoMapper fileInfoMapper;
@@ -71,10 +71,26 @@ public class FileUploadServiceImpl implements FileUploadService {
         wrapper.eq(FileInfo::getFileMd5, fileMd5);
         FileInfo existing = fileInfoMapper.selectOne(wrapper);
         if (existing != null) {
-            response.setIsExist(true);
-            String url = baseUrl + "/uploads/models/" +
-                    Paths.get(existing.getStoragePath()).getFileName().toString();
-            response.setFileUrl(url);
+            // 只有当储存路径存在且非空，且物理文件确实存在时，说明文件真正合并成功，可以进行秒传
+            if (existing.getStoragePath() != null && !existing.getStoragePath().isEmpty()) {
+                Path path = Paths.get(existing.getStoragePath());
+                if (Files.exists(path)) {
+                    response.setIsExist(true);
+                    String url = baseUrl + "/uploads/models/" + path.getFileName().toString();
+                    response.setFileUrl(url);
+                    return response;
+                } else {
+                    // 物理文件不存在，重置存储路径，允许重新上传和合并
+                    existing.setStoragePath("");
+                    existing.setUpdateAt(LocalDateTime.now());
+                    fileInfoMapper.updateById(existing);
+                }
+            }
+            // 否则，说明此文件是之前上传中断、尚未合并的文件。
+            // 此时不进行秒传，但返回已成功上传的分片索引列表，从而可以执行断点续传
+            List<Integer> uploadedChunks = getUploadedChunks(fileMd5);
+            response.setIsExist(false);
+            response.setUploadedChunks(uploadedChunks);
             return response;
         }
 
@@ -208,16 +224,30 @@ public class FileUploadServiceImpl implements FileUploadService {
             return null;
         });
 
-        return fileId.toString();
+        String url = baseUrl + "/uploads/models/" + finalFileName;
+        return url;
     }
 
     // ---------- 辅助方法 ----------
 
     private List<Integer> getUploadedChunks(String fileMd5) {
         LambdaQueryWrapper<FileChunk> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(FileChunk::getFileMd5, fileMd5)
-                .select(FileChunk::getChunkIndex);
-        return fileChunkMapper.selectList(wrapper).stream()
+        wrapper.eq(FileChunk::getFileMd5, fileMd5);
+        List<FileChunk> chunks = fileChunkMapper.selectList(wrapper);
+        
+        List<FileChunk> validChunks = new java.util.ArrayList<>();
+        for (FileChunk chunk : chunks) {
+            if (chunk.getChunkTempPath() != null && Files.exists(Paths.get(chunk.getChunkTempPath()))) {
+                validChunks.add(chunk);
+            } else {
+                // 物理切片文件丢失，删除数据库中的过期脏记录，以便前端可以重新上传该分片
+                LambdaQueryWrapper<FileChunk> deleteWrapper = new LambdaQueryWrapper<>();
+                deleteWrapper.eq(FileChunk::getFileMd5, fileMd5)
+                        .eq(FileChunk::getChunkIndex, chunk.getChunkIndex());
+                fileChunkMapper.delete(deleteWrapper);
+            }
+        }
+        return validChunks.stream()
                 .map(FileChunk::getChunkIndex)
                 .collect(Collectors.toList());
     }

@@ -66,8 +66,6 @@
                 ></textarea>
               </div>
 
-
-
               <!-- 作品标签 -->
               <div>
                 <div class="flex items-center justify-between">
@@ -133,17 +131,63 @@
                       {{ uploadAlerts.model.text }}
                     </span>
                   </div>
-                  <p class="text-xs text-gray-500 mt-1 min-h-[48px]">请上传 3D 模型文件（.glb 格式），文件大小不能超过 200MB</p>
+                  <p class="text-xs text-gray-500 mt-1 min-h-[48px]">请上传 3D 模型文件（.glb 格式）</p>
                 </div>
                 <div class="mt-4">
-                  <label class="w-full inline-flex items-center justify-center rounded-2xl border border-dashed border-blue-300 bg-blue-50/60 px-4 py-3 text-blue-600 cursor-pointer hover:bg-blue-100 text-sm font-semibold transition-all"
+                  <!-- 未上传或已完成状态，显示选择按钮 -->
+                  <label v-if="modelUploadStatus === 'idle' || modelUploadStatus === 'success'"
+                         class="w-full inline-flex items-center justify-center rounded-2xl border border-dashed border-blue-300 bg-blue-50/60 px-4 py-3 text-blue-600 cursor-pointer hover:bg-blue-100 text-sm font-semibold transition-all"
                          :class="{ 'opacity-50 pointer-events-none cursor-not-allowed': uploading.model }">
                     <input type="file" class="hidden" accept=".glb" :disabled="uploading.model" @change="handleModelUpload" />
                     {{ uploading.model ? '上传中...' : '选择模型文件' }}
                   </label>
+
+                  <!-- 正在上传、暂停或出错状态下，显示进度和控制按钮 -->
+                  <div v-else class="space-y-3">
+                    <div class="space-y-1">
+                      <div class="flex items-center justify-between text-xs font-semibold">
+                        <span class="text-blue-600 truncate max-w-[170px]">{{ modelUploadStatusText }}</span>
+                        <span class="text-blue-600 font-mono">{{ modelUploadProgress }}%</span>
+                      </div>
+                      <div class="overflow-hidden h-2 flex rounded bg-blue-50">
+                        <div
+                          :style="{ width: modelUploadProgress + '%' }"
+                          class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-300"
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <button
+                        v-if="modelUploadStatus === 'uploading'"
+                        type="button"
+                        class="flex-1 py-1.5 px-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                        @click="handlePauseModelUpload"
+                      >
+                        暂停
+                      </button>
+                      <button
+                        v-if="modelUploadStatus === 'paused' || modelUploadStatus === 'error'"
+                        type="button"
+                        class="flex-1 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                        @click="handleResumeModelUpload"
+                      >
+                        {{ modelUploadStatus === 'error' ? '重试' : '继续' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="py-1.5 px-3 border border-red-500 hover:bg-red-50 text-red-500 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                        @click="handleCancelModelUpload"
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div class="mt-3">
-                  <p v-if="uploads.model.filename" class="text-sm text-gray-600 truncate font-medium">已上传: {{ uploads.model.filename }}</p>
+                  <p v-if="uploads.model.filename" class="text-sm text-gray-600 truncate font-medium">
+                    {{ modelUploadStatus === 'success' ? '已上传: ' : '已选择: ' }}{{ uploads.model.filename }}
+                  </p>
                 </div>
               </div>
 
@@ -325,7 +369,7 @@
 
               <button
                 type="button"
-                class="w-full md:w-auto rounded-2xl border border-gray-300 px-6 py-3 text-gray-700 hover:bg-white cursor-pointer"
+                class="w-full md:w-auto rounded-2xl border border-gray-300 px-6 py-3 text-gray-700 hover:bg-white disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed cursor-pointer"
                 @click="handleReset"
                 :disabled="uploading.submit || uploading.model"
               >
@@ -333,7 +377,7 @@
               </button>
               <button
                 type="button"
-                class="w-full md:w-auto rounded-2xl bg-blue-600 px-6 py-3 text-white font-semibold shadow hover:bg-blue-700 disabled:bg-gray-300 cursor-pointer"
+                class="w-full md:w-auto rounded-2xl bg-blue-600 px-6 py-3 text-white font-semibold shadow hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
                 :disabled="uploading.submit || uploading.model"
                 @click="handleSubmit"
               >
@@ -367,12 +411,18 @@ import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph.js'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { confirmDialog } from '@/components/ConfirmDialog.vue'
+import { LargeFileUploader } from '@/utils/largeFileUploader'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const shaderGraphStore = useShaderGraphStore()
 
 const toastRef = ref(null)
+
+const modelUploadProgress = ref(0)
+const modelUploadStatusText = ref('')
+const modelUploadStatus = ref('idle') // idle, hashing, uploading, paused, success, error
+let activeModelUploader = null
 
 const hasUnsavedChanges = computed(() => {
   return Boolean(
@@ -465,7 +515,7 @@ const triggerFlash = (key) => {
 const previewUrls = computed(() => uploads.previews.map((item) => item.url))
 
 const hasShaderGraph = computed(() => Boolean(shaderGraphStore.publishData))
-const isPreviewReady = computed(() => Boolean(uploads.model.url || hasShaderGraph.value))
+const isPreviewReady = computed(() => Boolean(uploads.model.tempBlobUrl || uploads.model.url || hasShaderGraph.value))
 
 const updateCategory = () => {
   const hasModel = Boolean(uploads.model.url)
@@ -600,10 +650,15 @@ const resetForm = () => {
   form.category = ''
   form.tags = []
 
-  if (uploads.model.tempBlobUrl && uploads.model.tempBlobUrl.startsWith('blob:')) {
-    URL.revokeObjectURL(uploads.model.tempBlobUrl)
+  if (activeModelUploader) {
+    activeModelUploader.destroy()
+    activeModelUploader = null
   }
-  uploads.model = { tempBlobUrl: '', url: '', filename: '' }
+  cleanupModelUrl()
+  modelUploadStatus.value = 'idle'
+  modelUploadProgress.value = 0
+  modelUploadStatusText.value = ''
+
   uploads.thumbnail = { url: '', filename: '' }
   uploads.previews = []
 
@@ -618,10 +673,65 @@ const handleReset = () => {
   toastRef.value?.show('已成功重置所有表单和暂存数据', 'info')
 }
 
+const cleanupModelUrl = () => {
+  if (uploads.model.tempBlobUrl && uploads.model.tempBlobUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(uploads.model.tempBlobUrl)
+  }
+  uploads.model.tempBlobUrl = ''
+  uploads.model.url = ''
+  uploads.model.filename = ''
+}
+
+const handlePauseModelUpload = () => {
+  if (activeModelUploader) {
+    activeModelUploader.pause()
+  }
+}
+
+const handleResumeModelUpload = async () => {
+  if (activeModelUploader && (modelUploadStatus.value === 'paused' || modelUploadStatus.value === 'error')) {
+    uploading.model = true
+    try {
+      const fileUrl = await activeModelUploader.start()
+      uploads.model.url = fileUrl
+      setAlert('model', 'success', '已上传')
+      toastRef.value?.show('模型文件恢复并上传成功', 'success')
+    } catch (error) {
+      if (error.message === 'PAUSED') return
+      if (error.message === 'CANCELLED') {
+        handleCancelModelUpload()
+        return
+      }
+      setAlert('model', 'error', '上传失败')
+      toastRef.value?.show('恢复上传失败：' + (error.message || '网络错误'), 'error')
+    } finally {
+      uploading.model = false
+      updateCategory()
+    }
+  }
+}
+
+const handleCancelModelUpload = () => {
+  if (activeModelUploader) {
+    activeModelUploader.destroy()
+    activeModelUploader = null
+  }
+  cleanupModelUrl()
+  modelUploadProgress.value = 0
+  modelUploadStatus.value = 'idle'
+  modelUploadStatusText.value = '已取消上传'
+  resetAlert('model')
+  updateCategory()
+}
+
 // 提取通用的核心模型上传与本地即时预览逻辑
 const uploadAndPreviewModelFile = async (file, isAutoUpload = false) => {
   if (!file) return
-  if (uploading.model) return
+
+  if (activeModelUploader) {
+    activeModelUploader.destroy()
+  }
+
   uploading.model = true
   resetAlert('model')
 
@@ -632,19 +742,38 @@ const uploadAndPreviewModelFile = async (file, isAutoUpload = false) => {
   uploads.model.filename = file.name
   updateCategory()
 
+  modelUploadProgress.value = 0
+  modelUploadStatus.value = 'hashing'
+  modelUploadStatusText.value = '准备上传...'
+
+  activeModelUploader = new LargeFileUploader({
+    file,
+    onProgress: (percent) => {
+      modelUploadProgress.value = percent
+    },
+    onStatusChange: (status, message) => {
+      modelUploadStatus.value = status
+      modelUploadStatusText.value = message
+    }
+  })
+
   try {
-    const { data } = await uploadApi.uploadModel(file)
+    const fileUrl = await activeModelUploader.start()
     // 仅更新 url，以保持预览中的本地 tempBlobUrl 稳定不闪烁
-    uploads.model.url = data
+    uploads.model.url = fileUrl
     setAlert('model', 'success', '已上传')
     toastRef.value?.show(
       isAutoUpload ? '关联的 3D 模型已成功自动上传' : '模型文件上传成功',
       'success'
     )
   } catch (error) {
-    URL.revokeObjectURL(tempBlobUrl)
-    uploads.model.tempBlobUrl = ''
-    uploads.model.url = ''
+    if (error.message === 'PAUSED') {
+      return
+    }
+    if (error.message === 'CANCELLED') {
+      handleCancelModelUpload()
+      return
+    }
     setAlert('model', 'error', '上传失败')
     toastRef.value?.show(
       (isAutoUpload ? '模型自动上传失败：' : '模型上传失败：') + (error.message || '网络错误'),
@@ -904,13 +1033,6 @@ onBeforeRouteLeave(async (to, from) => {
       }
     }
 
-    if (uploads.model.tempBlobUrl && uploads.model.tempBlobUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(uploads.model.tempBlobUrl)
-    }
-    // ModelViewer 中 watch 了 modelUrl 和 publishData.shaderGraphJson, 需要同时置空以免错误触发引擎更新
-    uploads.model.tempBlobUrl = ''
-    uploads.model.url = ''
-
     shaderGraphStore.uploadPageState = null
     shaderGraphStore.publishData = null
     shaderGraphStore.clearGraphState()
@@ -940,6 +1062,18 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+
+  if (activeModelUploader) {
+    activeModelUploader.destroy()
+    activeModelUploader = null
+  }
+
+  if (uploads.model.tempBlobUrl && uploads.model.tempBlobUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(uploads.model.tempBlobUrl)
+  }
+  // ModelViewer 中 watch 了 modelUrl 和 publishData.shaderGraphJson, 需要同时置空以免错误触发引擎更新
+  uploads.model.tempBlobUrl = ''
+  uploads.model.url = ''
 })
 </script>
 
