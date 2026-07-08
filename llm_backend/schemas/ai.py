@@ -1,0 +1,66 @@
+﻿from pydantic import BaseModel, ConfigDict, Field
+
+
+class ModelMetadata(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    title: str
+    category: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    description: str | None = None
+    author_id: int | None = Field(default=None, alias="authorId")
+    author_name: str | None = Field(default=None, alias="authorName")
+    file_url: str | None = Field(default=None, alias="fileUrl")
+    thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
+    preview_urls: list[str] = Field(default_factory=list, alias="previewUrls")
+    shader_graph_json: str | None = Field(default=None, alias="shaderGraphJson")
+    structure_info: dict | None = Field(default=None, alias="structureInfo")
+    visibility: str = "public"
+
+
+class GeneratedDescription(BaseModel):
+    summary: str
+    description: str
+    category: str | None = None
+    style: str | None = None
+    use_cases: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
+    search_text: str
+
+
+class ModelIndexRequest(BaseModel):
+    model: ModelMetadata | None = None
+    ai_description: GeneratedDescription | None = None
+    force_generate_description: bool = False
+
+
+class ModelIndexResponse(BaseModel):
+    model_id: int
+    accepted: bool
+    message: str
+
+
+class ChatFilters(BaseModel):
+    category: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+
+class ChatRequest(BaseModel):
+    user_id: int | None = None
+    question: str = Field(min_length=1)
+    filters: ChatFilters | None = None
+    top_k: int | None = Field(default=None, ge=1, le=20)
+
+
+class ModelReference(BaseModel):
+    model_id: int
+    title: str | None = None
+    thumbnail_url: str | None = None
+    score: float
+    reason: str | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    references: list[ModelReference] = Field(default_factory=list)
