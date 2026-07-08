@@ -6,8 +6,8 @@ import { cwd } from 'process'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, cwd(), '') // 读取同目录下的.env文件
 
-  const targetUrl = env.VITE_API_BASE_URL || 'http://localhost:8080'
-  const llmUrl = env.LLM_URL
+  const targetUrl = env.VITE_API_BASE_URL || 'http://127.0.0.1:8080'
+  const llmUrl = env.LLM_URL || 'http://127.0.0.1:8000'
 
   return {
     plugins: [vue()],
@@ -18,6 +18,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
+        '/api/llm': {
+          target: llmUrl,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/llm/, '')
+        },
         '/api': {
           target: targetUrl,
           changeOrigin: true
@@ -30,11 +35,6 @@ export default defineConfig(({ mode }) => {
           target: targetUrl,
           ws: true,
           changeOrigin: true
-        },
-        '/api/llm': {
-          target: llmUrl,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/llm/, '')
         }
       }
     },

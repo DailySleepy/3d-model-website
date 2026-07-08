@@ -46,6 +46,11 @@ __screenshots__/
 # stash
 stash/
 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
 # 后端临时文件
 backend/temp/
 
