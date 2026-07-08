@@ -219,28 +219,6 @@ class RagService:
         if not normalized:
             return False
 
-        resource_keywords = (
-            "模型",
-            "3d",
-            "三维",
-            "资源",
-            "素材",
-            "贴图",
-            "低模",
-            "高模",
-            "场景",
-            "角色",
-            "道具",
-            "建筑",
-            "动物",
-            "水果",
-            "游戏",
-            "渲染",
-            "推荐",
-            "找",
-            "有没有",
-            "适合",
-        )
         blocked_keywords = (
             "数学题",
             "数学问题",
@@ -251,10 +229,79 @@ class RagService:
             "写作文",
             "翻译",
         )
-
         if any(keyword in normalized for keyword in blocked_keywords):
             return False
-        return any(keyword in normalized for keyword in resource_keywords)
+
+        direct_resource_keywords = (
+            "模型",
+            "3d",
+            "三维",
+            "资源",
+            "素材",
+            "资产",
+            "贴图",
+            "低模",
+            "高模",
+            "作品"
+        )
+        asset_type_keywords = (
+            "场景",
+            "角色",
+            "道具",
+            "建筑",
+            "动物",
+            "水果",
+            "植物",
+            "武器",
+            "载具",
+            "车辆",
+            "人物",
+            "食物",
+            "游戏",
+            "渲染",
+        )
+        search_intent_keywords = (
+            "推荐",
+            "找",
+            "想找",
+            "想要",
+            "需要",
+            "有没有",
+            "适合",
+        )
+        style_keywords = (
+            "风格",
+            "npr",
+            "二次元",
+            "写实",
+            "卡通",
+            "科幻",
+            "低多边形",
+            "low poly",
+            "low-poly",
+        )
+        asset_result_keywords = (
+            "作品",
+            "资源",
+            "素材",
+            "资产",
+            "模型",
+        )
+
+        if any(keyword in normalized for keyword in direct_resource_keywords):
+            return True
+
+        has_search_intent = any(keyword in normalized for keyword in search_intent_keywords)
+        has_asset_type = any(keyword in normalized for keyword in asset_type_keywords)
+        if has_search_intent and has_asset_type:
+            return True
+
+        has_style = any(keyword in normalized for keyword in style_keywords)
+        has_asset_result = any(keyword in normalized for keyword in asset_result_keywords)
+        if has_search_intent and has_style and has_asset_result:
+            return True
+
+        return False
 
     def _build_context(self, rows) -> str:
         parts: list[str] = []
