@@ -93,7 +93,7 @@
                 v-model="store.particleCount"
                 @update:modelValue="store.onParticleCountChange"
                 :min="1"
-                :max="10000"
+                :max="200000"
                 :step="1"
                 class="w-24 h-5"
               />

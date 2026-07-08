@@ -17,6 +17,8 @@
       @edgesChange="onEdgeChange"
       @edgeDoubleClick="onEdgeDoubleClick"
       @nodeDragStart="onNodeDragStart"
+      @nodeDrag="onNodeDrag"
+      @nodeDragStop="onNodeDragStop"
       class="vue-flow-dark"
     >
       <Background patternColor="#2c2c2e" gap="20" />
@@ -43,6 +45,7 @@ import '@vue-flow/core/dist/theme-default.css'
 import { nodeRegistry } from '@/rendering/nodeRegistry.js'
 import { useGraphShortCuts } from '../composables/useGraphShortcuts.js'
 import { useNodeSearch } from '../composables/useNodeSearch.js'
+import { useGraphConnectionUX } from '../composables/useGraphConnectionUX.js'
 import { useShaderGraphStore } from '../stores/shaderGraph.js'
 
 import UniversalNode from './UniversalNode.vue'
@@ -68,16 +71,32 @@ defineExpose({
   }
 })
 
+const {
+  isValidConnection,
+  onNodeDragStart,
+  onNodeDrag,
+  onNodeDragStop
+} = useGraphConnectionUX()
+
 const onEdgeChange = async (changes) => {
+  // 如果所有变化都是针对临时边的添加或移除，则不触发编译
+  const isAllTempChange = changes.every(c => {
+    if (c.type === 'remove') {
+      const edge = store.currentEdges.find(e => e.id === c.id)
+      return edge?.isTemp === true
+    }
+    if (c.type === 'add') {
+      return c.item?.isTemp === true
+    }
+    return true
+  })
+  if (isAllTempChange) return
+
   const hadGraphChanged = changes.some(c => c.type === 'remove' || c.type === 'add')
   if (hadGraphChanged) {
     await nextTick()
     store.compileActiveTab()
   }
-}
-
-const onNodeDragStart = () => {
-  store.takeSnapshot()
 }
 
 const onConnect = (params) => {
@@ -86,31 +105,6 @@ const onConnect = (params) => {
 
 const onEdgeDoubleClick = ({ edge }) => {
   store.removeEdge(edge.id)
-}
-
-const isValidConnection = (connection) => {
-  if (connection.source === connection.target) return false
-
-  const sourceNode = store.currentNodes.find(n => n.id === connection.source)
-  const targetNode = store.currentNodes.find(n => n.id === connection.target)
-  if (!sourceNode || !targetNode) return false
-
-  const sourceConfig = nodeRegistry[sourceNode.type]
-  const targetConfig = nodeRegistry[targetNode.type]
-  if (!sourceConfig || !targetConfig) return false
-
-  // 判断插槽是输入还是输出
-  const isSourceInput = sourceConfig.inputs?.some(i => i.id === connection.sourceHandle)
-  const isSourceOutput = sourceConfig.outputs?.some(o => o.id === connection.sourceHandle)
-  const isTargetInput = targetConfig.inputs?.some(i => i.id === connection.targetHandle)
-  const isTargetOutput = targetConfig.outputs?.some(o => o.id === connection.targetHandle)
-
-  // 必须一个是输出端口，一个是输入端口
-  const isValidDirection = (isSourceOutput && isTargetInput) || (isSourceInput && isTargetOutput)
-  if (!isValidDirection) return false
-
-  // TODO: 判断连线 from 的类型是否能隐式转换为 to (vec -> float)
-  return true
 }
 
 const { searchMenu, openSearchMenu, closeSearchMenu, spawnNode } = useNodeSearch()
@@ -178,5 +172,30 @@ watch(() => store.activeTab, async (newTab, oldTab) => {
 /* 隐藏松开鼠标完成多选后的外层大蓝色遮罩框 */
 .vue-flow__nodesselection {
   display: none !important;
+}
+
+/* 剪刀模式样式 */
+.is-cutting, .is-cutting * {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' style='font-size:18px'><text y='18'>✂️</text></svg>") 4 14, crosshair !important;
+}
+
+/* 剪断连线用的 SVG 覆盖层和线条 */
+.cutting-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 99999;
+}
+.cutting-line {
+  fill: none;
+  stroke: #ef4444;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6));
 }
 </style>

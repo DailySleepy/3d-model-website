@@ -45,3 +45,8 @@ __screenshots__/
 
 # stash
 stash/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/

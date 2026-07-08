@@ -181,7 +181,7 @@ const shouldShowDrag = (config, socketId) => {
 
   if (socketId === undefined) return true // 如果是 properties, 到这里就可以直接放行了
 
-  const isConnected = store.inputSocketsAcitveMap.get(props.id)?.has(socketId) ?? false
+  const isConnected = store.inputEdgesLUT.has(`${props.id}_${socketId}`)
   return !isConnected // 需要插槽未连接
 }
 

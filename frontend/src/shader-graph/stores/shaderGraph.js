@@ -20,6 +20,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const customModelFile = ref(null)
   const customTextures = ref([])
   const isDirty = ref(false)
+  const hasTempEdge = ref(false)
 
   const availableAttributes = ref(['position', 'normal', 'uv'])
 
@@ -80,21 +81,33 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   })
 
-  const socketsAcitveMap = computed(() => {
-    const iMap = new Map()
-    const oMap = new Map()
+  const edgesLUT = computed(() => {
+    const iLut = new Map() // target 方向 (input): targetNodeId_targetHandleId -> Edge
+    const oLut = new Map() // source 方向 (output): sourceNodeId_sourceHandleId -> Edge[]
 
     currentEdges.value.forEach(edge => {
-      if (!iMap.get(edge.target)) iMap.set(edge.target, new Set())
-      iMap.get(edge.target).add(edge.targetHandle)
+      if (edge.isTemp) return
 
-      if (!oMap.get(edge.source)) oMap.set(edge.source, new Set())
-      oMap.get(edge.source).add(edge.sourceHandle)
+      // 输入是单一的，可以直接映射到具体 Edge
+      iLut.set(`${edge.target}_${edge.targetHandle}`, edge)
+
+      // 输出是分叉多出的，映射到 Edge 数组
+      const outKey = `${edge.source}_${edge.sourceHandle}`
+      if (!oLut.has(outKey)) oLut.set(outKey, [])
+      oLut.get(outKey).push(edge)
     })
-    return { iMap, oMap }
+    return { iLut, oLut }
   })
-  const inputSocketsAcitveMap = computed(() => socketsAcitveMap.value.iMap)
-  const outputSocketsAcitveMap = computed(() => socketsAcitveMap.value.oMap)
+  const inputEdgesLUT = computed(() => edgesLUT.value.iLut)
+  const outputEdgesLUT = computed(() => edgesLUT.value.oLut)
+
+  const nodesLUT = computed(() => {
+    const map = new Map()
+    currentNodes.value.forEach(node => {
+      map.set(node.id, node)
+    })
+    return map
+  })
 
   // ----------------------------------------
   // Actions: Nodes And Graph / Undo-Redo
@@ -200,6 +213,12 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     if (!connection) return
     takeSnapshot()
 
+    // 连接到输入插槽后断开这个输入插槽原来的连接 (先检查输入插槽原本是否存在连线)
+    const existingEdge = inputEdgesLUT.value.get(`${connection.target}_${connection.targetHandle}`)
+    if (existingEdge) {
+      currentEdges.value = currentEdges.value.filter(e => e.id !== existingEdge.id)
+    }
+
     const newEdge = {
       id: `vueflow__edge-${connection.source}${connection.sourceHandle || ''}-${connection.target}${connection.targetHandle || ''}`,
       source: connection.source,
@@ -274,7 +293,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   let snapShotTimeout = null
 
   const updateNodeData = (nodeId, newData) => {
-    const node = currentNodes.value.find((n) => n.id == nodeId)
+    const node = nodesLUT.value.get(nodeId)
     if (!node) return
 
     if (canTakeSnapshot) {
@@ -398,13 +417,19 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
   const compileMaterial = () => {
     if (engineInstance) {
-      engineInstance.compileMaterial(matNodes.value, matEdges.value, getTexturesMap())
+      const realEdges = hasTempEdge.value
+        ? matEdges.value.filter(e => !e.isTemp)
+        : matEdges.value
+      engineInstance.compileMaterial(matNodes.value, realEdges, getTexturesMap())
     }
   }
 
   const compileSimulation = () => {
     if (engineInstance) {
-      engineInstance.compileSimulation(simNodes.value, simEdges.value, getTexturesMap())
+      const realEdges = hasTempEdge.value
+        ? simEdges.value.filter(e => !e.isTemp)
+        : simEdges.value
+      engineInstance.compileSimulation(simNodes.value, realEdges, getTexturesMap())
     }
   }
 
@@ -455,6 +480,42 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       if (isMat.value) compileMaterial()
       else compileSimulation()
     }, 50)
+  }
+
+  const insertNodeOnEdge = (nodeId, edgeId, inSlotId, outSlotId) => {
+    const edge = currentEdges.value.find(e => e.id === edgeId)
+    if (!edge) return
+
+    takeSnapshot()
+
+    const originalSource = edge.source
+    const originalSourceHandle = edge.sourceHandle
+    const originalTarget = edge.target
+    const originalTargetHandle = edge.targetHandle
+
+    // 1. 删除原有的 edge
+    currentEdges.value = currentEdges.value.filter(e => e.id !== edgeId)
+
+    // 2. 添加新边 1: originalSource -> nodeId(inSlotId)
+    const newEdge1 = {
+      id: `vueflow__edge-${originalSource}${originalSourceHandle || ''}-${nodeId}${inSlotId}`,
+      source: originalSource,
+      sourceHandle: originalSourceHandle,
+      target: nodeId,
+      targetHandle: inSlotId
+    }
+
+    // 3. 添加新边 2: nodeId(outSlotId) -> originalTarget
+    const newEdge2 = {
+      id: `vueflow__edge-${nodeId}${outSlotId}-${originalTarget}${originalTargetHandle || ''}`,
+      source: nodeId,
+      sourceHandle: outSlotId,
+      target: originalTarget,
+      targetHandle: originalTargetHandle
+    }
+
+    currentEdges.value = [...currentEdges.value, newEdge1, newEdge2]
+    compileActiveTab()
   }
 
   const onGeometryChange = async (shouldCompile = true, onProgress = null) => {
@@ -805,10 +866,11 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     publishData, forkData, uploadPageState, isDirty, showFPS, fps, frameMs, availableAttributes,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
-    inputSocketsAcitveMap, outputSocketsAcitveMap,
+    inputEdgesLUT, outputEdgesLUT, nodesLUT,
     historyState, takeSnapshot, undo, redo, addNode, removeElements, cloneSubgraph, addConnection, removeEdge, applyGraphData,
     updateNodeData, getSelectedSubgraph, fitCanvasView,
     initEngineInstance, destroyEngineInstance, compileActiveTab, compileMaterial, compileSimulation,
+    hasTempEdge, insertNodeOnEdge,
     onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, toggleSimulationMode, updateProjectSettings, onGraphResize,
     addCustomTextureFromFile, addCustomTextureFromBlob, addCustomTextureFromUrl, loadForkData, clearGraphState, updatePublishData,
     isLoading, loadingProgress, targetProgress, startProgressAnimation, stopProgressAnimation, waitProgressComplete, cancelLoading,

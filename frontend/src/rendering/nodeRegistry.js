@@ -1,6 +1,8 @@
 import * as tsl from 'three/tsl'
 import * as THREE from 'three/webgpu'
 import {
+  getDimension,
+  getWgslType,
   getDefaultTexture,
   getSocketDefaultResult as rawGetSocketDefaultResult
 } from './registryUtils'
