@@ -33,6 +33,11 @@
       cancelable
       @cancel="handleCancelLoading"
     />
+
+    <UserGuideModal
+      v-if="store.showUserGuide"
+      @close="store.showUserGuide = false"
+    />
   </div>
 </template>
 
@@ -45,6 +50,7 @@ import GraphCanvas from '@/shader-graph/components/GraphCanvas.vue'
 import GraphHeader from '@/shader-graph/components/GraphHeader.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
 import LoadingMask from '@/components/LoadingMask.vue'
+import UserGuideModal from '@/shader-graph/components/UserGuideModal.vue'
 
 import { useGraphResize } from '@/shader-graph/composables/useGraphResize.js'
 import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph.js'

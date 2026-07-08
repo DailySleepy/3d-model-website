@@ -24,6 +24,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
   const availableAttributes = ref(['position', 'normal', 'uv'])
 
+  const showUserGuide = ref(false)
   const showFPS = ref(false)
   const fps = ref(0)
   const frameMs = ref(0)
@@ -863,7 +864,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
   return {
     activeTab, isMat, enableSimulation, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures,
-    publishData, forkData, uploadPageState, isDirty, showFPS, fps, frameMs, availableAttributes,
+    publishData, forkData, uploadPageState, isDirty, showFPS, showUserGuide, fps, frameMs, availableAttributes,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
     inputEdgesLUT, outputEdgesLUT, nodesLUT,

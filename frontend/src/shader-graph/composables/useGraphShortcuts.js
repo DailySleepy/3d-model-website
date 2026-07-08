@@ -3,9 +3,36 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useShaderGraphStore } from '../stores/shaderGraph'
 import { generateBaseExportData, useGraphIO } from './useGraphIO'
 import { bypassAndRemoveNodes, detachNodes, swapInputEdges, swapNodesOutputs, performCut } from '../utils/graphOperations'
+import { createNode } from '../utils/nodeFactory'
 
 export function useGraphShortCuts({ openSearchMenu }) {
   const snapToGrid = ref(false)
+  let activeCreateNodeType = null
+
+  const QUICK_CREATE_MAP = {
+    '1': 'float',
+    '2': 'vec2',
+    '3': 'vec3',
+    '4': 'vec4',
+    'a': 'add',
+    'A': 'add',
+    's': 'sub',
+    'S': 'sub',
+    'm': 'mix',
+    'M': 'mix',
+    'd': 'div',
+    'D': 'div',
+    't': 'textureSample',
+    'T': 'textureSample',
+    'c': 'color',
+    'C': 'color',
+    'n': 'normalize',
+    'N': 'normalize',
+    'u': 'uv',
+    'U': 'uv',
+    'o': 'oneMinus',
+    'O': 'oneMinus'
+  }
 
   const store = useShaderGraphStore()
   const { handleClipboardPaste } = useGraphIO()
@@ -56,6 +83,35 @@ export function useGraphShortCuts({ openSearchMenu }) {
   }
 
   const handleMouseDown = (e) => {
+    // 限制在画布容器内
+    const canvasDOM = store.graphCanvasDOM
+    if (canvasDOM && !canvasDOM.contains(e.target)) {
+      return
+    }
+
+    // 快速创建节点：按住快捷键并左击
+    if (activeCreateNodeType && e.button === 0) {
+      e.preventDefault()
+      e.stopPropagation()
+
+      const rect = store.graphCanvasDOM?.getBoundingClientRect()
+      if (rect) {
+        const canvasX = e.clientX - rect.left
+        const canvasY = e.clientY - rect.top
+        const projectedPos = project({ x: canvasX, y: canvasY })
+
+        const newNode = createNode(activeCreateNodeType, {
+          x: projectedPos.x,
+          y: projectedPos.y
+        })
+        if (newNode) {
+          store.addNode(newNode)
+        }
+      }
+      return
+    }
+
+    // 剪刀模式：Ctrl + 右键
     if (e.ctrlKey && e.button === 2) {
       e.preventDefault()
       e.stopPropagation()
@@ -69,8 +125,6 @@ export function useGraphShortCuts({ openSearchMenu }) {
   const handleMouseMove = (e) => {
     trackMousePos(e)
     if (isCutting.value) {
-      // 检查鼠标右键是否依然按下 (e.buttons 的第 2 位对应右键)
-      // 如果没有按下右键，说明在窗口外或由于其他原因已释放，立即终止切断逻辑并清理
       if ((e.buttons & 2) === 0) {
         isCutting.value = false
         cutPoints.value = []
@@ -102,6 +156,7 @@ export function useGraphShortCuts({ openSearchMenu }) {
   }
 
   const handleWindowBlur = () => {
+    activeCreateNodeType = null
     if (isCutting.value) {
       isCutting.value = false
       cutPoints.value = []
@@ -111,13 +166,21 @@ export function useGraphShortCuts({ openSearchMenu }) {
   }
 
   const handleGlobalKeyUp = (e) => {
-
+    const nodeType = QUICK_CREATE_MAP[e.key]
+    if (nodeType && activeCreateNodeType === nodeType) {
+      activeCreateNodeType = null
+    }
   }
 
   const handleGlobalKeyDown = async (e) => {
     const activeEl = document.activeElement
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
       return
+    }
+
+    const nodeType = QUICK_CREATE_MAP[e.key]
+    if (nodeType) {
+      activeCreateNodeType = nodeType
     }
 
     // Ctrl + Z: 撤销
