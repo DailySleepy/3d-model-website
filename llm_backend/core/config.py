@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     openrouter_app_title: str = "3D Model Website"
 
     rag_top_k: int = 5
+    rag_min_score: float = 0.35
     rag_max_context_chars: int = 8000
     chunk_size: int = 900
     chunk_overlap: int = 120
@@ -74,4 +75,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

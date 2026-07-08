@@ -198,11 +198,12 @@
 <script setup>
 import { aiAssistantApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { nextTick, ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const STORAGE_KEY = 'modelcraft_ai_assistant_session'
 
 const question = ref('')
 const topK = ref(5)
@@ -216,14 +217,16 @@ const nowTime = () => {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-const messages = ref([
-  {
+const createWelcomeMessage = () => {
+  return {
     id: Date.now(),
     role: 'assistant',
     time: nowTime(),
     content: '欢迎来到 ModelCraft，我能帮助你找到站内合适的模型资源。'
   }
-])
+}
+
+const messages = ref([createWelcomeMessage()])
 
 const sendQuestion = async () => {
   const text = question.value.trim()
@@ -274,16 +277,10 @@ const sendQuestion = async () => {
 }
 
 const resetConversation = () => {
-  messages.value = [
-    {
-      id: Date.now(),
-      role: 'assistant',
-      time: nowTime(),
-      content: '欢迎来到 ModelCraft，我能帮助你找到站内合适的模型资源。'
-    }
-  ]
+  messages.value = [createWelcomeMessage()]
   errorMessage.value = ''
   latestReferences.value = []
+  localStorage.removeItem(STORAGE_KEY)
 }
 
 const openModel = (modelId) => {
@@ -308,4 +305,47 @@ const scrollToBottom = async () => {
     messageListRef.value.scrollTop = messageListRef.value.scrollHeight
   }
 }
+
+const restoreSession = async () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+
+    const saved = JSON.parse(raw)
+    if (Array.isArray(saved.messages) && saved.messages.length > 0) {
+      messages.value = saved.messages
+    }
+    if (Array.isArray(saved.latestReferences)) {
+      latestReferences.value = saved.latestReferences
+    }
+    if ([3, 5, 8, 10].includes(Number(saved.topK))) {
+      topK.value = Number(saved.topK)
+    }
+    await scrollToBottom()
+  } catch (error) {
+    console.warn('AI 助手会话恢复失败', error)
+    localStorage.removeItem(STORAGE_KEY)
+  }
+}
+
+const persistSession = () => {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        messages: messages.value,
+        latestReferences: latestReferences.value,
+        topK: topK.value
+      })
+    )
+  } catch (error) {
+    console.warn('AI 助手会话保存失败', error)
+  }
+}
+
+onMounted(() => {
+  restoreSession()
+})
+
+watch([messages, latestReferences, topK], persistSession, { deep: true })
 </script>

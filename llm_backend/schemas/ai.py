@@ -18,13 +18,21 @@ class ModelMetadata(BaseModel):
     visibility: str = "public"
 
 
-class GeneratedDescription(BaseModel):
-    summary: str
-    description: str
-    category: str | None = None
-    style: str | None = None
+class GeneratedDescriptionTags(BaseModel):
+    """AI 根据封面图和模型信息提取的可检索标签。"""
+
+    subject: list[str] = Field(default_factory=list)
+    category: list[str] = Field(default_factory=list)
+    style: list[str] = Field(default_factory=list)
+    features: list[str] = Field(default_factory=list)
+    color: list[str] = Field(default_factory=list)
+    material: list[str] = Field(default_factory=list)
     use_cases: list[str] = Field(default_factory=list)
-    keywords: list[str] = Field(default_factory=list)
+
+
+class GeneratedDescription(BaseModel):
+    description: str
+    tags: GeneratedDescriptionTags = Field(default_factory=GeneratedDescriptionTags)
     search_text: str
 
 

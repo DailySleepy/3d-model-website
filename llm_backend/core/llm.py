@@ -8,6 +8,12 @@ import httpx
 from openai import AsyncOpenAI, BadRequestError
 
 from core.config import Settings
+from core.prompts import (
+    ANSWER_SYSTEM_PROMPT,
+    DESCRIPTION_SYSTEM_PROMPT,
+    build_answer_user_prompt,
+    build_description_prompt,
+)
 from schemas.ai import GeneratedDescription, ModelMetadata, ModelReference
 
 
@@ -33,7 +39,7 @@ class LlmClient:
             )
 
     async def generate_model_description(self, model: ModelMetadata) -> GeneratedDescription:
-        prompt = self._build_description_prompt(model)
+        prompt = build_description_prompt(model)
         user_content = await self._build_description_user_content(model, prompt)
         has_image_content = isinstance(user_content, list)
         if has_image_content and self.image_client:
@@ -62,12 +68,7 @@ class LlmClient:
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "你是 3D 模型资源平台的内容编辑助手。"
-                        "你只能根据输入信息生成描述，不要编造无法判断的事实。"
-                        "如果用户提供了封面图，你需要结合图片中可见的外观、颜色、形态和风格生成描述。"
-                        "输出必须是合法 JSON。"
-                    ),
+                    "content": DESCRIPTION_SYSTEM_PROMPT,
                 },
                 {"role": "user", "content": user_content},
             ],
@@ -83,12 +84,7 @@ class LlmClient:
         return [
             {
                 "type": "text",
-                "text": (
-                    f"{prompt}\n\n"
-                    "封面图已经随请求提供。请优先识别封面图中真实可见的主体、颜色、材质、形态、风格和用途，"
-                    "并把这些视觉信息写入 description、keywords 和 search_text。"
-                    "如果图片信息与用户文字冲突，请以图片可见事实为准，但不要推断不可见内容。"
-                ),
+                "text": prompt,
             },
             {
                 "type": "image_url",
@@ -156,53 +152,19 @@ class LlmClient:
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "你是本站 3D 模型平台的 AI 助手。"
-                        "你只能使用提供的站内模型资源回答问题。"
-                        "如果资料不足，必须说明限制。"
-                        "不要编造模型名称、作者、URL、标签或下载资源。"
-                    ),
+                    "content": ANSWER_SYSTEM_PROMPT,
                 },
                 {
                     "role": "user",
-                    "content": (
-                        f"用户问题：\n{question}\n\n"
-                        f"站内检索资料：\n{context}\n\n"
-                        "请用中文回答，优先推荐最相关模型，并简要说明推荐理由。"
-                    ),
+                    "content": build_answer_user_prompt(question, context),
                 },
             ],
             temperature=0.2,
         )
         return response.choices[0].message.content or "未生成有效回答。"
 
-    def _build_description_prompt(self, model: ModelMetadata) -> str:
-        return json.dumps(
-            {
-                "任务": "为 3D 模型生成规范、准确、适合搜索和展示的中文描述。",
-                "输出格式": {
-                    "summary": "一句话摘要",
-                    "description": "完整自然语言描述，必须包含可见外观、颜色、形态、风格和适用场景",
-                    "category": "分类，可沿用输入分类；无法判断则返回空字符串，不要返回 ??、未知 等占位文本",
-                    "style": "可判断的视觉或制作风格；无法判断则为空",
-                    "use_cases": ["可能用途"],
-                    "keywords": ["5 到 12 个关键词"],
-                    "search_text": "用于检索的完整自然语言文本，不要只堆叠关键词",
-                },
-                "要求": [
-                    "不要编造用户未提供或无法判断的信息",
-                    "不要输出 ??、未知、待定 这类占位词；无法判断的字段返回空字符串或空数组",
-                    "如果提供了封面图，必须结合图片可见内容描述外观",
-                    "保留标题、分类、标签和用户简介中的有效信息",
-                    "search_text 必须是自然语言段落，包含名称、分类、外观、风格、用途和关键词",
-                    "输出必须是合法 JSON 对象",
-                ],
-                "模型信息": model.model_dump(by_alias=True),
-            },
-            ensure_ascii=False,
-        )
-
 
 def _is_unsupported_vision_error(exc: BadRequestError) -> bool:
     message = str(exc).lower()
     return "image_url" in message and ("expected `text`" in message or "expected text" in message)
+
