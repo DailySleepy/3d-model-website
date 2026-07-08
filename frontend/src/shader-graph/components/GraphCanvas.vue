@@ -25,12 +25,14 @@
       <Controls />
     </VueFlow>
 
-    <NodeSearchMenu
-      v-if="searchMenu.visible"
-      :searchMenu="searchMenu"
-      @spawnNode="spawnNode"
-      @close="closeSearchMenu"
-    />
+    <Transition name="fade-scale">
+      <NodeSearchMenu
+        v-if="searchMenu.visible"
+        :searchMenu="searchMenu"
+        @spawnNode="spawnNode"
+        @close="closeSearchMenu"
+      />
+    </Transition>
   </div>
 </template>
 
@@ -197,5 +199,16 @@ watch(() => store.activeTab, async (newTab, oldTab) => {
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6));
+}
+
+/* 搜索菜单的渐变淡入缩放动画 */
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: all 0.12s ease-out;
+}
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 </style>
