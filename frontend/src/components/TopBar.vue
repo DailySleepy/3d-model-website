@@ -15,6 +15,7 @@
         <!-- 排行榜, Lab -->
         <div class="flex items-center gap-2 md:gap-4 text-gray-800 font-medium text-base transition-colors">
           <router-link to="/ranking" class="hover:text-blue-500 whitespace-nowrap">热度排行</router-link>
+          <router-link to="/ai-assistant" class="hover:text-blue-500 whitespace-nowrap">AI 助手</router-link>
           <router-link to="/lab" class="hover:text-blue-500 whitespace-nowrap">实验空间</router-link>
           <router-link to="/shadergraph" class="hover:text-blue-500 whitespace-nowrap">着色器画布</router-link>
         </div>

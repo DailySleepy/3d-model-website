@@ -361,7 +361,7 @@
 import ModelViewer from '@/components/ModelViewer.vue'
 import ToastMessage from '@/components/ToastMessage.vue'
 import ImageModal from '@/components/ImageModal.vue'
-import { modelsApi, uploadApi } from '@/api'
+import { aiAssistantApi, modelsApi, uploadApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph.js'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
@@ -593,6 +593,32 @@ const removeTag = (index) => {
 const handleTagEnter = () => {
   addTag(tagInput.value)
 }
+
+const queueModelAIIndex = (modelId, payload) => {
+  aiAssistantApi.indexModel(modelId, {
+    model: {
+      title: payload.title,
+      description: payload.description,
+      category: payload.category,
+      tags: payload.tags || [],
+      authorId: payload.authorId,
+      fileUrl: payload.fileUrl,
+      thumbnailUrl: payload.thumbnailUrl,
+      previewUrls: payload.previewUrls || [],
+      shaderGraphJson: payload.shaderGraphJson
+    },
+    force_generate_description: true
+  })
+    .then(() => {
+      toastRef.value?.show('AI 知识库索引任务已在后台提交', 'info')
+    })
+    .catch((error) => {
+      const detail = error?.response?.data?.detail
+      console.error('AI 知识库索引任务提交失败', error)
+      toastRef.value?.show(`发布成功，但 AI 索引任务提交失败：${detail || error.message || '未知错误'}`, 'warning')
+    })
+}
+
 
 const resetForm = () => {
   form.title = ''
@@ -863,7 +889,13 @@ const handleSubmit = async () => {
       format: 'GLB (.glb)'
     }
 
-    await modelsApi.publish(payload)
+    const publishRes = await modelsApi.publish(payload)
+    const modelId = publishRes.data?.id || publishRes.data?.modelId
+
+    if (modelId) {
+      queueModelAIIndex(modelId, payload)
+    }
+
     toastRef.value?.show('发布成功，已同步到个人主页！', 'success')
     resetForm()
 
