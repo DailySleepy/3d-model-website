@@ -148,11 +148,28 @@ export const uploadApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
-  uploadModel: (file) => {
-    const form = new FormData()
-    form.append('file', file)
-    return api.post('/api/upload/model', form, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+  // uploadModel: (file) => {
+  //   const form = new FormData()
+  //   form.append('file', file)
+  //   return api.post('/api/upload/model', form, {
+  //     headers: { 'Content-Type': 'multipart/form-data' }
+  //   })
+  // },
+
+  initUpload: (fileMd5, fileName, fileSize, totalChunks) => {
+    return api.post('/api/upload/init', { fileMd5, fileName, fileSize, totalChunks })
+  },
+  uploadChunk: (formData, onProgress, cancelToken) => {
+    return api.post('/api/upload/chunk', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress,
+      cancelToken,
+      timeout: 0
+    })
+  },
+  mergeUpload: (uploadId) => {
+    return api.post('/api/upload/merge', { uploadId }, {
+      timeout: 0
     })
   }
 }
