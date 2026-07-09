@@ -11,10 +11,12 @@ from core.config import Settings
 from core.prompts import (
     ANSWER_SYSTEM_PROMPT,
     DESCRIPTION_SYSTEM_PROMPT,
+    QUERY_PARSE_SYSTEM_PROMPT,
     build_answer_user_prompt,
     build_description_prompt,
+    build_query_parse_prompt,
 )
-from schemas.ai import GeneratedDescription, ModelMetadata, ModelReference
+from schemas.ai import GeneratedDescription, ModelMetadata, ModelReference, QueryIntent
 
 
 class LlmClient:
@@ -162,6 +164,28 @@ class LlmClient:
             temperature=0.2,
         )
         return response.choices[0].message.content or "未生成有效回答。"
+
+    async def parse_query_intent(self, question: str) -> QueryIntent:
+        """调用对话模型把用户问题解析为结构化检索条件。"""
+
+        response = await self.chat_client.chat.completions.create(
+            model=self.settings.llm_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": QUERY_PARSE_SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": build_query_parse_prompt(question),
+                },
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+        )
+        content = response.choices[0].message.content or "{}"
+        data = json.loads(content)
+        return QueryIntent(**data)
 
 
 def _is_unsupported_vision_error(exc: BadRequestError) -> bool:

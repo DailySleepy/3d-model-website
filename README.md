@@ -52,6 +52,7 @@
 3d-model-website/
 ├── frontend/             # 基于 Vue 3 + Three.js + Tailwind CSS 的前端工程
 ├── backend/              # 基于 Spring Boot + MyBatis-Plus + PostgreSQL 的后端工程
+├── llm_backend/          # 基于 Fastapi + Pyvector的后端工程
 ├── docker-compose.yml    # 用于一键部署完整生产/演示环境的 Docker 配置文件
 └── README.md             # 项目自述文件
 ```
@@ -103,7 +104,8 @@ docker-compose up -d
 - **Node.js**：18.x 或以上版本
 - **JDK**：17 或以上版本
 - **Maven**：3.8.x 或以上版本
-- **PostgreSQL**：14.x 或以上版本
+- **PostgreSQL**：14.x 或以上版本，启用pgvector拓展
+- **uv**：管理Python 环境和依赖
 
 #### 后端服务配置与启动
 
@@ -133,3 +135,17 @@ docker-compose up -d
    npm run dev
    ```
    运行成功后，浏览器访问 `http://localhost:5173`。前端已配置 Vite 反向代理，请求将自动转发至后端的 `http://localhost:8080`。
+
+#### AI 后端配置与启动
+
+1. 进入 AI 后端目录并同步依赖：
+   ```bash
+   cd llm_backend
+   uv sync
+   ```
+2. 配置环境变量：将 `.env.example` 复制并命名为 `.env`，并在其中填入您实际的连接信息（密码等）。
+3. 启动 FastAPI 服务：
+   ```bash
+   uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
+   ```
+
