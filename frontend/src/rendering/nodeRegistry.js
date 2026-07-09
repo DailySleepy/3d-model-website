@@ -1,6 +1,8 @@
 import * as tsl from 'three/tsl'
 import * as THREE from 'three/webgpu'
 import {
+  getDimension,
+  getWgslType,
   getDefaultTexture,
   getSocketDefaultResult as rawGetSocketDefaultResult
 } from './registryUtils'
@@ -168,6 +170,46 @@ export const constantNodes = {
 
 // --- Geometry Nodes ---
 export const geometryNodes = {
+  'vertexColor': {
+    label: '顶点颜色 (vertexColor)',
+    category: 'GEOMETRY',
+    properties: {
+      index: {
+        type: 'int',
+        default: 0,
+        min: 0,
+        max: 8,
+        label: '索引'
+      }
+    },
+    inputs: [],
+    outputs: [
+      { id: 'out', defaultType: 'vec4' }
+    ],
+    inferType() { return 'vec4' },
+    compile: ({ nodeProps }) => tsl.vertexColor(nodeProps?.index ?? 0)
+  },
+  'attribute': {
+    label: '属性 (attribute)',
+    category: 'GEOMETRY',
+    properties: {
+      name: {
+        type: 'string',
+        options: (context) => context.availableAttributes || ['position', 'normal', 'uv'],
+        default: 'position',
+        label: '属性名称'
+      }
+    },
+    inputs: [],
+    outputs: [
+      { id: 'out', defaultType: 'vec4' }
+    ],
+    inferType() { return 'vec4' },
+    compile({ nodeProps }) {
+      const name = nodeProps?.name || 'color'
+      return tsl.attribute(name, 'vec4')
+    }
+  },
   'positionLocal': {
     label: '局部空间坐标 (positionLocal)',
     category: 'GEOMETRY',
@@ -287,8 +329,21 @@ export const geometryNodes = {
 
 // --- Vector Nodes ---
 export const vectorNodes = {
-  'combineVec3': {
-    label: '合并三维向量 (combineVec3)',
+  'vec2': {
+    label: '二维向量 (vec2)',
+    category: 'VECTOR',
+    inputs: [
+      { id: 'in-x', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-y', defaultType: 'float', defaultValue: 0.0 }
+    ],
+    outputs: [
+      { id: 'out', defaultType: 'vec2' }
+    ],
+    inferType() { return 'vec2' },
+    compile: ({ inputs }) => tsl.vec2(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'))
+  },
+  'vec3': {
+    label: '三维向量 (vec3)',
     category: 'VECTOR',
     inputs: [
       { id: 'in-x', defaultType: 'float', defaultValue: 0.0 },
@@ -301,25 +356,93 @@ export const vectorNodes = {
     inferType() { return 'vec3' },
     compile: ({ inputs }) => tsl.vec3(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'), inputs.compiledNode('in-z'))
   },
-  'splitVec3': {
-    label: '分解三维向量 (splitVec3)',
+  'vec4': {
+    label: '四维向量 (vec4)',
     category: 'VECTOR',
     inputs: [
-      { id: 'in', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0] }
+      { id: 'in-x', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-y', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-z', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-w', defaultType: 'float', defaultValue: 0.0 }
+    ],
+    outputs: [
+      { id: 'out', defaultType: 'vec4' }
+    ],
+    inferType() { return 'vec4' },
+    compile: ({ inputs }) => tsl.vec4(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'), inputs.compiledNode('in-z'), inputs.compiledNode('in-w'))
+  },
+  'swizzle': {
+    label: '分量重组 (swizzle)',
+    category: 'VECTOR',
+    properties: {
+      mask: {
+        type: 'string',
+        default: 'xyz',
+        label: '分量'
+      }
+    },
+    inputs: [
+      { id: 'in', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true }
+    ],
+    outputs: [
+      {
+        id: 'out',
+        defaultType: (properties) => {
+          const mask = (properties?.mask || 'xyz').trim()
+          const len = mask.length
+          if (len === 1) return 'float'
+          if (len === 2) return 'vec2'
+          if (len === 3) return 'vec3'
+          if (len === 4) return 'vec4'
+          return 'vec3'
+        },
+        isDynamic: true
+      }
+    ],
+    inferType({ nodeProps }) {
+      const mask = (nodeProps?.mask || 'xyz').trim()
+      const len = mask.length
+      if (len === 1) return 'float'
+      if (len === 2) return 'vec2'
+      if (len === 3) return 'vec3'
+      if (len === 4) return 'vec4'
+      return 'vec3'
+    },
+    compile({ nodeProps, inputs }) {
+      const val = inputs.compiledNode('in')
+      const mask = (nodeProps?.mask || 'xyz').trim()
+      if (!mask) return val
+      return val[mask] ?? val
+    }
+  },
+  'splitVec': {
+    label: '分解向量 (splitVec)',
+    category: 'VECTOR',
+    properties: {
+      type: {
+        options: ['vec2', 'vec3', 'vec4'],
+        default: 'vec3',
+        label: '向量类型'
+      }
+    },
+    inputs: [
+      { id: 'in', defaultType: (properties) => properties.type || 'vec3', defaultValue: [0.0, 0.0, 0.0], isDynamic: true }
     ],
     outputs: [
       { id: 'out-x', defaultType: 'float' },
       { id: 'out-y', defaultType: 'float' },
-      { id: 'out-z', defaultType: 'float' }
+      { id: 'out-z', defaultType: 'float', visible: (properties) => ['vec3', 'vec4'].includes(properties.type) },
+      { id: 'out-w', defaultType: 'float', visible: (properties) => properties.type === 'vec4' }
     ],
     inferType() { return 'float' },
     compile: ({ inputs, outputSocketId }) => {
-      const inputVec3 = inputs.compiledNode('in')
+      const inputVec = inputs.compiledNode('in')
       switch (outputSocketId) {
-        case 'out-x': return inputVec3.x
-        case 'out-y': return inputVec3.y
-        case 'out-z': return inputVec3.z
-        default: return inputVec3.x
+        case 'out-x': return inputVec.x
+        case 'out-y': return inputVec.y
+        case 'out-z': return inputVec.z
+        case 'out-w': return inputVec.w
+        default: return inputVec.x
       }
     }
   },
@@ -404,6 +527,54 @@ export const vectorNodes = {
     outputs: [{ id: 'out', defaultType: 'vec3', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-i') },
     compile: ({ inputs }) => tsl.refract(inputs.compiledNode('in-i'), inputs.compiledNode('in-n'), inputs.compiledNode('in-eta'))
+  },
+  'rotateUV': {
+    label: 'UV旋转 (rotateUV)',
+    category: 'VECTOR',
+    inputs: [
+      { id: 'uv', defaultType: 'uv' },
+      { id: 'rotation', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'center', defaultType: 'vec2', defaultValue: [0.5, 0.5] }
+    ],
+    outputs: [{ id: 'out', defaultType: 'vec2' }],
+    inferType() { return 'vec2' },
+    compile: ({ inputs }) => tsl.rotateUV(inputs.compiledNode('uv'), inputs.compiledNode('rotation'), inputs.compiledNode('center'))
+  },
+  'rotate': {
+    label: '空间旋转 (rotate)',
+    category: 'VECTOR',
+    properties: {
+      mode: {
+        options: ['2D', '3D'],
+        default: '3D',
+        label: '维度模式'
+      }
+    },
+    inputs: [
+      {
+        id: 'in-position',
+        defaultType: (properties) => properties.mode === '2D' ? 'vec2' : 'vec3',
+        defaultValue: (properties) => properties.mode === '2D' ? [0.0, 0.0] : [0.0, 0.0, 0.0],
+        isDynamic: true
+      },
+      {
+        id: 'in-rotation',
+        defaultType: (properties) => properties.mode === '2D' ? 'float' : 'vec3',
+        defaultValue: (properties) => properties.mode === '2D' ? 0.0 : [0.0, 0.0, 0.0],
+        isDynamic: true
+      }
+    ],
+    outputs: [
+      {
+        id: 'out',
+        defaultType: (properties) => properties.mode === '2D' ? 'vec2' : 'vec3',
+        isDynamic: true
+      }
+    ],
+    inferType({ nodeProps }) {
+      return nodeProps?.mode === '2D' ? 'vec2' : 'vec3'
+    },
+    compile: ({ inputs }) => tsl.rotate(inputs.compiledNode('in-position'), inputs.compiledNode('in-rotation'))
   },
 }
 
@@ -636,6 +807,22 @@ export const mathNodes = {
     outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
     inferType({ inputs }) { return inputs.type('in-a') },
     compile: ({ inputs }) => tsl.max(inputs.compiledNode('in-a'), inputs.compiledNode('in-b'))
+  },
+  'oneMinus': {
+    label: '一减 (oneMinus)',
+    category: 'MATH',
+    inputs: [{ id: 'in', defaultType: 'float', defaultValue: 1.0, isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float', isDynamic: true }],
+    inferType({ inputs }) { return inputs.type('in') || 'float' },
+    compile: ({ inputs }) => tsl.float(1.0).sub(inputs.compiledNode('in'))
+  },
+  'luminance': {
+    label: '亮度 (luminance)',
+    category: 'MATH',
+    inputs: [{ id: 'in-color', defaultType: 'vec3', defaultValue: [1.0, 1.0, 1.0], isDynamic: true }],
+    outputs: [{ id: 'out', defaultType: 'float' }],
+    inferType() { return 'float' },
+    compile: ({ inputs }) => tsl.dot(inputs.compiledNode('in-color'), tsl.vec3(0.299, 0.587, 0.114))
   },
 }
 
@@ -902,6 +1089,78 @@ export const advancedNodes = {
       return min.add(tsl.hash(seed).mul(range))
     }
   },
+  'fresnel': {
+    label: '菲涅尔 (fresnel)',
+    category: 'ADVANCED',
+    inputs: [
+      { id: 'normal', defaultType: 'normalWorld' },
+      { id: 'viewDir', defaultType: 'viewDir' },
+      { id: 'power', defaultType: 'float', defaultValue: 5.0 }
+    ],
+    outputs: [{ id: 'out', defaultType: 'float' }],
+    inferType() { return 'float' },
+    compile: ({ inputs }) => {
+      const n = inputs.compiledNode('normal')
+      const v = inputs.compiledNode('viewDir')
+      const p = inputs.compiledNode('power')
+      return tsl.pow(tsl.float(1.0).sub(tsl.dot(n, v).saturate()), p)
+    }
+  },
+  'noise': {
+    label: '噪声 (noise)',
+    category: 'ADVANCED',
+    properties: {
+      noiseType: {
+        options: ['float', 'vec3', 'vec4'],
+        default: 'float',
+        label: '噪波通道'
+      }
+    },
+    inputs: [
+      {
+        id: 'coord',
+        defaultType: 'vec2',
+        defaultValue: [0.0, 0.0],
+        isDynamic: true
+      },
+      { id: 'scale', defaultType: 'float', defaultValue: 5.0 },
+      { id: 'amplitude', defaultType: 'float', defaultValue: 1.0 }
+    ],
+    outputs: [
+      {
+        id: 'out',
+        defaultType: (properties) => properties.noiseType || 'float',
+        isDynamic: true
+      }
+    ],
+    inferType({ nodeProps }) {
+      return nodeProps?.noiseType || 'float'
+    },
+    compile({ nodeProps, inputs }) {
+      let uv = inputs.compiledNode('coord')
+      const scale = inputs.compiledNode('scale')
+      const amplitude = inputs.compiledNode('amplitude')
+      const type = nodeProps?.noiseType || 'float'
+
+      const coordType = inputs.type('coord')
+      if (coordType === 'float') { // TODO: 编译器报错
+        uv = tsl.vec2(uv, 0.0)
+      }
+
+      const scaledUv = uv.mul(scale)
+
+      let noiseNode
+      if (type === 'vec3') {
+        noiseNode = tsl.mx_noise_vec3(scaledUv)
+      } else if (type === 'vec4') {
+        noiseNode = tsl.mx_noise_vec4(scaledUv)
+      } else {
+        noiseNode = tsl.mx_noise_float(scaledUv)
+      }
+
+      return noiseNode.mul(amplitude)
+    }
+  },
 }
 
 // --- Custom Nodes ---
@@ -954,6 +1213,48 @@ export const customNodes = {
   }
 }
 
+// --- Legacy Nodes ---
+export const legacyNodes = {
+  'combineVec3': {
+    label: '合并三维向量 (combineVec3)',
+    category: 'VECTOR',
+    hidden: true,
+    inputs: [
+      { id: 'in-x', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-y', defaultType: 'float', defaultValue: 0.0 },
+      { id: 'in-z', defaultType: 'float', defaultValue: 0.0 }
+    ],
+    outputs: [
+      { id: 'out', defaultType: 'vec3' }
+    ],
+    inferType() { return 'vec3' },
+    compile: ({ inputs }) => tsl.vec3(inputs.compiledNode('in-x'), inputs.compiledNode('in-y'), inputs.compiledNode('in-z'))
+  },
+  'splitVec3': {
+    label: '分解三维向量 (splitVec3)',
+    category: 'VECTOR',
+    hidden: true,
+    inputs: [
+      { id: 'in', defaultType: 'vec3', defaultValue: [0.0, 0.0, 0.0] }
+    ],
+    outputs: [
+      { id: 'out-x', defaultType: 'float' },
+      { id: 'out-y', defaultType: 'float' },
+      { id: 'out-z', defaultType: 'float' }
+    ],
+    inferType() { return 'float' },
+    compile: ({ inputs, outputSocketId }) => {
+      const inputVec3 = inputs.compiledNode('in')
+      switch (outputSocketId) {
+        case 'out-x': return inputVec3.x
+        case 'out-y': return inputVec3.y
+        case 'out-z': return inputVec3.z
+        default: return inputVec3.x
+      }
+    }
+  }
+}
+
 // --- Registry ---
 export const nodeRegistry = {
   ...outputNodes,
@@ -962,9 +1263,11 @@ export const nodeRegistry = {
   ...vectorNodes,
   ...mathNodes,
   ...advancedNodes,
-  ...customNodes
+  ...customNodes,
+  ...legacyNodes
 }
 
 export function getNodeRegistryKeys() {
   return Object.keys(nodeRegistry)
 }
+

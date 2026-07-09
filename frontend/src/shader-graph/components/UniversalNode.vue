@@ -32,12 +32,12 @@
           <span class="text-zinc-400 font-medium select-none">{{ property.label || key }}</span>
 
           <select
-            v-if="property.options"
+            v-if="getPropertyOptions(property).length > 0"
             :value="data.properties?.[key] ?? property.default"
             @change="e => onPropertyChange(key, e.target.value)"
             class="node-input-control nodrag bg-zinc-950 border border-zinc-800 text-zinc-200 rounded px-2 text-[10px] focus:outline-none focus:border-[var(--theme-color)] cursor-pointer"
           >
-            <option v-for="opt in property.options" :key="opt" :value="opt">
+            <option v-for="opt in getPropertyOptions(property)" :key="opt" :value="opt">
               {{ opt }}
             </option>
           </select>
@@ -47,6 +47,16 @@
             :modelValue="data.properties?.[key] ?? property.default"
             @update:modelValue="val => onPropertyChange(key, val)"
             :step="getStepSize(property)"
+            :min="property.min"
+            :max="property.max"
+            :theme-color="theme.color"
+            class="node-input-control"
+          />
+
+          <StringInput
+            v-else-if="property.type === 'string'"
+            :modelValue="data.properties?.[key] ?? property.default"
+            @update:modelValue="val => onPropertyChange(key, val)"
             :theme-color="theme.color"
             class="node-input-control"
           />
@@ -62,7 +72,7 @@
           type="target"
           :id="input.id"
           :position="Position.Left"
-          :style="{ background: getSocketColor(input) }"
+          :style="{ background: getSocketColorUtil({ type: props.type, data: props.data }, input.id, true) }"
           class="!w-2 !h-2 !border-0 !left-[-4px] !top-1/2 !-translate-y-1/2 cursor-crosshair handle-hitbox !z-10"
         />
         <span class="text-zinc-400 font-mono font-semibold text-[14px] h-4 flex items-center select-none">{{ input.id }}</span>
@@ -72,6 +82,8 @@
           :modelValue="data.inputs?.[input.id] ?? input.defaultValue ?? 0"
           @update:modelValue="val => onInputChange(input.id, val)"
           :step="getStepSize(input)"
+          :min="input.min"
+          :max="input.max"
           :theme-color="theme.color"
           class="node-input-control"
         />
@@ -84,7 +96,7 @@
           type="source"
           :id="output.id"
           :position="Position.Right"
-          :style="{ background: getSocketColor(output) }"
+          :style="{ background: getSocketColorUtil({ type: props.type, data: props.data }, output.id, false) }"
           class="!w-2 !h-2 !border-0 !right-[-4px] !top-1/2 !-translate-y-1/2 cursor-crosshair handle-hitbox !z-10"
         />
       </div>
@@ -95,10 +107,12 @@
 <script setup>
 import { computed, inject, onUnmounted } from 'vue';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
-import { getDimension, nodeRegistry } from '@/rendering/nodeRegistry';
+import { nodeRegistry } from '@/rendering/nodeRegistry';
 import { useShaderGraphStore } from '../stores/shaderGraph.js';
+import { getSocketColor as getSocketColorUtil } from '../utils/socketHelper.js';
 
 import NumberDragInput from './NumberDragInput.vue';
+import StringInput from './StringInput.vue';
 import ColorNodePatch from './NodePatches/ColorNodePatch.vue';
 import CustomNodePatch from './NodePatches/CustomNodePatch.vue';
 import TextureSampleNodePatch from './NodePatches/TextureSampleNodePatch.vue';
@@ -168,7 +182,7 @@ const shouldShowDrag = (config, socketId) => {
 
   if (socketId === undefined) return true // 如果是 properties, 到这里就可以直接放行了
 
-  const isConnected = store.inputSocketsAcitveMap.get(props.id)?.has(socketId) ?? false
+  const isConnected = store.inputEdgesLUT.has(`${props.id}_${socketId}`)
   return !isConnected // 需要插槽未连接
 }
 
@@ -180,22 +194,14 @@ const getStepSize = (config) => {
   return type === 'int' ? 1 : 0.1
 }
 
-const getSocketColor = (socket) => {
-  if (socket.isDynamic) {
-    return '#c084fc' // 动态维度: 亮紫色
+const getPropertyOptions = (property) => {
+  if (!property.options) return []
+  if (typeof property.options === 'function') {
+    return property.options({
+      availableAttributes: store.availableAttributes
+    })
   }
-  let type = socket.defaultType || 'float'
-  if (typeof type === 'function') {
-    type = type(props.data.properties || {})
-  }
-  const dim = getDimension(type)
-  const colors = {
-    1: '#2aff82', // 绿
-    2: '#33b5ff', // 蓝
-    3: '#ffea00', // 黄
-    4: '#ff33aa'  // 粉
-  }
-  return colors[dim] || '#a1a1aa' // 错误: 灰
+  return property.options
 }
 
 const onPropertyChange = (key, val) => {

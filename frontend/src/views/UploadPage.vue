@@ -530,6 +530,22 @@ const updateCategory = () => {
   }
 }
 
+// 在首次渲染前同步初始化 model URL，确保 ModelViewer 挂载时 props 已稳定，避免 watch 二次触发引擎启动
+;(() => {
+  const pData = shaderGraphStore.publishData
+  if (!pData) return
+  if (pData.customModelFile) {
+    uploads.model.tempBlobUrl = URL.createObjectURL(pData.customModelFile)
+    uploads.model.filename = pData.customModelFile.name
+  } else if (pData.customModelUrl?.startsWith('blob:')) {
+    uploads.model.tempBlobUrl = pData.customModelUrl
+  } else if (pData.customModelUrl) {
+    const url = pData.customModelUrl
+    uploads.model = { tempBlobUrl: '', url, filename: url.substring(url.lastIndexOf('/') + 1) || 'model.glb' }
+  }
+  updateCategory()
+})()
+
 const dataURItoBlob = (dataURI) => {
   const byteString = atob(dataURI.split(',')[1])
   const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
@@ -761,9 +777,10 @@ const uploadAndPreviewModelFile = async (file, isAutoUpload = false) => {
   uploading.model = true
   resetAlert('model')
 
-  // 生成并设定本地临时预览 Blob URL 从而立刻加载且不闪烁
-  const tempBlobUrl = URL.createObjectURL(file)
-  uploads.model.tempBlobUrl = tempBlobUrl
+  // 若 blob URL 已在 setup 阶段同步创建则复用，避免重新创建导致 ModelViewer props 变化再次触发 watch
+  if (!uploads.model.tempBlobUrl) {
+    uploads.model.tempBlobUrl = URL.createObjectURL(file)
+  }
   uploads.model.url = ''
   uploads.model.filename = file.name
   updateCategory()
@@ -1042,7 +1059,8 @@ onBeforeRouteLeave(async (to, from) => {
     // 暂存表单状态，防止跳转回来后数据丢失
     shaderGraphStore.uploadPageState = {
       form: { ...form },
-      uploads: { ...uploads }
+      uploads: { ...uploads },
+      hasDirtyForm: hasUnsavedChanges.value
     }
 
     // 如果已有上传的自定义模型，直接回填进 Store 以便 Graph 画布载入该模型渲染 (优先使用 tempBlobUrl 保证本地瞬时无网络开销载入)

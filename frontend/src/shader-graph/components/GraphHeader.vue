@@ -1,15 +1,15 @@
 <template>
   <header class="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-6 z-20 shrink-0">
     <div class="flex items-center gap-3">
-      <!-- 返回主页 -->
-      <router-link to="/"
+      <!-- 返回 -->
+      <button @click="handleBack"
         class="group flex items-center justify-center w-10 h-10 rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all duration-150 cursor-pointer"
-        title="返回主页">
+        title="返回">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"
           class="w-5 h-5 transition-transform duration-150 group-hover:-translate-x-0.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
-      </router-link>
+      </button>
 
       <!-- 标签页切换 -->
       <div class="flex items-center gap-1 p-1 bg-zinc-950 rounded-lg border border-zinc-800 shrink-0">
@@ -93,7 +93,7 @@
                 v-model="store.particleCount"
                 @update:modelValue="store.onParticleCountChange"
                 :min="1"
-                :max="10000"
+                :max="200000"
                 :step="1"
                 class="w-24 h-5"
               />
@@ -148,6 +148,18 @@
           </button>
         </template>
       </Popover>
+
+      <!-- 使用手册 -->
+      <button
+        @click="store.showUserGuide = true"
+        class="px-3 py-1 bg-zinc-950 border border-zinc-800 hover:bg-zinc-900 text-zinc-300 hover:text-white rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer shadow-sm h-full"
+        title="查看 ShaderGraph 操作指南"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-zinc-400">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+        </svg>
+        <span>使用手册</span>
+      </button>
 
       <!-- 导入 / 导出 -->
       <Popover panelClass="w-60 p-1.5">
@@ -209,6 +221,14 @@ import NumberDragInput from './NumberDragInput.vue'
 
 const store = useShaderGraphStore()
 const router = useRouter()
+
+const handleBack = () => {
+  if (window.history.state && window.history.state.back) {
+    router.back()
+  } else {
+    router.push('/')
+  }
+}
 
 const { handleImportFile, handleExportFile } = useGraphIO()
 

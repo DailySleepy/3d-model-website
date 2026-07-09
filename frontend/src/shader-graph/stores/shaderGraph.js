@@ -4,7 +4,9 @@ import { ShaderGraphEngine } from "@/rendering/engine";
 import { createNode } from '../utils/nodeFactory';
 import { remapAndRepositionGraph, generateBaseExportData, getUsedTextures } from '../utils/graphIO';
 import { loadThreeTexture } from '@/rendering/utils';
-import * as THREE from 'three/webgpu';
+import { useLoadingProgress } from '@/composables/useLoadingProgress.js';
+import { nodeRegistry } from '@/rendering/nodeRegistry';
+import { getDefaultValueForType } from '@/rendering/registryUtils';
 
 export const useShaderGraphStore = defineStore('shaderGraph', () => {
   // ----------------------------------------
@@ -18,6 +20,11 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const customModelFile = ref(null)
   const customTextures = ref([])
   const isDirty = ref(false)
+  const hasTempEdge = ref(false)
+
+  const availableAttributes = ref(['position', 'normal', 'uv'])
+
+  const showUserGuide = ref(false)
   const showFPS = ref(false)
   const fps = ref(0)
   const frameMs = ref(0)
@@ -40,6 +47,15 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     simulation: { past: [], future: [] }
   })
   const maxHistoryDepth = 50
+
+  const {
+    isLoading,
+    loadingProgress,
+    targetProgress,
+    startProgressAnimation,
+    stopProgressAnimation,
+    waitProgressComplete
+  } = useLoadingProgress()
 
   // ----------------------------------------
   // Getters
@@ -66,21 +82,44 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   })
 
-  const socketsAcitveMap = computed(() => {
-    const iMap = new Map()
-    const oMap = new Map()
+  const graphTopology = computed(() => {
+    const iEdgeLut = new Map() // target 方向 (input): targetNodeId_targetHandleId -> Edge
+    const oEdgeLut = new Map() // source 方向 (output): sourceNodeId_sourceHandleId -> Edge[]
+    const adjList = new Map() // 节点级前向有向边邻接表: nodeId -> nodeId[]
 
     currentEdges.value.forEach(edge => {
-      if (!iMap.get(edge.target)) iMap.set(edge.target, new Set())
-      iMap.get(edge.target).add(edge.targetHandle)
+      if (edge.isTemp) return
 
-      if (!oMap.get(edge.source)) oMap.set(edge.source, new Set())
-      oMap.get(edge.source).add(edge.sourceHandle)
+      // 输入是单一的，可以直接映射到具体 Edge
+      iEdgeLut.set(`${edge.target}_${edge.targetHandle}`, edge)
+
+      // 输出是分叉多出的，映射到 Edge 数组
+      const outKey = `${edge.source}_${edge.sourceHandle}`
+      if (!oEdgeLut.has(outKey)) oEdgeLut.set(outKey, [])
+      oEdgeLut.get(outKey).push(edge)
+
+      // 邻接表
+      if (!adjList.has(edge.source)) {
+        adjList.set(edge.source, [])
+      }
+      const targets = adjList.get(edge.source)
+      if (!targets.includes(edge.target)) {
+        targets.push(edge.target)
+      }
     })
-    return { iMap, oMap }
+    return { iEdgeLut, oEdgeLut, adjList }
   })
-  const inputSocketsAcitveMap = computed(() => socketsAcitveMap.value.iMap)
-  const outputSocketsAcitveMap = computed(() => socketsAcitveMap.value.oMap)
+  const inputEdgesLUT = computed(() => graphTopology.value.iEdgeLut)
+  const outputEdgesLUT = computed(() => graphTopology.value.oEdgeLut)
+  const adjacencyList = computed(() => graphTopology.value.adjList)
+
+  const nodesLUT = computed(() => {
+    const map = new Map()
+    currentNodes.value.forEach(node => {
+      map.set(node.id, node)
+    })
+    return map
+  })
 
   // ----------------------------------------
   // Actions: Nodes And Graph / Undo-Redo
@@ -186,6 +225,12 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     if (!connection) return
     takeSnapshot()
 
+    // 连接到输入插槽后断开这个输入插槽原来的连接 (先检查输入插槽原本是否存在连线)
+    const existingEdge = inputEdgesLUT.value.get(`${connection.target}_${connection.targetHandle}`)
+    if (existingEdge) {
+      currentEdges.value = currentEdges.value.filter(e => e.id !== existingEdge.id)
+    }
+
     const newEdge = {
       id: `vueflow__edge-${connection.source}${connection.sourceHandle || ''}-${connection.target}${connection.targetHandle || ''}`,
       source: connection.source,
@@ -260,7 +305,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   let snapShotTimeout = null
 
   const updateNodeData = (nodeId, newData) => {
-    const node = currentNodes.value.find((n) => n.id == nodeId)
+    const node = nodesLUT.value.get(nodeId)
     if (!node) return
 
     if (canTakeSnapshot) {
@@ -268,7 +313,36 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       canTakeSnapshot = false
     }
 
-    if (newData.properties) Object.assign(node.data.properties, newData.properties)
+    if (newData.properties) {
+      const nodeConfig = nodeRegistry[node.type]
+      if (nodeConfig && nodeConfig.inputs) {
+        const oldProps = { ...node.data.properties }
+        const newProps = { ...node.data.properties, ...newData.properties }
+
+        nodeConfig.inputs.forEach(input => {
+          if (typeof input.defaultType === 'function') {
+            const oldType = input.defaultType(oldProps)
+            const newType = input.defaultType(newProps)
+
+            // 如果动态计算出来的类型不同，重置或强转其在 inputs 里的缓存值
+            if (oldType !== newType) {
+              let defaultVal = typeof input.defaultValue === 'function'
+                ? input.defaultValue(newProps)
+                : input.defaultValue
+
+              if (defaultVal === undefined) {
+                defaultVal = getDefaultValueForType(newType)
+              }
+
+              if (node.data.inputs) {
+                node.data.inputs[input.id] = defaultVal
+              }
+            }
+          }
+        })
+      }
+      Object.assign(node.data.properties, newData.properties)
+    }
     if (newData.inputs) Object.assign(node.data.inputs, newData.inputs)
 
     compileActiveTab() // TODO: 只修改值时不重编译, 而是设置 uniform
@@ -300,6 +374,9 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   const initEngineInstance = async () => {
     if (renderingContainer.value) {
       engineInstance = new ShaderGraphEngine();
+      engineInstance.onAttributesSync = (attrs) => {
+        setAvailableAttributes(attrs)
+      }
       engineInstance.fpsCallback = ({ fps: calculatedFps, ms: averageMs }) => {
         fps.value = calculatedFps
         frameMs.value = averageMs
@@ -352,13 +429,19 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
   const compileMaterial = () => {
     if (engineInstance) {
-      engineInstance.compileMaterial(matNodes.value, matEdges.value, getTexturesMap())
+      const realEdges = hasTempEdge.value
+        ? matEdges.value.filter(e => !e.isTemp)
+        : matEdges.value
+      engineInstance.compileMaterial(matNodes.value, realEdges, getTexturesMap())
     }
   }
 
   const compileSimulation = () => {
     if (engineInstance) {
-      engineInstance.compileSimulation(simNodes.value, simEdges.value, getTexturesMap())
+      const realEdges = hasTempEdge.value
+        ? simEdges.value.filter(e => !e.isTemp)
+        : simEdges.value
+      engineInstance.compileSimulation(simNodes.value, realEdges, getTexturesMap())
     }
   }
 
@@ -411,13 +494,49 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }, 50)
   }
 
-  const onGeometryChange = async (shouldCompile = true) => {
+  const insertNodeOnEdge = (nodeId, edgeId, inSlotId, outSlotId) => {
+    const edge = currentEdges.value.find(e => e.id === edgeId)
+    if (!edge) return
+
+    takeSnapshot()
+
+    const originalSource = edge.source
+    const originalSourceHandle = edge.sourceHandle
+    const originalTarget = edge.target
+    const originalTargetHandle = edge.targetHandle
+
+    // 1. 删除原有的 edge
+    currentEdges.value = currentEdges.value.filter(e => e.id !== edgeId)
+
+    // 2. 添加新边 1: originalSource -> nodeId(inSlotId)
+    const newEdge1 = {
+      id: `vueflow__edge-${originalSource}${originalSourceHandle || ''}-${nodeId}${inSlotId}`,
+      source: originalSource,
+      sourceHandle: originalSourceHandle,
+      target: nodeId,
+      targetHandle: inSlotId
+    }
+
+    // 3. 添加新边 2: nodeId(outSlotId) -> originalTarget
+    const newEdge2 = {
+      id: `vueflow__edge-${nodeId}${outSlotId}-${originalTarget}${originalTargetHandle || ''}`,
+      source: nodeId,
+      sourceHandle: outSlotId,
+      target: originalTarget,
+      targetHandle: originalTargetHandle
+    }
+
+    currentEdges.value = [...currentEdges.value, newEdge1, newEdge2]
+    compileActiveTab()
+  }
+
+  const onGeometryChange = async (shouldCompile = true, onProgress = null) => {
     if (!engineInstance || isUpdating) return
     if (selectedGeometry.value === 'custom' && customModelUrl.value === null) return
 
     try {
       isUpdating = true
-      await engineInstance.updateGeometry(selectedGeometry.value, customModelUrl.value)
+      await engineInstance.updateGeometry(selectedGeometry.value, customModelUrl.value, onProgress)
       if (shouldCompile) {
         compileMaterial()
         if (enableSimulation.value) {
@@ -442,7 +561,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     await onGeometryChange(shouldCompile)
   }
 
-  const onParticleCountChange = async (shouldCompile = true) => {
+  const onParticleCountChange = async (shouldCompile = true, onProgress = null) => {
     if (!engineInstance || isUpdating) return
 
     try {
@@ -452,7 +571,8 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
         shouldCompile ? simNodes.value : null,
         shouldCompile ? simEdges.value : null,
         shouldCompile ? matNodes.value : null,
-        shouldCompile ? matEdges.value : null
+        shouldCompile ? matEdges.value : null,
+        onProgress
       )
       isDirty.value = true
     } finally {
@@ -500,7 +620,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
    * @param {ProjectSettings} settings - 全局项目设置对象
    * @param {boolean} [shouldCompile=true] - 是否自动重新编译节点图
    */
-  const updateProjectSettings = async (settings = {}, shouldCompile = true) => {
+  const updateProjectSettings = async (settings = {}, shouldCompile = true, onProgress = null) => {
     let modeChanged = false
     let geometryChanged = false
     let particleCountChanged = false
@@ -531,9 +651,9 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     if (engineInstance) {
       if (particleCountChanged) {
         // onParticleCountChange 内部会自动执行 updateGeometry (onGeometryChange)
-        await onParticleCountChange(shouldCompile)
+        await onParticleCountChange(shouldCompile, onProgress)
       } else if (modeChanged || geometryChanged) {
-        await onGeometryChange(shouldCompile)
+        await onGeometryChange(shouldCompile, onProgress)
       }
     }
   }
@@ -550,15 +670,21 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
-  const backendBase = import.meta.env.VITE_API_BASE_URL || ''
-  const buildUrl = (url) => {
-    if (!url) return ''
-    if (url.startsWith('http')) return url
-    return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`
+  let currentLoadId = 0
+
+  const cancelLoading = () => {
+    currentLoadId++
+    stopProgressAnimation()
+    isLoading.value = false
+    clearGraphState()
   }
+
 
   const loadForkData = async () => {
     if (!forkData.value) return
+    currentLoadId++
+    const loadId = currentLoadId
+
     const currentForkData = forkData.value
     forkData.value = null
     const { shaderGraphJson, fileUrl } = currentForkData
@@ -573,43 +699,62 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       }
     }
 
+    const handleModelProgress = (xhr) => {
+      if (loadId !== currentLoadId) return
+      if (xhr.total > 0) {
+        targetProgress.value = Math.min(60, Math.floor((xhr.loaded / xhr.total) * 60))
+      }
+    }
+
     if (fileUrl) {
       customModelUrl.value = buildUrl(fileUrl)
 
       if (!parsedData) {
         selectedGeometry.value = 'custom'
-        await onGeometryChange(false)
+        await onGeometryChange(false, handleModelProgress)
+        if (loadId !== currentLoadId) return
       }
     }
 
     // 1. 加载全局配置
     if (parsedData) {
       const projectSettings = parsedData.projectSettings || {}
-      await updateProjectSettings(projectSettings, false)
+      await updateProjectSettings(projectSettings, false, handleModelProgress)
+      if (loadId !== currentLoadId) return
     }
+    targetProgress.value = 60
 
     // 2. 下载自定义贴图
     if (parsedData) {
       const assets = parsedData.assets || {}
       const texturesMeta = assets.customTextures
       if (texturesMeta && texturesMeta.length > 0) {
+        let loaded = 0
+        const total = texturesMeta.length
         const loadPromises = texturesMeta.map(async (texMeta) => {
-          const exists = customTextures.value.some(t => t.id === texMeta.id)
-          if (exists) return
+          try {
+            const exists = customTextures.value.some(t => t.id === texMeta.id)
+            if (exists) return
 
-          const texUrl = texMeta.path
-          if (texUrl) {
-            try {
+            const texUrl = texMeta.path
+            if (texUrl) {
               const resolvedUrl = buildUrl(texUrl)
               await addCustomTextureFromUrl(resolvedUrl, texMeta.name, texMeta.id, false)
-            } catch (err) {
-              console.error("加载 fork 贴图失败:", texMeta, err)
+            }
+          } catch (err) {
+            console.error("加载 fork 贴图失败:", texMeta, err)
+          } finally {
+            loaded++
+            if (loadId === currentLoadId) {
+              targetProgress.value = Math.min(90, Math.floor(60 + (loaded / total) * 30))
             }
           }
         })
         await Promise.all(loadPromises)
+        if (loadId !== currentLoadId) return
       }
     }
+    targetProgress.value = 90
 
     // 3. 载入节点与连线数据, 通过 nextTick 延迟载入连线 (此时 vue-flow 组件初次挂载)
     if (parsedData && parsedData.graphs) {
@@ -627,6 +772,8 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       }
 
       await nextTick()
+      if (loadId !== currentLoadId) return
+
       if (graphs.material) {
         matEdges.value = graphs.material.edges || []
       }
@@ -683,6 +830,10 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   }
 
   const clearGraphState = () => {
+    currentLoadId++
+    isUpdating = false
+    loadingProgress.value = 0
+    stopProgressAnimation()
     clearBlobResources()
 
     customTextures.value.forEach(tex => {
@@ -710,23 +861,41 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       material: { past: [], future: [] },
       simulation: { past: [], future: [] }
     }
+    availableAttributes.value = ['position', 'normal', 'uv']
     isDirty.value = false
+  }
+
+  const setAvailableAttributes = (attrs) => {
+    if (Array.isArray(attrs) && attrs.length > 0) {
+      availableAttributes.value = attrs
+    } else {
+      availableAttributes.value = ['position', 'normal', 'uv']
+    }
   }
 
   return {
     activeTab, isMat, enableSimulation, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures,
-    publishData, forkData, uploadPageState, isDirty, showFPS, fps, frameMs,
+    publishData, forkData, uploadPageState, isDirty, showFPS, showUserGuide, fps, frameMs, availableAttributes,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
-    inputSocketsAcitveMap, outputSocketsAcitveMap,
+    inputEdgesLUT, outputEdgesLUT, nodesLUT, adjacencyList,
     historyState, takeSnapshot, undo, redo, addNode, removeElements, cloneSubgraph, addConnection, removeEdge, applyGraphData,
     updateNodeData, getSelectedSubgraph, fitCanvasView,
     initEngineInstance, destroyEngineInstance, compileActiveTab, compileMaterial, compileSimulation,
+    hasTempEdge, insertNodeOnEdge,
     onGeometryChange, onCustomModelUpload, onParticleCountChange, onParticleReset, onCameraReset, toggleSimulationMode, updateProjectSettings, onGraphResize,
     addCustomTextureFromFile, addCustomTextureFromBlob, addCustomTextureFromUrl, loadForkData, clearGraphState, updatePublishData,
-    clearBlobResources, showToast
+    isLoading, loadingProgress, targetProgress, startProgressAnimation, stopProgressAnimation, waitProgressComplete, cancelLoading,
+    clearBlobResources, showToast, setAvailableAttributes
   }
 })
+
+const backendBase = import.meta.env.VITE_API_BASE_URL || ''
+const buildUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`
+}
 
 if (import.meta.hot) {
   import.meta.hot.accept(acceptHMRUpdate(useShaderGraphStore, import.meta.hot))

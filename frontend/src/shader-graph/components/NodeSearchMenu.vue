@@ -1,42 +1,40 @@
 <template>
-  <Transition name="fade-scale">
-    <div
-      ref="menuRef"
-      class="absolute bg-zinc-900/95 border border-zinc-800 rounded-xl p-2 w-56 z-50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md"
-      :style="{ left: `${searchMenu.x}px`, top: `${searchMenu.y}px` }"
-      @click.stop
+  <div
+    ref="menuRef"
+    class="absolute bg-zinc-900/95 border border-zinc-800 rounded-xl p-2 w-56 z-50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md"
+    :style="{ left: `${searchMenu.x}px`, top: `${searchMenu.y}px` }"
+    @click.stop
+  >
+    <input
+      type="text"
+      ref="searchInputRef"
+      v-model="searchQuery"
+      @keydown.esc.prevent="emit('close')"
+      @keydown.enter.prevent="confirmSelect"
+      @keydown.up.prevent="moveActive(-1)"
+      @keydown.down.prevent="moveActive(1)"
+      placeholder="搜索节点..."
+      class="w-full bg-zinc-950 border border-zinc-800 text-white rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
     >
-      <input
-        type="text"
-        ref="searchInputRef"
-        v-model="searchQuery"
-        @keydown.esc.prevent="emit('close')"
-        @keydown.enter.prevent="confirmSelect"
-        @keydown.up.prevent="moveActive(-1)"
-        @keydown.down.prevent="moveActive(1)"
-        placeholder="搜索节点..."
-        class="w-full bg-zinc-950 border border-zinc-800 text-white rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+
+    <div class="relative mt-1.5 max-h-48 overflow-y-auto flex flex-col gap-0.5 scrollbar-thin" ref="listContainerRef">
+      <button
+        v-for="(node, index) in filteredSearchNodes"
+        :key="node.type"
+        @click="spawnNodeAndClose(node.type)"
+        :class="[
+          'w-full text-left px-2 py-1 text-[11px] rounded truncate shrink-0',
+          activeSearchIndex === index ? 'bg-indigo-600 text-white font-medium' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+        ]"
       >
+        {{ node.label }}
+      </button>
 
-      <div class="relative mt-1.5 max-h-48 overflow-y-auto flex flex-col gap-0.5 scrollbar-thin" ref="listContainerRef">
-        <button
-          v-for="(node, index) in filteredSearchNodes"
-          :key="node.type"
-          @click="spawnNodeAndClose(node.type)"
-          :class="[
-            'w-full text-left px-2 py-1 text-[11px] rounded truncate shrink-0',
-            activeSearchIndex === index ? 'bg-indigo-600 text-white font-medium' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-          ]"
-        >
-          {{ node.label }}
-        </button>
-
-        <div v-if="filteredSearchNodes.length === 0" class="text-zinc-500 text-[10px] text-center py-2">
-          未找到匹配的节点
-        </div>
+      <div v-if="filteredSearchNodes.length === 0" class="text-zinc-500 text-[10px] text-center py-2">
+        未找到匹配的节点
       </div>
     </div>
-  </Transition>
+  </div>
 </template>
 
 <script setup>
@@ -78,7 +76,7 @@ const generatePinyinSearchStr = (label) => {
 }
 
 const allAvailableNodes = Object.entries(nodeRegistry)
-  .filter(([, config]) => config.category !== 'OUTPUT')
+  .filter(([, config]) => config.category !== 'OUTPUT' && !config.hidden)
   .map(([type, config]) => ({
     type,
     label: config.label || type,
@@ -139,15 +137,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.fade-scale-enter-active,
-.fade-scale-leave-active {
-  transition: all 0.12s ease-out;
-}
-.fade-scale-enter-from,
-.fade-scale-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
-}
 .scrollbar-thin::-webkit-scrollbar { width: 4px; }
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: #27272a; border-radius: 2px; }

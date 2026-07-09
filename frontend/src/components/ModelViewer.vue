@@ -1,19 +1,7 @@
 <template>
   <div ref="container" class="w-full h-full model-viewer-container relative">
 
-    <div v-if="isLoading" class="absolute inset-0 bg-[radial-gradient(circle,#303030,#121212)] flex flex-col justify-center items-center z-[999]">
-      <div class="relative w-[120px] h-[120px] flex justify-center items-center">
-        <svg class="-rotate-90" width="120" height="120">
-          <circle class="stroke-white/10" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
-          <circle class="stroke-cyan-400 transition-[stroke-dashoffset] duration-150 ease-out"
-            stroke-width="8" fill="transparent" r="50" cx="60" cy="60"
-            stroke-dasharray="314.16"
-            :stroke-dashoffset="314.16 * (1 - loadingProgress / 100)"/>
-        </svg>
-        <span class="absolute text-xl font-semibold text-white">{{ loadingProgress }}%</span>
-      </div>
-      <div class="mt-4 text-sm text-zinc-400 uppercase tracking-widest">loading</div>
-    </div>
+    <LoadingMask :visible="isLoading" :progress="loadingProgress" text="loading" />
 
   </div>
 </template>
@@ -23,6 +11,8 @@ import { ShaderGraphEngine } from '@/rendering/engine.js'
 import { useShaderGraphStore } from '@/shader-graph/stores/shaderGraph.js'
 import { loadThreeTexture } from '@/rendering/utils.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { useLoadingProgress } from '@/composables/useLoadingProgress.js'
+import LoadingMask from '@/components/LoadingMask.vue'
 
 const props = defineProps({
   modelUrl: {
@@ -47,8 +37,14 @@ const shaderGraphStore = useShaderGraphStore()
 /** @type {ShaderGraphEngine} */
 let shaderGraphEngine = null
 
-const isLoading = ref(false)
-const loadingProgress = ref(0)
+const {
+  isLoading,
+  loadingProgress,
+  targetProgress,
+  startProgressAnimation,
+  stopProgressAnimation,
+  waitProgressComplete
+} = useLoadingProgress()
 const isFullscreen = ref(false)
 let resizeObserver = null
 
@@ -61,12 +57,12 @@ const buildUrl = (url) => {
 
 const startRenderEngine = async () => {
   isLoading.value = true
-  loadingProgress.value = 0
+  startProgressAnimation()
   let parsedData = null
 
   // 锁定当前初始化的引擎实例并改写全局共享指针
   // 在之后每一次异步操作（await）返回后，将通过比对二者来拦截已被废弃的旧渲染任务流
-  // 以防防范快速连续切换导致的渲染冲突或已销毁实例下的 null 指针报错
+  // 以防范快速连续切换导致的渲染冲突或已销毁实例下的 null 指针报错
   const engine = new ShaderGraphEngine()
   shaderGraphEngine = engine
 
@@ -98,16 +94,27 @@ const startRenderEngine = async () => {
       particleCount,
       selectedGeometry,
       customModelUrl,
-      mode
+      mode,
+      onProgress: (xhr) => {
+        if (shaderGraphEngine !== engine) return
+        if (xhr.total > 0) {
+          targetProgress.value = Math.min(60, Math.floor((xhr.loaded / xhr.total) * 60))
+        }
+      }
     })
     if (shaderGraphEngine !== engine) return
 
-    loadingProgress.value = 50
+    targetProgress.value = 60
 
-    const texturesMap = await loadTexturesMap(assets.customTextures)
+    const texturesMap = await loadTexturesMap(assets.customTextures, (loaded, total) => {
+      if (shaderGraphEngine !== engine) return
+      if (total > 0) {
+        targetProgress.value = Math.min(90, Math.floor(60 + (loaded / total) * 30))
+      }
+    })
     if (shaderGraphEngine !== engine) return
 
-    loadingProgress.value = 80
+    targetProgress.value = 90
 
     const graphs = parsedData?.graphs
     if (graphs) {
@@ -118,22 +125,25 @@ const startRenderEngine = async () => {
         engine.compileSimulation(graphs.simulation.nodes, graphs.simulation.edges, texturesMap)
       }
     }
-    loadingProgress.value = 100
+
+    targetProgress.value = 100
+
     if (shaderGraphEngine === engine && !props.visible) {
       engine.stopLoop()
     }
+
+    await waitProgressComplete(100, () => shaderGraphEngine !== engine)
+
   } catch (err) {
     if (shaderGraphEngine === engine) {
       console.error("ShaderGraphEngine 运行错误:", err)
-    }
-  } finally {
-    if (shaderGraphEngine === engine) {
       isLoading.value = false
+      stopProgressAnimation()
     }
   }
 }
 
-const loadTexturesMap = async (texturesMeta) => {
+const loadTexturesMap = async (texturesMeta, onProgress = null) => {
   const texturesMap = {}
 
   // 先尝试获取 store 中已有的纹理（上传页面）
@@ -147,18 +157,26 @@ const loadTexturesMap = async (texturesMeta) => {
 
   // 再尝试用 shaderGraphJson.assets.customTextures 中的纹理 url 进行网络加载（模型详情页面）
   if (texturesMeta && texturesMeta.length > 0) {
+    const total = texturesMeta.length
+    let loaded = 0
+
     const promises = texturesMeta.map(async (texMeta) => {
-      if (texturesMap[texMeta.id]) return
-
-      const texUrl = texMeta.path
-      if (!texUrl) return
-
-      const resolvedUrl = buildUrl(texUrl)
       try {
+        if (texturesMap[texMeta.id]) return
+
+        const texUrl = texMeta.path
+        if (!texUrl) return
+
+        const resolvedUrl = buildUrl(texUrl)
         const texture = await loadThreeTexture(resolvedUrl)
         texturesMap[texMeta.id] = texture
       } catch (err) {
-        console.error("加载自定义纹理失败:", resolvedUrl, err)
+        console.error("加载自定义纹理失败:", texMeta.path, err)
+      } finally {
+        loaded++
+        if (onProgress) {
+          onProgress(loaded, total)
+        }
       }
     })
     await Promise.all(promises)
@@ -168,6 +186,7 @@ const loadTexturesMap = async (texturesMeta) => {
 }
 
 const cleanResources = () => {
+  stopProgressAnimation()
   if (shaderGraphEngine) {
     shaderGraphEngine.destroy()
     shaderGraphEngine = null
@@ -213,9 +232,9 @@ const handleFullscreenChange = () => {
 const handleKeyDown = (e) => {
   const activeEl = document.activeElement
   if (
-    activeEl && 
-    (activeEl.tagName === 'INPUT' || 
-     activeEl.tagName === 'TEXTAREA' || 
+    activeEl &&
+    (activeEl.tagName === 'INPUT' ||
+     activeEl.tagName === 'TEXTAREA' ||
      activeEl.isContentEditable)
   ) {
     return

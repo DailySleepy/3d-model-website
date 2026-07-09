@@ -2,7 +2,7 @@
   <div class="w-full h-full relative overflow-visible">
     <VueFlow
       v-model:nodes="store.currentNodes"
-      v-model:edges="store.currentEdges"
+      :edges="renderedEdges"
       :nodeTypes="nodeTypes"
       :isValidConnection="isValidConnection"
       :panOnDrag="[2]"
@@ -17,24 +17,56 @@
       @edgesChange="onEdgeChange"
       @edgeDoubleClick="onEdgeDoubleClick"
       @nodeDragStart="onNodeDragStart"
+      @nodeDrag="onNodeDrag"
+      @nodeDragStop="onNodeDragStop"
       class="vue-flow-dark"
     >
       <Background patternColor="#2c2c2e" gap="20" />
       <Controls />
+
+      <!-- 拖拽中只有一个端点的临时连线 -->
+      <template #connection-line="{ sourceNode, sourceHandle, sourceX, sourceY, targetX, targetY }">
+        <path
+          :d="`M ${sourceX} ${sourceY} C ${(sourceX + targetX) / 2} ${sourceY}, ${(sourceX + targetX) / 2} ${targetY}, ${targetX} ${targetY}`"
+          fill="none"
+          :style="{
+            stroke: getSocketColor(sourceNode, sourceHandle?.id, sourceHandle?.type === 'target'),
+            strokeWidth: '2.5',
+            strokeDasharray: '4 4'
+          }"
+        />
+      </template>
     </VueFlow>
 
-    <NodeSearchMenu
-      v-if="searchMenu.visible"
-      :searchMenu="searchMenu"
-      @spawnNode="spawnNode"
-      @close="closeSearchMenu"
-    />
+    <Transition name="fade-scale">
+      <NodeSearchMenu
+        v-if="searchMenu.visible"
+        :searchMenu="searchMenu"
+        @spawnNode="spawnNode"
+        @close="closeSearchMenu"
+      />
+    </Transition>
+
+    <!-- SVG 渐变色定义 -->
+    <svg class="absolute w-0 h-0 pointer-events-none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 0; height: 0;">
+      <defs>
+        <linearGradient
+          v-for="grad in activeGradients"
+          :key="grad.id"
+          :id="grad.id"
+          x1="0%" y1="0%" x2="100%" y2="0%"
+        >
+          <stop offset="0%" :stop-color="grad.from" />
+          <stop offset="100%" :stop-color="grad.to" />
+        </linearGradient>
+      </defs>
+    </svg>
   </div>
 </template>
 
 <script setup>
 import { ref, nextTick, watch, markRaw, inject, provide, computed } from 'vue'
-import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { VueFlow, useVueFlow, applyChanges } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
@@ -43,7 +75,9 @@ import '@vue-flow/core/dist/theme-default.css'
 import { nodeRegistry } from '@/rendering/nodeRegistry.js'
 import { useGraphShortCuts } from '../composables/useGraphShortcuts.js'
 import { useNodeSearch } from '../composables/useNodeSearch.js'
+import { useGraphConnectionUX } from '../composables/useGraphConnectionUX.js'
 import { useShaderGraphStore } from '../stores/shaderGraph.js'
+import { getSocketColor, getGradientId } from '../utils/socketHelper.js'
 
 import UniversalNode from './UniversalNode.vue'
 import NodeSearchMenu from './NodeSearchMenu.vue'
@@ -68,16 +102,77 @@ defineExpose({
   }
 })
 
+const {
+  isValidConnection,
+  onNodeDragStart,
+  onNodeDrag,
+  onNodeDragStop
+} = useGraphConnectionUX()
+
+const renderedEdges = computed(() => {
+  return store.currentEdges.map(edge => {
+    const sourceNode = store.nodesLUT.get(edge.source)
+    const targetNode = store.nodesLUT.get(edge.target)
+
+    const fromColor = getSocketColor(sourceNode, edge.sourceHandle, false)
+    const toColor = getSocketColor(targetNode, edge.targetHandle, true)
+
+    const gradId = getGradientId(fromColor, toColor, store.activeTab)
+    const baseStyle = edge.style ? { ...edge.style } : {}
+
+    return {
+      ...edge,
+      style: {
+        ...baseStyle,
+        stroke: `url(#${gradId})`
+      }
+    }
+  })
+})
+
+const activeGradients = computed(() => {
+  const grads = new Map()
+  store.currentEdges.forEach(edge => {
+    const sourceNode = store.nodesLUT.get(edge.source)
+    const targetNode = store.nodesLUT.get(edge.target)
+
+    const fromColor = getSocketColor(sourceNode, edge.sourceHandle, false)
+    const toColor = getSocketColor(targetNode, edge.targetHandle, true)
+
+    const gradId = getGradientId(fromColor, toColor, store.activeTab)
+    if (!grads.has(gradId)) {
+      grads.set(gradId, {
+        id: gradId,
+        from: fromColor,
+        to: toColor
+      })
+    }
+  })
+  return Array.from(grads.values())
+})
+
 const onEdgeChange = async (changes) => {
+  // 在应用变更之前判定是否全为临时边操作
+  const isAllTempChange = changes.every(c => {
+    if (c.type === 'remove') {
+      const edge = store.currentEdges.find(e => e.id === c.id)
+      return edge?.isTemp === true
+    }
+    if (c.type === 'add') {
+      return c.item?.isTemp === true
+    }
+    return true
+  })
+
+  store.currentEdges = applyChanges(changes, store.currentEdges)
+
+  if (isAllTempChange) return
+
   const hadGraphChanged = changes.some(c => c.type === 'remove' || c.type === 'add')
   if (hadGraphChanged) {
     await nextTick()
     store.compileActiveTab()
   }
-}
-
-const onNodeDragStart = () => {
-  store.takeSnapshot()
 }
 
 const onConnect = (params) => {
@@ -86,31 +181,6 @@ const onConnect = (params) => {
 
 const onEdgeDoubleClick = ({ edge }) => {
   store.removeEdge(edge.id)
-}
-
-const isValidConnection = (connection) => {
-  if (connection.source === connection.target) return false
-
-  const sourceNode = store.currentNodes.find(n => n.id === connection.source)
-  const targetNode = store.currentNodes.find(n => n.id === connection.target)
-  if (!sourceNode || !targetNode) return false
-
-  const sourceConfig = nodeRegistry[sourceNode.type]
-  const targetConfig = nodeRegistry[targetNode.type]
-  if (!sourceConfig || !targetConfig) return false
-
-  // 判断插槽是输入还是输出
-  const isSourceInput = sourceConfig.inputs?.some(i => i.id === connection.sourceHandle)
-  const isSourceOutput = sourceConfig.outputs?.some(o => o.id === connection.sourceHandle)
-  const isTargetInput = targetConfig.inputs?.some(i => i.id === connection.targetHandle)
-  const isTargetOutput = targetConfig.outputs?.some(o => o.id === connection.targetHandle)
-
-  // 必须一个是输出端口，一个是输入端口
-  const isValidDirection = (isSourceOutput && isTargetInput) || (isSourceInput && isTargetOutput)
-  if (!isValidDirection) return false
-
-  // TODO: 判断连线 from 的类型是否能隐式转换为 to (vec -> float)
-  return true
 }
 
 const { searchMenu, openSearchMenu, closeSearchMenu, spawnNode } = useNodeSearch()
@@ -151,8 +221,8 @@ watch(() => store.activeTab, async (newTab, oldTab) => {
 
 /* 激活选中的连线路径 */
 .vue-flow__edge.selected .vue-flow__edge-path {
-  stroke: #818cf8;
-  stroke-width: 2.5;
+  stroke: #818cf8 !important;
+  stroke-width: 2.5 !important;
 }
 
 /* 连线路径过渡平滑度优化 */
@@ -163,8 +233,8 @@ watch(() => store.activeTab, async (newTab, oldTab) => {
 
 /* 悬浮连线高亮 */
 .vue-flow__edge:hover .vue-flow__edge-path {
-  stroke: #6366f1;
-  stroke-width: 2.5;
+  stroke: #6366f1 !important;
+  stroke-width: 2.5 !important;
 }
 
 /* 框选多选框 */
@@ -178,5 +248,41 @@ watch(() => store.activeTab, async (newTab, oldTab) => {
 /* 隐藏松开鼠标完成多选后的外层大蓝色遮罩框 */
 .vue-flow__nodesselection {
   display: none !important;
+}
+
+/* 剪刀模式样式 */
+.is-cutting, .is-cutting * {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' style='font-size:18px'><text y='18'>✂️</text></svg>") 4 14, crosshair !important;
+}
+
+/* 剪断连线用的 SVG 覆盖层和线条 */
+.cutting-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 99999;
+}
+.cutting-line {
+  fill: none;
+  stroke: #ef4444;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6));
+}
+
+/* 搜索菜单的渐变淡入缩放动画 */
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: all 0.12s ease-out;
+}
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 </style>
