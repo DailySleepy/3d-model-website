@@ -5,6 +5,11 @@ const api = axios.create({
   timeout: 10000
 })
 
+const llmApiClient = axios.create({
+  baseURL: '/api/llm',
+  timeout: 60000
+})
+
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
   if (token) {
@@ -45,6 +50,14 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+llmApiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 export default api
 
@@ -135,11 +148,28 @@ export const uploadApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
-  uploadModel: (file) => {
-    const form = new FormData()
-    form.append('file', file)
-    return api.post('/api/upload/model', form, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+  // uploadModel: (file) => {
+  //   const form = new FormData()
+  //   form.append('file', file)
+  //   return api.post('/api/upload/model', form, {
+  //     headers: { 'Content-Type': 'multipart/form-data' }
+  //   })
+  // },
+
+  initUpload: (fileMd5, fileName, fileSize, totalChunks) => {
+    return api.post('/api/upload/init', { fileMd5, fileName, fileSize, totalChunks })
+  },
+  uploadChunk: (formData, onProgress, cancelToken) => {
+    return api.post('/api/upload/chunk', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress,
+      cancelToken,
+      timeout: 0
+    })
+  },
+  mergeUpload: (uploadId) => {
+    return api.post('/api/upload/merge', { uploadId }, {
+      timeout: 0
     })
   }
 }
@@ -172,3 +202,12 @@ export const chatApi = {
   getReceived: () => api.get('/api/messages/received'),
   getSent: () => api.get('/api/messages/sent'),
 };
+
+// AI 助手
+export const aiAssistantApi = {
+  chat: (payload) => llmApiClient.post('/api/ai/chat', payload),
+  generateDescription: (modelId, payload) =>
+    llmApiClient.post(`/api/ai/models/${modelId}/generate-description`, payload),
+  indexModel: (modelId, payload) =>
+    llmApiClient.post(`/api/ai/models/${modelId}/index`, payload)
+}

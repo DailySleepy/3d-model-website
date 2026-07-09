@@ -1,9 +1,14 @@
 package com.example.threedmodel.controller;
 
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
+import com.example.threedmodel.dto.UploadInitRequest;
+import com.example.threedmodel.dto.UploadInitResponse;
+import com.example.threedmodel.dto.UploadMergeRequest;
+import com.example.threedmodel.service.FileUploadService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -13,6 +18,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/upload")
 public class UploadController {
+    @Autowired
+    private FileUploadService fileUploadService;
 
     // 从application.yml中注入路径
     @Value("${app.file-root-path}")
@@ -43,6 +50,36 @@ public class UploadController {
     public ResponseEntity<String> uploadModel(@RequestParam("file") MultipartFile file) {
         String url = saveFile(file, "/uploads/models/");
         return ResponseEntity.ok(url);
+    }
+    // ========== 新增：分片上传接口 ==========
+    /**
+     * 1. 初始化上传 / 秒传检查
+     */
+    @PostMapping("/init")
+    public ResponseEntity<UploadInitResponse> initUpload(@RequestBody UploadInitRequest request) {
+        UploadInitResponse response = fileUploadService.initUpload(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 2. 上传分片
+     */
+    @PostMapping("/chunk")
+    public ResponseEntity<UploadInitResponse> uploadChunk(
+            @RequestParam("uploadId") String uploadId,
+            @RequestParam("chunkIndex") Integer chunkIndex,
+            @RequestParam("file") MultipartFile file) {
+        UploadInitResponse response = fileUploadService.uploadChunk(uploadId, chunkIndex, file);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 3. 合并分片
+     */
+    @PostMapping("/merge")
+    public ResponseEntity<String> mergeChunks(@RequestBody UploadMergeRequest request) {
+        String fileId = fileUploadService.mergeChunks(request.getUploadId());
+        return ResponseEntity.ok(fileId);
     }
 
     /**

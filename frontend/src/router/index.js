@@ -12,6 +12,7 @@ import NotificationPage from '@/views/NotificationPage.vue'
 import RankingPage from '@/views/RankingPage.vue'
 import RenderLab from '@/views/RenderLab.vue'
 import ShaderGraph from '@/views/ShaderGraph.vue'
+import AIAssistantPage from '@/views/AIAssistantPage.vue'
 // TODO: 添加其他路由
 
 const routes = [
@@ -26,6 +27,7 @@ const routes = [
   { path: '/upload', component: UploadPage },
   { path: '/notification', component: NotificationPage},
   { path: '/ranking', component: RankingPage},
+  { path: '/ai-assistant', component: AIAssistantPage},
   { path: '/lab', component: RenderLab, meta: { hideTopbar: true }},
   { path: '/shadergraph', component: ShaderGraph, meta: { hideTopbar: true }},
 ]

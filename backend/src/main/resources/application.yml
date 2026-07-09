@@ -9,6 +9,16 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
     #TODO: docker配置时加上生产环境域名和前端IP
 
+  # ==================== 新增：分片上传配置 ====================
+  upload:
+    temp-path: ${FILE_TEMP_PATH:${app.file-root-path}/temp/chunk/} # 分片临时目录
+    storage-path: ${FILE_STORAGE_PATH:${app.file-root-path}/uploads/} # 正式文件目录
+    chunk-size: 5242880 # 5MB 分片大小（固定）
+  #新增：预签名配置
+  presigned:
+    secret: ${PRESIGNED_SECRET:my-presigned-secret-key}  # 签名密钥，建议通过环境变量注入
+    expiry-seconds: ${PRESIGNED_EXPIRY:300}              # 有效期，默认 5 分钟（300秒）
+
 spring:
   datasource:
     url: jdbc:postgresql://${DB_URL:localhost:5432/threed_model_db} #先创建你的数据库 createdb xx_db
@@ -34,6 +44,18 @@ spring:
         - classpath:/resources/
         - classpath:/static/
         - classpath:/public/
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}  # 从环境变量读取，支持空值
+      timeout: 5000ms
+    #后端调试还是建议用下方的写死密码
+    #redis:
+      #host: 127.0.0.1
+      #port: 6379
+      #password: Ab123456
+      #timeout: 5000ms
 
 
 mybatis-plus:

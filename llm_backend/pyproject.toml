@@ -1,0 +1,17 @@
+﻿[project]
+name = "llm-backend"
+version = "0.1.0"
+description = "3D 模型分享平台的 FastAPI RAG 服务"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "fastapi>=0.139.0",
+    "httpx>=0.28.1",
+    "openai>=2.44.0",
+    "pgvector>=0.4.2",
+    "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0.51",
+    "uvicorn[standard]>=0.50.0",
+]

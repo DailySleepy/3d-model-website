@@ -14,4 +14,5 @@ public class ModelCreateDTO {
     private String[] previewUrls;
     private String shaderGraphJson;
     private Long authorId;
+    // private Long fileInfoId;   // 新增：关联 file_info 表的主键
 }
