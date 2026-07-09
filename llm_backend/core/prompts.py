@@ -22,6 +22,15 @@ ANSWER_SYSTEM_PROMPT = (
 )
 
 
+QUERY_PARSE_SYSTEM_PROMPT = (
+    "你是 3D 模型资源检索查询解析器。"
+    "你的任务是把用户自然语言拆成可用于站内资产检索的短词和结构化条件。"
+    "只提取用户明确表达或强烈暗示的资产特征，不要补充用户没有说的内容。"
+    "不要把模型、资源、素材、作品、有没有、想要、推荐这类泛词放入 keywords 或 must_match。"
+    "输出必须是合法 JSON 对象，不要包含 Markdown。"
+)
+
+
 def build_description_prompt(model: ModelMetadata) -> str:
     """构造上传模型描述生成提示词。"""
 
@@ -63,4 +72,37 @@ def build_answer_user_prompt(question: str, context: str) -> str:
         f"用户问题：\n{question}\n\n"
         f"站内检索资料：\n{context}\n\n"
         "请用中文回答，优先推荐最相关模型，并简要说明推荐理由。"
+    )
+
+
+def build_query_parse_prompt(question: str) -> str:
+    """构造用户查询解析提示词。"""
+
+    return json.dumps(
+        {
+            "用户问题": question,
+            "输出格式": {
+                "keywords": ["用于精确匹配的核心短词，例如原神、黄发、二次元、女孩"],
+                "subject": ["主体对象，例如女孩、女性角色、草莓、跑车、桥"],
+                "category": ["资源类别，例如角色、道具、场景、建筑、载具、食物"],
+                "style": ["风格，例如二次元、低多边形、写实、NPR、卡通"],
+                "features": ["视觉特征，例如双马尾、机械臂、披风、黄色头发"],
+                "color": ["颜色，例如黄色、红色、蓝色"],
+                "material": ["材质，例如金属、木质、玻璃"],
+                "use_cases": ["用途场景，例如游戏道具、场景装饰、教学演示"],
+                "source_ip": ["IP、作品或品牌来源，例如原神、宝可梦"],
+                "must_match": ["用户强约束，必须优先满足的短词"],
+                "optional": ["弱约束或可选短词"],
+                "search_text": "把核心检索意图重写成一句简洁中文",
+            },
+            "要求": [
+                "所有数组元素都必须是短词，不要写长句",
+                "同义词可以适度规范化，例如黄色头发可输出黄发和黄色头发",
+                "如果用户说的是颜色+身体部位，例如黄色头发，应放入 color 和 features",
+                "如果用户提到 IP 或作品名，例如原神，应放入 source_ip 和 keywords",
+                "must_match 只放用户明确要求的关键条件",
+                "不要输出模型、资源、素材、作品、想要、有没有、推荐这类泛词",
+            ],
+        },
+        ensure_ascii=False,
     )

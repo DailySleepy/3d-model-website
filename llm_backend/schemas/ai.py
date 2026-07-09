@@ -36,6 +36,23 @@ class GeneratedDescription(BaseModel):
     search_text: str
 
 
+class QueryIntent(BaseModel):
+    """AI 助手问题解析结果，用于把自然语言拆成可检索条件。"""
+
+    keywords: list[str] = Field(default_factory=list)
+    subject: list[str] = Field(default_factory=list)
+    category: list[str] = Field(default_factory=list)
+    style: list[str] = Field(default_factory=list)
+    features: list[str] = Field(default_factory=list)
+    color: list[str] = Field(default_factory=list)
+    material: list[str] = Field(default_factory=list)
+    use_cases: list[str] = Field(default_factory=list)
+    source_ip: list[str] = Field(default_factory=list)
+    must_match: list[str] = Field(default_factory=list)
+    optional: list[str] = Field(default_factory=list)
+    search_text: str = ""
+
+
 class ModelIndexRequest(BaseModel):
     model: ModelMetadata | None = None
     ai_description: GeneratedDescription | None = None

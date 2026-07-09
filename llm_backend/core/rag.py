@@ -13,6 +13,7 @@ from schemas.ai import (
     GeneratedDescription,
     ModelMetadata,
     ModelReference,
+    QueryIntent,
 )
 
 
@@ -98,16 +99,29 @@ class RagService:
                 references=[],
             )
 
-        query_embedding = await self.embedding_client.embed_text(question)
-        rows = await self.repository.search_similar(
+        requested_top_k = top_k or self.settings.rag_top_k
+        query_intent = await self._parse_query_intent_safely(question)
+        retrieval_query = self._build_retrieval_query(question, query_intent)
+        search_terms = self._build_search_terms(query_intent)
+        search_limit = max(requested_top_k * 3, requested_top_k)
+
+        query_embedding = await self.embedding_client.embed_text(retrieval_query)
+        vector_rows = await self.repository.search_similar(
             query_embedding=query_embedding,
-            top_k=top_k or self.settings.rag_top_k,
+            top_k=search_limit,
             category=filters.category if filters else None,
             tags=filters.tags if filters else None,
         )
+        term_documents = await self.repository.search_terms(
+            terms=search_terms,
+            top_k=search_limit,
+            category=filters.category if filters else None,
+            tags=filters.tags if filters else None,
+        )
+        rows = self._merge_vector_and_term_rows(vector_rows, term_documents, search_terms)
         matched_rows = self._filter_rows_by_score(rows)
 
-        references = self._dedupe_references(matched_rows)
+        references = self._dedupe_references(matched_rows)[:requested_top_k]
         if not references:
             return ChatResponse(
                 answer="这个问题没有匹配到足够相关的站内模型资源，因此我不能返回模型推荐。你可以换成模型类型、风格、用途或场景相关的问题再试。",
@@ -198,6 +212,95 @@ class RagService:
     def _distance_to_score(self, distance: float) -> float:
         return max(0.0, min(1.0, 1.0 - float(distance)))
 
+    async def _parse_query_intent_safely(self, question: str) -> QueryIntent:
+        try:
+            return await self.llm_client.parse_query_intent(question)
+        except Exception as exc:
+            logger.warning("查询意图解析失败，改用原始问题检索：%s", exc)
+            return QueryIntent(search_text=question)
+
+    def _build_retrieval_query(self, question: str, intent: QueryIntent) -> str:
+        parts = [
+            question,
+            intent.search_text,
+            " ".join(self._build_search_terms(intent)),
+        ]
+        return "\n".join([part for part in parts if part.strip()])
+
+    def _build_search_terms(self, intent: QueryIntent) -> list[str]:
+        terms = [
+            *intent.keywords,
+            *intent.subject,
+            *intent.category,
+            *intent.style,
+            *intent.features,
+            *intent.color,
+            *intent.material,
+            *intent.use_cases,
+            *intent.source_ip,
+            *intent.must_match,
+            *intent.optional,
+        ]
+        return list(dict.fromkeys([term.strip() for term in terms if self._is_specific_term(term)]))
+
+    def _is_specific_term(self, term: str) -> bool:
+        normalized = term.strip().lower()
+        if not normalized:
+            return False
+        generic_terms = {
+            "模型",
+            "资源",
+            "素材",
+            "作品",
+            "资产",
+            "3d",
+            "三维",
+            "推荐",
+            "找",
+            "想要",
+            "有没有",
+        }
+        return normalized not in generic_terms
+
+    def _merge_vector_and_term_rows(self, vector_rows, term_documents, search_terms: list[str]) -> list:
+        rows_by_id: OrderedDict[int, tuple] = OrderedDict()
+
+        for document, distance in vector_rows:
+            rows_by_id[document.id] = (document, distance)
+
+        for document in term_documents:
+            term_score = self._term_match_score(document, search_terms)
+            term_distance = 1.0 - term_score
+            if document.id in rows_by_id:
+                existing_document, existing_distance = rows_by_id[document.id]
+                rows_by_id[document.id] = (existing_document, min(existing_distance, term_distance))
+            else:
+                rows_by_id[document.id] = (document, term_distance)
+
+        return sorted(rows_by_id.values(), key=lambda item: item[1])
+
+    def _term_match_score(self, document, search_terms: list[str]) -> float:
+        if not search_terms:
+            return 0.0
+
+        metadata = document.doc_metadata or {}
+        haystack = " ".join(
+            [
+                document.chunk_text or "",
+                str(metadata.get("title") or ""),
+                str(metadata.get("category") or ""),
+                " ".join(str(item) for item in metadata.get("tags") or []),
+                str(metadata.get("generated_tags") or ""),
+                str(metadata.get("description") or ""),
+                str(metadata.get("search_text") or ""),
+            ]
+        ).lower()
+        matched_count = sum(1 for term in search_terms if term.lower() in haystack)
+        if matched_count == 0:
+            return 0.0
+        ratio = matched_count / len(search_terms)
+        return min(0.9, 0.45 + ratio * 0.45)
+
     def _flatten_generated_tags(self, generated_tags: dict) -> list[str]:
         values: list[str] = []
         for tag_group in generated_tags.values():
@@ -242,7 +345,6 @@ class RagService:
             "贴图",
             "低模",
             "高模",
-            "作品"
         )
         asset_type_keywords = (
             "场景",
