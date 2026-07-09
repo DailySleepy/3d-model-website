@@ -208,13 +208,10 @@ export const swapNodesOutputs = (store, nodeIdA, nodeIdB) => {
     }
     return e
   })
-  
+
   store.compileActiveTab()
 }
 
-/**
- * 计算点到线段的距离平方（避免开方，提升计算速度）
- */
 const getSquaredDistancePointToSegment = (px, py, x1, y1, x2, y2) => {
   const dx = x2 - x1
   const dy = y2 - y1
@@ -271,7 +268,7 @@ export const performCut = (store, cutPoints) => {
 
     // 细粒度相交采样判定
     const totalLength = edgePath.getTotalLength()
-    const samples = Math.max(15, Math.min(60, Math.floor(totalLength / 15)))
+    const samples = Math.max(2, Math.floor(totalLength / 12))
     const ctm = edgePath.getScreenCTM()
     if (!ctm) return
 

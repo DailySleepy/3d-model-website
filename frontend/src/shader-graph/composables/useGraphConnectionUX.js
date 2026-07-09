@@ -148,7 +148,7 @@ export function useGraphConnectionUX() {
       const originalStyle = edge.style ? { ...edge.style } : null
 
       const linePoints = []
-      const samples = 12
+      const samples = Math.max(2, Math.min(20, Math.floor(length / 90)))
       for (let i = 0; i <= samples; i++) {
         const distOnPath = (length * i) / samples
         const pt = edgePath.getPointAtLength(distOnPath)
