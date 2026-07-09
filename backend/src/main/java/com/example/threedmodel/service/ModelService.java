@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.threedmodel.dto.ModelCreateDTO;
 import com.example.threedmodel.entity.Model;
 import com.example.threedmodel.event.ModelPublishEvent;
+//import com.example.threedmodel.mapper.ModelMainFileMapper;
 import com.example.threedmodel.mapper.ModelMapper;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -17,6 +18,10 @@ import java.util.List;
 public class ModelService extends ServiceImpl<ModelMapper, Model> {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+
+//    @Autowired
+//    private ModelMainFileMapper modelMainFileMapper;  // 新增
+
 
     public Long publishModel(ModelCreateDTO dto) {
 
@@ -40,6 +45,15 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
         model.setCreatedAt(LocalDateTime.now());
 
         this.save(model);
+// ⭐ 如果 DTO 中有 fileInfoId，则创建 model_main_file 关联
+//        Long fileInfoId = dto.getFileInfoId();
+//        if (fileInfoId != null) {
+//            ModelMainFile relation = new ModelMainFile();
+//            relation.setModelId(model.getId());
+//            relation.setFileInfoId(fileInfoId);
+//            relation.setCreateAt(LocalDateTime.now());
+//            modelMainFileMapper.insert(relation);
+//        }
         // 发布模型后，发布事件
         ModelPublishEvent event = new ModelPublishEvent();
         event.setAuthorId(authorId);
