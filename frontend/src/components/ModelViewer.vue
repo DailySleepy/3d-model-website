@@ -140,10 +140,6 @@ const startRenderEngine = async () => {
       isLoading.value = false
       stopProgressAnimation()
     }
-  } finally {
-    if (shaderGraphEngine !== engine) {
-      stopProgressAnimation()
-    }
   }
 }
 
