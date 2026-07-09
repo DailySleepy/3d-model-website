@@ -2,7 +2,7 @@
   <div class="w-full h-full relative overflow-visible">
     <VueFlow
       v-model:nodes="store.currentNodes"
-      v-model:edges="store.currentEdges"
+      :edges="renderedEdges"
       :nodeTypes="nodeTypes"
       :isValidConnection="isValidConnection"
       :panOnDrag="[2]"
@@ -23,6 +23,19 @@
     >
       <Background patternColor="#2c2c2e" gap="20" />
       <Controls />
+
+      <!-- 拖拽中只有一个端点的临时连线 -->
+      <template #connection-line="{ sourceNode, sourceHandle, sourceX, sourceY, targetX, targetY }">
+        <path
+          :d="`M ${sourceX} ${sourceY} C ${(sourceX + targetX) / 2} ${sourceY}, ${(sourceX + targetX) / 2} ${targetY}, ${targetX} ${targetY}`"
+          fill="none"
+          :style="{
+            stroke: getSocketColor(sourceNode, sourceHandle?.id, sourceHandle?.type === 'target'),
+            strokeWidth: '2.5',
+            strokeDasharray: '4 4'
+          }"
+        />
+      </template>
     </VueFlow>
 
     <Transition name="fade-scale">
@@ -33,12 +46,27 @@
         @close="closeSearchMenu"
       />
     </Transition>
+
+    <!-- SVG 渐变色定义 -->
+    <svg class="absolute w-0 h-0 pointer-events-none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 0; height: 0;">
+      <defs>
+        <linearGradient
+          v-for="grad in activeGradients"
+          :key="grad.id"
+          :id="grad.id"
+          x1="0%" y1="0%" x2="100%" y2="0%"
+        >
+          <stop offset="0%" :stop-color="grad.from" />
+          <stop offset="100%" :stop-color="grad.to" />
+        </linearGradient>
+      </defs>
+    </svg>
   </div>
 </template>
 
 <script setup>
 import { ref, nextTick, watch, markRaw, inject, provide, computed } from 'vue'
-import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { VueFlow, useVueFlow, applyChanges } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
@@ -49,6 +77,7 @@ import { useGraphShortCuts } from '../composables/useGraphShortcuts.js'
 import { useNodeSearch } from '../composables/useNodeSearch.js'
 import { useGraphConnectionUX } from '../composables/useGraphConnectionUX.js'
 import { useShaderGraphStore } from '../stores/shaderGraph.js'
+import { getSocketColor, getGradientId } from '../utils/socketHelper.js'
 
 import UniversalNode from './UniversalNode.vue'
 import NodeSearchMenu from './NodeSearchMenu.vue'
@@ -80,8 +109,50 @@ const {
   onNodeDragStop
 } = useGraphConnectionUX()
 
+const renderedEdges = computed(() => {
+  return store.currentEdges.map(edge => {
+    const sourceNode = store.nodesLUT.get(edge.source)
+    const targetNode = store.nodesLUT.get(edge.target)
+
+    const fromColor = getSocketColor(sourceNode, edge.sourceHandle, false)
+    const toColor = getSocketColor(targetNode, edge.targetHandle, true)
+
+    const gradId = getGradientId(fromColor, toColor, store.activeTab)
+    const baseStyle = edge.style ? { ...edge.style } : {}
+
+    return {
+      ...edge,
+      style: {
+        ...baseStyle,
+        stroke: `url(#${gradId})`
+      }
+    }
+  })
+})
+
+const activeGradients = computed(() => {
+  const grads = new Map()
+  store.currentEdges.forEach(edge => {
+    const sourceNode = store.nodesLUT.get(edge.source)
+    const targetNode = store.nodesLUT.get(edge.target)
+
+    const fromColor = getSocketColor(sourceNode, edge.sourceHandle, false)
+    const toColor = getSocketColor(targetNode, edge.targetHandle, true)
+
+    const gradId = getGradientId(fromColor, toColor, store.activeTab)
+    if (!grads.has(gradId)) {
+      grads.set(gradId, {
+        id: gradId,
+        from: fromColor,
+        to: toColor
+      })
+    }
+  })
+  return Array.from(grads.values())
+})
+
 const onEdgeChange = async (changes) => {
-  // 如果所有变化都是针对临时边的添加或移除，则不触发编译
+  // 在应用变更之前判定是否全为临时边操作
   const isAllTempChange = changes.every(c => {
     if (c.type === 'remove') {
       const edge = store.currentEdges.find(e => e.id === c.id)
@@ -92,6 +163,9 @@ const onEdgeChange = async (changes) => {
     }
     return true
   })
+
+  store.currentEdges = applyChanges(changes, store.currentEdges)
+
   if (isAllTempChange) return
 
   const hadGraphChanged = changes.some(c => c.type === 'remove' || c.type === 'add')
@@ -147,8 +221,8 @@ watch(() => store.activeTab, async (newTab, oldTab) => {
 
 /* 激活选中的连线路径 */
 .vue-flow__edge.selected .vue-flow__edge-path {
-  stroke: #818cf8;
-  stroke-width: 2.5;
+  stroke: #818cf8 !important;
+  stroke-width: 2.5 !important;
 }
 
 /* 连线路径过渡平滑度优化 */
@@ -159,8 +233,8 @@ watch(() => store.activeTab, async (newTab, oldTab) => {
 
 /* 悬浮连线高亮 */
 .vue-flow__edge:hover .vue-flow__edge-path {
-  stroke: #6366f1;
-  stroke-width: 2.5;
+  stroke: #6366f1 !important;
+  stroke-width: 2.5 !important;
 }
 
 /* 框选多选框 */

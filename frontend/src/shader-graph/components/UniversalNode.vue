@@ -72,7 +72,7 @@
           type="target"
           :id="input.id"
           :position="Position.Left"
-          :style="{ background: getSocketColor(input) }"
+          :style="{ background: getSocketColorUtil({ type: props.type, data: props.data }, input.id, true) }"
           class="!w-2 !h-2 !border-0 !left-[-4px] !top-1/2 !-translate-y-1/2 cursor-crosshair handle-hitbox !z-10"
         />
         <span class="text-zinc-400 font-mono font-semibold text-[14px] h-4 flex items-center select-none">{{ input.id }}</span>
@@ -96,7 +96,7 @@
           type="source"
           :id="output.id"
           :position="Position.Right"
-          :style="{ background: getSocketColor(output) }"
+          :style="{ background: getSocketColorUtil({ type: props.type, data: props.data }, output.id, false) }"
           class="!w-2 !h-2 !border-0 !right-[-4px] !top-1/2 !-translate-y-1/2 cursor-crosshair handle-hitbox !z-10"
         />
       </div>
@@ -107,8 +107,9 @@
 <script setup>
 import { computed, inject, onUnmounted } from 'vue';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
-import { getDimension, nodeRegistry } from '@/rendering/nodeRegistry';
+import { nodeRegistry } from '@/rendering/nodeRegistry';
 import { useShaderGraphStore } from '../stores/shaderGraph.js';
+import { getSocketColor as getSocketColorUtil } from '../utils/socketHelper.js';
 
 import NumberDragInput from './NumberDragInput.vue';
 import StringInput from './StringInput.vue';
@@ -201,24 +202,6 @@ const getPropertyOptions = (property) => {
     })
   }
   return property.options
-}
-
-const getSocketColor = (socket) => {
-  if (socket.isDynamic) {
-    return '#c084fc' // 动态维度: 亮紫色
-  }
-  let type = socket.defaultType || 'float'
-  if (typeof type === 'function') {
-    type = type(props.data.properties || {})
-  }
-  const dim = getDimension(type)
-  const colors = {
-    1: '#2aff82', // 绿
-    2: '#33b5ff', // 蓝
-    3: '#ffea00', // 黄
-    4: '#ff33aa'  // 粉
-  }
-  return colors[dim] || '#a1a1aa' // 错误: 灰
 }
 
 const onPropertyChange = (key, val) => {
