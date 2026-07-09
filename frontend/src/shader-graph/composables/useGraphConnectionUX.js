@@ -98,6 +98,28 @@ export function useGraphConnectionUX() {
     const isValidDirection = (isSourceOutput && isTargetInput) || (isSourceInput && isTargetOutput)
     if (!isValidDirection) return false
 
+    // DFS 成环检测: 如果从 connection.target 可以一路走到 connection.source，说明若允许这次连接就会成环
+    const hasPath = (start, target) => {
+      const visited = new Set()
+      const dfs = (curr) => {
+        if (curr === target) return true
+        if (visited.has(curr)) return false
+        visited.add(curr)
+
+        const neighbors = store.adjacencyList.get(curr) || []
+        for (const neighbor of neighbors) {
+          if (dfs(neighbor)) return true
+        }
+        return false
+      }
+
+      return dfs(start)
+    }
+
+    if (hasPath(connection.target, connection.source)) {
+      return false
+    }
+
     return true
   }
 

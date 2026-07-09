@@ -82,25 +82,36 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   })
 
-  const edgesLUT = computed(() => {
-    const iLut = new Map() // target 方向 (input): targetNodeId_targetHandleId -> Edge
-    const oLut = new Map() // source 方向 (output): sourceNodeId_sourceHandleId -> Edge[]
+  const graphTopology = computed(() => {
+    const iEdgeLut = new Map() // target 方向 (input): targetNodeId_targetHandleId -> Edge
+    const oEdgeLut = new Map() // source 方向 (output): sourceNodeId_sourceHandleId -> Edge[]
+    const adjList = new Map() // 节点级前向有向边邻接表: nodeId -> nodeId[]
 
     currentEdges.value.forEach(edge => {
       if (edge.isTemp) return
 
       // 输入是单一的，可以直接映射到具体 Edge
-      iLut.set(`${edge.target}_${edge.targetHandle}`, edge)
+      iEdgeLut.set(`${edge.target}_${edge.targetHandle}`, edge)
 
       // 输出是分叉多出的，映射到 Edge 数组
       const outKey = `${edge.source}_${edge.sourceHandle}`
-      if (!oLut.has(outKey)) oLut.set(outKey, [])
-      oLut.get(outKey).push(edge)
+      if (!oEdgeLut.has(outKey)) oEdgeLut.set(outKey, [])
+      oEdgeLut.get(outKey).push(edge)
+
+      // 邻接表
+      if (!adjList.has(edge.source)) {
+        adjList.set(edge.source, [])
+      }
+      const targets = adjList.get(edge.source)
+      if (!targets.includes(edge.target)) {
+        targets.push(edge.target)
+      }
     })
-    return { iLut, oLut }
+    return { iEdgeLut, oEdgeLut, adjList }
   })
-  const inputEdgesLUT = computed(() => edgesLUT.value.iLut)
-  const outputEdgesLUT = computed(() => edgesLUT.value.oLut)
+  const inputEdgesLUT = computed(() => graphTopology.value.iEdgeLut)
+  const outputEdgesLUT = computed(() => graphTopology.value.oEdgeLut)
+  const adjacencyList = computed(() => graphTopology.value.adjList)
 
   const nodesLUT = computed(() => {
     const map = new Map()
@@ -867,7 +878,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     publishData, forkData, uploadPageState, isDirty, showFPS, showUserGuide, fps, frameMs, availableAttributes,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,
-    inputEdgesLUT, outputEdgesLUT, nodesLUT,
+    inputEdgesLUT, outputEdgesLUT, nodesLUT, adjacencyList,
     historyState, takeSnapshot, undo, redo, addNode, removeElements, cloneSubgraph, addConnection, removeEdge, applyGraphData,
     updateNodeData, getSelectedSubgraph, fitCanvasView,
     initEngineInstance, destroyEngineInstance, compileActiveTab, compileMaterial, compileSimulation,
