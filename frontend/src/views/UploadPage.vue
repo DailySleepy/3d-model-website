@@ -898,7 +898,8 @@ onBeforeRouteLeave(async (to, from) => {
     // 暂存表单状态，防止跳转回来后数据丢失
     shaderGraphStore.uploadPageState = {
       form: { ...form },
-      uploads: { ...uploads }
+      uploads: { ...uploads },
+      hasDirtyForm: hasUnsavedChanges.value
     }
 
     // 如果已有上传的自定义模型，直接回填进 Store 以便 Graph 画布载入该模型渲染 (优先使用 tempBlobUrl 保证本地瞬时无网络开销载入)

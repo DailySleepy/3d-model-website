@@ -68,7 +68,7 @@ const handleCancelLoading = () => {
 }
 
 const handleBeforeUnload = (e) => {
-  if (store.isDirty) {
+  if (store.isDirty || store.uploadPageState?.hasDirtyForm) {
     e.preventDefault()
     e.returnValue = ''
   }
@@ -126,10 +126,15 @@ onBeforeRouteLeave(async (to, from) => {
     }
   }
   else {
-    if (store.isDirty) {
+    const hasDirtyGraph = store.isDirty
+    const hasDirtyForm = store.uploadPageState?.hasDirtyForm
+
+    if (hasDirtyGraph || hasDirtyForm) {
+      const dirtyParts = [hasDirtyGraph && 'ShaderGraph 画布修改', hasDirtyForm && '上传表单修改'].filter(Boolean)
+      const message = `您有未保存的 ${dirtyParts.join('与')}，离开此页面将<span class="text-red-500 font-semibold" style="color: #ef4444;">丢失</span>这些修改。`
       const confirmed = await confirmDialog({
         title: '放弃未保存的修改？',
-        message: '您有未保存的 ShaderGraph 画布修改，离开此页面将<span class="text-red-500 font-semibold" style="color: #ef4444;">丢失</span>这些修改。',
+        message,
         confirmText: '确定离开',
         cancelText: '取消'
       })
