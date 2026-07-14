@@ -470,7 +470,8 @@ const handleFork = async () => {
 
   shaderGraphStore.forkData = {
     shaderGraphJson: model.value.shaderGraphJson || null,
-    fileUrl: model.value.fileUrl || null
+    fileUrl: model.value.fileUrl || null,
+    fileInfoId: model.value.fileInfoId || null
   }
 
   showToast('正在载入原作资产，已准备派生编辑...', 'success')

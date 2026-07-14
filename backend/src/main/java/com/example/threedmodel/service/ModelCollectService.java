@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.threedmodel.dto.PageResultDTO;
 import com.example.threedmodel.entity.Model;
 import com.example.threedmodel.entity.ModelCollect;
+import com.example.threedmodel.vo.ModelVO;
 import com.example.threedmodel.event.ModelActionEvent;
 import com.example.threedmodel.mapper.ModelCollectMapper;
 import com.example.threedmodel.mapper.ModelMapper;
@@ -26,6 +27,9 @@ public class ModelCollectService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private ModelService modelService;
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
@@ -135,7 +139,7 @@ public class ModelCollectService {
         }
     }
 
-    public PageResultDTO<Model> getCollectedModels(Long userId, int page, int size) {
+    public PageResultDTO<ModelVO> getCollectedModels(Long userId, int page, int size) {
         Page<ModelCollect> collectPage = modelCollectMapper.selectPage(
                 new Page<>(page, size),
                 new QueryWrapper<ModelCollect>().eq("user_id", userId).orderByDesc("created_at")
@@ -146,6 +150,7 @@ public class ModelCollectService {
         Map<Long, Model> modelMap = modelMapper.selectBatchIds(modelIds).stream()
                 .collect(Collectors.toMap(Model::getId, model -> model, (a, b) -> a));
         List<Model> orderedModels = modelIds.stream().map(modelMap::get).filter(Objects::nonNull).collect(Collectors.toList());
-        return new PageResultDTO<>(orderedModels, collectPage.getTotal(), page, size);
+        List<ModelVO> vos = modelService.toVOList(orderedModels);
+        return new PageResultDTO<>(vos, collectPage.getTotal(), page, size);
     }
 }

@@ -7,15 +7,21 @@ import com.example.threedmodel.dto.SearchParamDTO;
 import com.example.threedmodel.entity.Model;
 import com.example.threedmodel.mapper.SearchMapper;
 import com.example.threedmodel.model.entity.User;
+import com.example.threedmodel.service.ModelService;
 import com.example.threedmodel.service.SearchService;
+import com.example.threedmodel.vo.ModelVO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import java.util.List;
 
 @Service
 public class SearchServiceImpl implements SearchService {
 
     @Resource
     private SearchMapper searchMapper;
+
+    @Resource
+    private ModelService modelService;
 
     @Override
     public PageResultDTO<?> search(SearchParamDTO param) {
@@ -37,14 +43,20 @@ public class SearchServiceImpl implements SearchService {
                     param.getQ(),
                     param.getSort()
             );
-            return buildPageResult(modelPage, param);
+            List<ModelVO> vos = modelService.toVOList(modelPage.getRecords());
+            return buildPageResult(modelPage, vos, param);
         }
     }
 
-    // 构建分页结果
+    // 构建分页结果 (直接使用 Page 的原始记录)
     private <T> PageResultDTO<T> buildPageResult(Page<T> page, SearchParamDTO param) {
-        PageResultDTO<T> result = new PageResultDTO<>();
-        result.setItems(page.getRecords());
+        return buildPageResult(page, page.getRecords(), param);
+    }
+
+    // 重载构建分页结果 (支持自定义传入映射后的列表，如 ModelVO)
+    private <T, R> PageResultDTO<R> buildPageResult(Page<T> page, List<R> items, SearchParamDTO param) {
+        PageResultDTO<R> result = new PageResultDTO<>();
+        result.setItems(items);
         result.setTotal(page.getTotal());
         result.setPage(param.getPage());
         result.setPageSize(param.getPageSize());

@@ -3,6 +3,7 @@ package com.example.threedmodel.controller;
 import com.example.threedmodel.dto.PageResultDTO;
 import com.example.threedmodel.dto.UserCommentDTO;
 import com.example.threedmodel.entity.Model;
+import com.example.threedmodel.vo.ModelVO;
 import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.CommentService;
 import com.example.threedmodel.service.ModelCollectService;
@@ -56,7 +57,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}/collections")
-    public ResponseEntity<PageResultDTO<Model>> getUserCollections(
+    public ResponseEntity<PageResultDTO<ModelVO>> getUserCollections(
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "12") int size) {
@@ -67,7 +68,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}/likes")
-    public ResponseEntity<PageResultDTO<Model>> getUserLikes(
+    public ResponseEntity<PageResultDTO<ModelVO>> getUserLikes(
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "12") int size) {

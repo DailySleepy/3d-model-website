@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.threedmodel.constants.ConvertStatus;
 import com.example.threedmodel.dto.UploadInitRequest;
 import com.example.threedmodel.dto.UploadInitResponse;
+import com.example.threedmodel.dto.UploadMergeResponse;
 import com.example.threedmodel.entity.FileChunk;
 import com.example.threedmodel.entity.FileInfo;
 import com.example.threedmodel.mapper.FileChunkMapper;
@@ -76,8 +77,10 @@ public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼�
                 Path path = Paths.get(existing.getStoragePath());
                 if (Files.exists(path)) {
                     response.setIsExist(true);
-                    String url = baseUrl + "/uploads/models/" + path.getFileName().toString();
+                    String relativeDir = getRelativeDir(existing.getFileSuffix());
+                    String url = baseUrl + "/uploads/" + relativeDir + "/" + path.getFileName().toString();
                     response.setFileUrl(url);
+                    response.setFileId(existing.getId().toString());
                     return response;
                 } else {
                     // 物理文件不存在，重置存储路径，允许重新上传和合并
@@ -100,7 +103,8 @@ public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼�
         newFile.setFileSize(request.getFileSize());
         String suffix = request.getFileName().substring(request.getFileName().lastIndexOf(".") + 1);
         newFile.setFileSuffix(suffix);
-        newFile.setConvertStatus(0);
+        boolean isModel = is3dModelFile(suffix);
+        newFile.setConvertStatus(isModel ? ConvertStatus.PENDING : ConvertStatus.SUCCESS);
         newFile.setCreateAt(LocalDateTime.now());
         newFile.setUpdateAt(LocalDateTime.now());
         newFile.setStoragePath("");
@@ -147,7 +151,7 @@ public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼�
      * - 合并完成后清理临时分片文件
      */
     @Override
-    public String mergeChunks(String uploadId) {
+    public UploadMergeResponse mergeChunks(String uploadId) {
         // 1. 查询分片列表（无事务）
         LambdaQueryWrapper<FileChunk> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FileChunk::getFileMd5, uploadId)
@@ -167,9 +171,10 @@ public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼�
 
         // 3. 构建最终存储路径
         String originalName = fileInfo.getOriginalName();
-        String suffix = originalName.substring(originalName.lastIndexOf("."));
-        String finalFileName = uploadId + "_" + System.currentTimeMillis() + suffix;
-        Path finalPath = Paths.get(storagePath, "models", finalFileName);
+        String suffix = originalName.substring(originalName.lastIndexOf(".") + 1);
+        String finalFileName = uploadId + "_" + System.currentTimeMillis() + "." + suffix;
+        String relativeDir = getRelativeDir(suffix);
+        Path finalPath = Paths.get(storagePath, relativeDir, finalFileName);
         try {
             Files.createDirectories(finalPath.getParent());
         } catch (IOException e) {
@@ -202,13 +207,14 @@ public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼�
         // 5. 事务内更新数据库 + 注册事务同步回调
         final String finalStoragePath = finalPath.toString();
         final Long fileId = fileInfo.getId();
+        final boolean isModel = is3dModelFile(suffix);
         transactionTemplate.execute(status -> {
             FileInfo updateInfo = fileInfoMapper.selectById(fileId);
             if (updateInfo == null) {
                 throw new RuntimeException("文件信息不存在");
             }
             updateInfo.setStoragePath(finalStoragePath);
-            updateInfo.setConvertStatus(ConvertStatus.PENDING);
+            updateInfo.setConvertStatus(isModel ? ConvertStatus.PENDING : ConvertStatus.SUCCESS);
             updateInfo.setUpdateAt(LocalDateTime.now());
             fileInfoMapper.updateById(updateInfo);
 
@@ -216,7 +222,9 @@ public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼�
                     new TransactionSynchronization() {
                         @Override
                         public void afterCommit() {
-                            taskProducer.sendConvertTask(fileId);
+                            if (isModel) {
+                                taskProducer.sendConvertTask(fileId);
+                            }
                             cleanChunksAsync(uploadId);
                         }
                     }
@@ -224,8 +232,21 @@ public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼�
             return null;
         });
 
-        String url = baseUrl + "/uploads/models/" + finalFileName;
-        return url;
+        UploadMergeResponse mergeResponse = new UploadMergeResponse();
+        mergeResponse.setFileId(fileId.toString());
+        String url = baseUrl + "/uploads/" + relativeDir + "/" + finalFileName;
+        mergeResponse.setFileUrl(url);
+        return mergeResponse;
+    }
+
+    private boolean is3dModelFile(String suffix) {
+        if (suffix == null) return false;
+        String lower = suffix.toLowerCase().trim();
+        return lower.equals("glb") || lower.equals("gltf") || lower.equals("obj") || lower.equals("fbx") || lower.equals("stl");
+    }
+
+    private String getRelativeDir(String suffix) {
+        return is3dModelFile(suffix) ? "models" : "images";
     }
 
     // ---------- 辅助方法 ----------

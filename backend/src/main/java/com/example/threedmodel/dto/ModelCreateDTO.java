@@ -1,6 +1,7 @@
 package com.example.threedmodel.dto;
 
 import lombok.Data;
+import java.util.List;
 
 
 @Data
@@ -9,10 +10,10 @@ public class ModelCreateDTO {
     private String description;
     private String category;
     private String[] tags;
-    private String fileUrl;
-    private String thumbnailUrl;
-    private String[] previewUrls;
+    private Long fileInfoId;               // 主模型文件引用
+    private Long thumbnailFileInfoId;      // 封面图文件引用
+    private List<Long> previewFileInfoIds; // 预览图文件引用列表
+    private List<Long> shaderTextureFileInfoIds; // 着色器自定义贴图文件引用列表
     private String shaderGraphJson;
     private Long authorId;
-    // private Long fileInfoId;   // 新增：关联 file_info 表的主键
 }

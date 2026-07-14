@@ -3,6 +3,7 @@ package com.example.threedmodel.controller;
 import com.example.threedmodel.dto.UploadInitRequest;
 import com.example.threedmodel.dto.UploadInitResponse;
 import com.example.threedmodel.dto.UploadMergeRequest;
+import com.example.threedmodel.dto.UploadMergeResponse;
 import com.example.threedmodel.service.FileUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -77,9 +78,9 @@ public class UploadController {
      * 3. 合并分片
      */
     @PostMapping("/merge")
-    public ResponseEntity<String> mergeChunks(@RequestBody UploadMergeRequest request) {
-        String fileId = fileUploadService.mergeChunks(request.getUploadId());
-        return ResponseEntity.ok(fileId);
+    public ResponseEntity<UploadMergeResponse> mergeChunks(@RequestBody UploadMergeRequest request) {
+        UploadMergeResponse response = fileUploadService.mergeChunks(request.getUploadId());
+        return ResponseEntity.ok(response);
     }
 
     /**

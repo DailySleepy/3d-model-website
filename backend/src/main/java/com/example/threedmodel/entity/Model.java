@@ -20,18 +20,7 @@ public class Model {
     @TableField(typeHandler = PgArrayTypeHandler.class)
     private String[] tags;
 
-    @TableField("file_url")
-    private String fileUrl;
 
-    @TableField("thumbnail_url")
-    private String thumbnailUrl;
-
-    // 为数组字段指定类型处理器
-    @TableField(value = "preview_urls", typeHandler = PgArrayTypeHandler.class)
-    private String[] previewUrls;
-
-    @TableField("shader_graph_json")
-    private String shaderGraphJson;
 
     @TableField("author_id")
     private Long authorId;

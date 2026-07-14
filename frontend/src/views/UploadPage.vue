@@ -473,8 +473,8 @@ const form = reactive({
 })
 
 const uploads = reactive({
-  model: { tempBlobUrl: '', url: '', filename: '' },
-  thumbnail: { url: '', filename: '' },
+  model: { tempBlobUrl: '', url: '', id: '', filename: '' },
+  thumbnail: { url: '', id: '', filename: '' },
   previews: []
 })
 
@@ -572,8 +572,9 @@ const capturePreviewAsThumbnail = async () => {
     const blob = dataURItoBlob(dataUrl)
     const file = new File([blob], 'preview_capture.png', { type: 'image/png' })
 
-    const { data } = await uploadApi.uploadThumbnail(file)
-    uploads.thumbnail = { url: data, path: data, filename: file.name }
+    const uploader = new LargeFileUploader({ file })
+    const result = await uploader.start()
+    uploads.thumbnail = { url: result.fileUrl, id: result.fileId, filename: file.name }
     setAlert('thumbnail', 'success', '已上传')
     toastRef.value?.show('截图成功捕获并上传为封面！', 'success')
   } catch (error) {
@@ -603,17 +604,15 @@ const capturePreviewAsPreviewImg = async () => {
     const blob = dataURItoBlob(dataUrl)
     const file = new File([blob], `preview_capture_${uploads.previews.length + 1}.png`, { type: 'image/png' })
 
-    const { data } = await uploadApi.uploadPreviews([file])
-    const urls = Array.isArray(data) ? data : data?.urls || []
-
-    if (urls.length > 0) {
-      uploads.previews.push({
-        url: urls[0],
-        filename: file.name
-      })
-      setAlert('previews', 'success', '已上传')
-      toastRef.value?.show('截图已成功追加到预览图列表！', 'success')
-    }
+    const uploader = new LargeFileUploader({ file })
+    const result = await uploader.start()
+    uploads.previews.push({
+      url: result.fileUrl,
+      id: result.fileId,
+      filename: file.name
+    })
+    setAlert('previews', 'success', '已上传')
+    toastRef.value?.show('截图已成功追加到预览图列表！', 'success')
   } catch (error) {
     setAlert('previews', 'error', '上传失败')
     toastRef.value?.show('预览图截图上传失败：' + (error.message || ''), 'error')
@@ -701,7 +700,7 @@ const resetForm = () => {
   modelUploadProgress.value = 0
   modelUploadStatusText.value = ''
 
-  uploads.thumbnail = { url: '', filename: '' }
+  uploads.thumbnail = { url: '', id: '', filename: '' }
   uploads.previews = []
 
   Object.keys(uploadAlerts).forEach((key) => resetAlert(key))
@@ -721,6 +720,7 @@ const cleanupModelUrl = () => {
   }
   uploads.model.tempBlobUrl = ''
   uploads.model.url = ''
+  uploads.model.id = ''
   uploads.model.filename = ''
 }
 
@@ -734,8 +734,9 @@ const handleResumeModelUpload = async () => {
   if (activeModelUploader && (modelUploadStatus.value === 'paused' || modelUploadStatus.value === 'error')) {
     uploading.model = true
     try {
-      const fileUrl = await activeModelUploader.start()
-      uploads.model.url = fileUrl
+      const result = await activeModelUploader.start()
+      uploads.model.url = result.fileUrl
+      uploads.model.id = result.fileId
       setAlert('model', 'success', '已上传')
       toastRef.value?.show('模型文件恢复并上传成功', 'success')
     } catch (error) {
@@ -801,9 +802,10 @@ const uploadAndPreviewModelFile = async (file, isAutoUpload = false) => {
   })
 
   try {
-    const fileUrl = await activeModelUploader.start()
+    const result = await activeModelUploader.start()
     // 仅更新 url，以保持预览中的本地 tempBlobUrl 稳定不闪烁
-    uploads.model.url = fileUrl
+    uploads.model.url = result.fileUrl
+    uploads.model.id = result.fileId
     setAlert('model', 'success', '已上传')
     toastRef.value?.show(
       isAutoUpload ? '关联的 3D 模型已成功自动上传' : '模型文件上传成功',
@@ -841,14 +843,20 @@ const handleGraphCustomModel = async (pData) => {
       uploads.model.tempBlobUrl = modelPath
       return
     }
-    const filename = modelPath.substring(modelPath.lastIndexOf('/') + 1) || 'model.glb'
-    uploads.model = { tempBlobUrl: '', url: modelPath, filename }
+    // 否则地址来自后端已存储文件
+    const filename = 'associated_model.glb'
+    uploads.model = {
+      tempBlobUrl: '',
+      url: modelPath,
+      id: pData.customModelFileInfoId || uploads.model.id || '',
+      filename
+    }
+    if (uploads.model.id) {
+      setAlert('model', 'success', '已复用原作模型')
+    }
   }
   else {
-    if (uploads.model.tempBlobUrl && uploads.model.tempBlobUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(uploads.model.tempBlobUrl)
-    }
-    uploads.model = { tempBlobUrl: '', url: '', filename: '' }
+    uploads.model = { tempBlobUrl: '', url: '', id: '', filename: '' }
     resetAlert('model')
   }
 }
@@ -869,8 +877,9 @@ const handleThumbnailUpload = async (event) => {
   uploading.thumbnail = true
   resetAlert('thumbnail')
   try {
-    const { data } = await uploadApi.uploadThumbnail(file)
-    uploads.thumbnail = { url: data, filename: file.name }
+    const uploader = new LargeFileUploader({ file })
+    const result = await uploader.start()
+    uploads.thumbnail = { url: result.fileUrl, id: result.fileId, filename: file.name }
     setAlert('thumbnail', 'success', '已上传')
     toastRef.value?.show('封面上传成功', 'success')
   } catch (error) {
@@ -886,15 +895,22 @@ const handlePreviewUpload = async (event) => {
   const files = Array.from(event.target.files || [])
   event.target.value = ''
   if (!files.length) return
+  if (uploads.previews.length + files.length > 6) {
+    toastRef.value?.show('最多只能上传 6 张预览图', 'warning')
+    return
+  }
   uploading.previews = true
   resetAlert('previews')
   try {
-    const { data } = await uploadApi.uploadPreviews(files)
-    const urls = Array.isArray(data) ? data : data?.urls || []
-    uploads.previews = urls.map((url, index) => ({
-      url,
-      filename: files[index]?.name || `预览图 ${index + 1}`
-    }))
+    for (const file of files) {
+      const uploader = new LargeFileUploader({ file })
+      const result = await uploader.start()
+      uploads.previews.push({
+        url: result.fileUrl,
+        id: result.fileId,
+        filename: file.name
+      })
+    }
     setAlert('previews', 'success', '已上传')
     toastRef.value?.show('预览图上传成功', 'success')
   } catch (error) {
@@ -973,6 +989,7 @@ const handleSubmit = async () => {
   uploading.submit = true
   try {
     let finalShaderGraphJson = ''
+    let shaderTextureFileInfoIds = []
 
     if (shaderGraphStore.publishData?.shaderGraphJson) {
       const pData = shaderGraphStore.publishData
@@ -983,11 +1000,13 @@ const handleSubmit = async () => {
         for (const tex of pData.customTextures) {
           if (tex.file) {
             try {
-              const { data: serverUrl } = await uploadApi.uploadThumbnail(tex.file)
+              const uploader = new LargeFileUploader({ file: tex.file })
+              const result = await uploader.start()
               customTexturesMeta.push({
                 id: tex.id,
                 name: tex.name,
-                path: serverUrl
+                path: result.fileUrl,
+                fileInfoId: result.fileId
               })
             } catch (err) {
               console.error(`贴图 ${tex.name} 上传失败`, err)
@@ -997,7 +1016,8 @@ const handleSubmit = async () => {
             customTexturesMeta.push({
               id: tex.id,
               name: tex.name,
-              path: tex.url
+              path: tex.url,
+              fileInfoId: tex.fileInfoId || null
             })
           }
         }
@@ -1006,13 +1026,15 @@ const handleSubmit = async () => {
       const assets = originalJson.assets || {}
       if (customTexturesMeta.length > 0) {
         assets.customTextures = customTexturesMeta
+        shaderTextureFileInfoIds = customTexturesMeta.map(t => t.fileInfoId).filter(Boolean)
       }
       const finalModelPath = uploads.model.url
       if (finalModelPath) {
         originalJson.projectSettings.selectedGeometry = 'custom'
         assets.customModel = {
           name: uploads.model.filename || 'model.glb',
-          path: finalModelPath
+          path: finalModelPath,
+          fileInfoId: uploads.model.id || null
         }
       }
       if (Object.keys(assets).length > 0) {
@@ -1027,9 +1049,10 @@ const handleSubmit = async () => {
       description: form.description.trim(),
       category: form.category,
       tags: [...form.tags],
-      fileUrl: uploads.model.url || '',
-      thumbnailUrl: uploads.thumbnail.url,
-      previewUrls: previewUrls.value,
+      fileInfoId: uploads.model.id || null,
+      thumbnailFileInfoId: uploads.thumbnail.id || null,
+      previewFileInfoIds: uploads.previews.map(p => p.id).filter(Boolean),
+      shaderTextureFileInfoIds: shaderTextureFileInfoIds,
       shaderGraphJson: finalShaderGraphJson || null,
       authorId: authStore.userId,
       format: 'GLB (.glb)'
@@ -1083,6 +1106,8 @@ onBeforeRouteLeave(async (to, from) => {
       }
     }
 
+    cleanupModelUrl()
+
     shaderGraphStore.uploadPageState = null
     shaderGraphStore.publishData = null
     shaderGraphStore.clearGraphState()
@@ -1117,13 +1142,6 @@ onUnmounted(() => {
     activeModelUploader.destroy()
     activeModelUploader = null
   }
-
-  if (uploads.model.tempBlobUrl && uploads.model.tempBlobUrl.startsWith('blob:')) {
-    URL.revokeObjectURL(uploads.model.tempBlobUrl)
-  }
-  // ModelViewer 中 watch 了 modelUrl 和 publishData.shaderGraphJson, 需要同时置空以免错误触发引擎更新
-  uploads.model.tempBlobUrl = ''
-  uploads.model.url = ''
 })
 </script>
 

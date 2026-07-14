@@ -8,5 +8,6 @@ public class UploadInitResponse {
     private String uploadId;          // 使用MD5作为标识
     private Boolean isExist;          // true表示秒传
     private String fileUrl;           // 秒传时直接返回已有文件的访问URL
+    private String fileId;            // 秒传时直接返回已有文件的ID
     private List<Integer> uploadedChunks; // 已上传的分片索引
 }

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.threedmodel.dto.*;
 import com.example.threedmodel.entity.Notification;
 import com.example.threedmodel.entity.Model;
+import com.example.threedmodel.vo.ModelVO;
 import com.example.threedmodel.entity.Comment; // ===== 新增：用于查询评论 =====
 import com.example.threedmodel.mapper.NotificationMapper;
 import com.example.threedmodel.model.entity.User;
@@ -124,10 +125,11 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
             if (n.getModelId() != null) {
                 Model m = modelService.getById(n.getModelId());
                 if (m != null) {
+                    ModelVO vo = modelService.toVO(m);
                     ModelBriefDTO mb = new ModelBriefDTO();
-                    mb.setId(m.getId());
-                    mb.setTitle(m.getTitle());
-                    mb.setCoverUrl(m.getThumbnailUrl());
+                    mb.setId(vo.getId());
+                    mb.setTitle(vo.getTitle());
+                    mb.setCoverUrl(vo.getThumbnailUrl());
                     dto.setModel(mb);
                 }
             }

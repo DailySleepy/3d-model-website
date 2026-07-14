@@ -211,7 +211,7 @@ export class LargeFileUploader {
     if (data.isExist) {
       this.#changeStatus('success', '上传成功 (重复文件秒传)')
       this.onProgress(100)
-      this.resolvePromise(data.fileUrl)
+      this.resolvePromise({ fileId: data.fileId, fileUrl: data.fileUrl })
       return
     }
 

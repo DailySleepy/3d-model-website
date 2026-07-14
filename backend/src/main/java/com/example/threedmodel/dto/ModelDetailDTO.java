@@ -6,6 +6,7 @@ import lombok.Data;
 public class ModelDetailDTO {
     private Long id;
     private Long authorId;
+    private Long fileInfoId;
     private String title;
     private String description;
     private String category;

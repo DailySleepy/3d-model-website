@@ -9,10 +9,12 @@ import com.example.threedmodel.dto.PageResultDTO;
 import com.example.threedmodel.dto.UserCommentDTO;
 import com.example.threedmodel.entity.Comment;
 import com.example.threedmodel.entity.Model;
+import com.example.threedmodel.vo.ModelVO;
 import com.example.threedmodel.event.ModelCommentEvent;
 import com.example.threedmodel.mapper.CommentMapper;
 import com.example.threedmodel.mapper.ModelMapper;
 import com.example.threedmodel.service.CommentService;
+import com.example.threedmodel.service.ModelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     private final CommentMapper commentMapper;
     private final ModelMapper modelMapper;
+    private final ModelService modelService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -168,22 +171,24 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             return new PageResultDTO<>(List.of(), commentPage.getTotal(), page, size);
         }
 
-        Set<Long> modelIds = comments.stream()
-                .map(Comment::getModelId)
-                .collect(Collectors.toSet());
-        Map<Long, Model> modelMap = modelMapper.selectBatchIds(modelIds).stream()
-                .collect(Collectors.toMap(Model::getId, model -> model));
+        Set<Long> modelIds = comments.stream().map(Comment::getModelId).collect(Collectors.toSet());
+        if (modelIds.isEmpty()) return new PageResultDTO<>(List.of(), commentPage.getTotal(), page, size);
+        List<Model> models = modelMapper.selectBatchIds(modelIds);
+        List<ModelVO> vos = modelService.toVOList(models);
+        Map<Long, ModelVO> modelMap = vos.stream()
+                .collect(Collectors.toMap(ModelVO::getId, vo -> vo));
 
         List<UserCommentDTO> items = comments.stream()
                 .map(comment -> {
-                    Model model = modelMap.get(comment.getModelId());
                     UserCommentDTO dto = new UserCommentDTO();
                     dto.setId(comment.getId());
-                    dto.setModelId(comment.getModelId());
-                    dto.setModelTitle(model != null ? model.getTitle() : null);
-                    dto.setModelThumbnailUrl(model != null ? model.getThumbnailUrl() : null);
                     dto.setContent(comment.getContent());
                     dto.setCreatedAt(comment.getCreatedAt());
+                    dto.setModelId(comment.getModelId());
+
+                    ModelVO model = modelMap.get(comment.getModelId());
+                    dto.setModelTitle(model != null ? model.getTitle() : null);
+                    dto.setModelThumbnailUrl(model != null ? model.getThumbnailUrl() : null);
                     return dto;
                 })
                 .collect(Collectors.toList());

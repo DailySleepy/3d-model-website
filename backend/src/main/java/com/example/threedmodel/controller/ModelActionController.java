@@ -2,11 +2,10 @@ package com.example.threedmodel.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.threedmodel.dto.ModelDetailDTO;
-import com.example.threedmodel.entity.Model;
 import com.example.threedmodel.model.entity.User;
-import com.example.threedmodel.mapper.ModelMapper;
 import com.example.threedmodel.service.ModelCollectService;
 import com.example.threedmodel.service.ModelLikeService;
+import com.example.threedmodel.service.ModelService;
 import com.example.threedmodel.service.UserService;
 import com.example.threedmodel.utils.JwtUtil;
 
@@ -26,7 +25,7 @@ public class ModelActionController {
     private ModelCollectService modelCollectService;
 
     @Autowired
-    private ModelMapper modelMapper;
+    private ModelService modelService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -64,32 +63,12 @@ public class ModelActionController {
             @PathVariable Long id,
             HttpServletRequest request
     ) {
-        Model model = modelMapper.selectById(id);
-        if (model == null) {
+        ModelDetailDTO dto = modelService.getModelDetail(id);
+        if (dto == null) {
             return ResponseEntity.badRequest().body("模型不存在");
         }
 
         Long userId = getUserIdFromRequest(request);
-        // if (userId == null) {
-        //     return ResponseEntity.badRequest().body("用户未登录或 Token 无效");
-        // }
-        // 查看模型不要权限
-
-        ModelDetailDTO dto = new ModelDetailDTO();
-        dto.setId(model.getId());   
-        dto.setAuthorId(model.getAuthorId());
-        dto.setTitle(model.getTitle());
-        dto.setDescription(model.getDescription());
-        dto.setCategory(model.getCategory());
-        dto.setTags(model.getTags());
-        dto.setPreviewUrls(model.getPreviewUrls());
-        dto.setFileUrl(model.getFileUrl());
-        dto.setThumbnailUrl(model.getThumbnailUrl());
-        dto.setShaderGraphJson(model.getShaderGraphJson());
-
-        dto.setLikeCount(model.getLikeCount() == null ? 0 : model.getLikeCount());
-        dto.setCollectCount(model.getCollectCount() == null ? 0 : model.getCollectCount());
-
         dto.setLikedByUser(userId != null && modelLikeService.isLiked(id, userId));
         dto.setCollectedByUser(userId != null && modelCollectService.isCollected(id, userId));
 

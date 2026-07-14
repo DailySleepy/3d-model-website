@@ -31,6 +31,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
   const publishData = ref(null)
   const forkData = ref(null)
+  const customModelFileInfoId = ref(null)
   const uploadPageState = ref(null)
 
   const matNodes = ref([createNode('mat-output', { x: 750, y: 300 })])
@@ -445,11 +446,11 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     }
   }
 
-  const loadAndAddTexture = async ({ url, name, file = null, explicitId = null, shouldCompile = true, onError = null }) => {
+  const loadAndAddTexture = async ({ url, name, file = null, explicitId = null, shouldCompile = true, onError = null, fileInfoId = null }) => {
     const id = explicitId || 'tex_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
     try {
       const texture = await loadThreeTexture(url)
-      const newTex = { id, name, file, url, texture }
+      const newTex = { id, name, file, url, texture, fileInfoId }
       customTextures.value.push(newTex)
       isDirty.value = true
       if (shouldCompile) {
@@ -479,8 +480,8 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     return addCustomTextureFromFile(file, id, shouldCompile)
   }
 
-  const addCustomTextureFromUrl = (url, name, explicitId = null, shouldCompile = true) => {
-    return loadAndAddTexture({ url, name, explicitId, shouldCompile })
+  const addCustomTextureFromUrl = (url, name, explicitId = null, shouldCompile = true, fileInfoId = null) => {
+    return loadAndAddTexture({ url, name, explicitId, shouldCompile, fileInfoId })
   }
 
   const compileActiveTab = () => {
@@ -687,7 +688,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
 
     const currentForkData = forkData.value
     forkData.value = null
-    const { shaderGraphJson, fileUrl } = currentForkData
+    const { shaderGraphJson, fileUrl, fileInfoId } = currentForkData
 
     let parsedData = null
     if (shaderGraphJson) {
@@ -698,6 +699,8 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
         throw new Error("解析节点图 JSON 失败，数据已损坏")
       }
     }
+
+    customModelFileInfoId.value = fileInfoId || parsedData?.assets?.customModel?.fileInfoId || null
 
     const handleModelProgress = (xhr) => {
       if (loadId !== currentLoadId) return
@@ -739,7 +742,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
             const texUrl = texMeta.path
             if (texUrl) {
               const resolvedUrl = buildUrl(texUrl)
-              await addCustomTextureFromUrl(resolvedUrl, texMeta.name, texMeta.id, false)
+              await addCustomTextureFromUrl(resolvedUrl, texMeta.name, texMeta.id, false, texMeta.fileInfoId)
             }
           } catch (err) {
             console.error("加载 fork 贴图失败:", texMeta, err)
@@ -824,6 +827,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
       shaderGraphJson: exportData,
       customModelFile: selectedGeometry.value === 'custom' ? customModelFile.value : null,
       customModelUrl: selectedGeometry.value === 'custom' ? customModelUrl.value : null,
+      customModelFileInfoId: selectedGeometry.value === 'custom' ? customModelFileInfoId.value : null,
       customTextures: usedCustomTextures
     }
     return true
@@ -845,6 +849,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
     customModelUrl.value = null
     customModelFile.value = null
     customTextures.value = []
+    customModelFileInfoId.value = null
     forkData.value = null
     selectedGeometry.value = 'sphere'
     enableSimulation.value = false
@@ -874,7 +879,7 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
   }
 
   return {
-    activeTab, isMat, enableSimulation, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures,
+    activeTab, isMat, enableSimulation, particleCount, selectedGeometry, customModelUrl, customModelFile, customTextures, customModelFileInfoId,
     publishData, forkData, uploadPageState, isDirty, showFPS, showUserGuide, fps, frameMs, availableAttributes,
     graphCanvasRef, graphCanvasDOM, renderingContainer, toastRef,
     matNodes, matEdges, simNodes, simEdges, currentNodes, currentEdges,

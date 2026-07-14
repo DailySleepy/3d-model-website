@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.threedmodel.dto.ModelCreateDTO;
 import com.example.threedmodel.entity.FileInfo;
 import com.example.threedmodel.entity.Model;
+import com.example.threedmodel.vo.ModelVO;
 import com.example.threedmodel.mapper.FileInfoMapper;
 import com.example.threedmodel.model.entity.User;
 import com.example.threedmodel.service.ModelService;
@@ -85,14 +86,14 @@ public class ModelController {
     ) {
         // 1. 如果指定了 authorId，直接查询该作者的模型
         if (authorId != null) {
-            List<Model> models = modelService.getModelsByAuthor(authorId);
+            List<ModelVO> models = modelService.getModelsByAuthor(authorId);
             return ResponseEntity.ok(models);
         }
 
         // 2. 如果没指定 authorId，尝试获取当前登录用户的模型
         Long userId = getUserId(request);
         if (userId != null) {
-            List<Model> models = modelService.getModelsByAuthor(userId);
+            List<ModelVO> models = modelService.getModelsByAuthor(userId);
             return ResponseEntity.ok(models);
         }
 
