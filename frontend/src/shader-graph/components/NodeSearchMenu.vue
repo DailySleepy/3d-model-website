@@ -3,6 +3,7 @@
     ref="menuRef"
     class="absolute bg-zinc-900/95 border border-zinc-800 rounded-xl p-2 w-56 z-50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md"
     :style="{ left: `${searchMenu.x}px`, top: `${searchMenu.y}px` }"
+    @mousedown="handleMenuMouseDown"
     @click.stop
   >
     <input
@@ -13,6 +14,7 @@
       @keydown.enter.prevent="confirmSelect"
       @keydown.up.prevent="moveActive(-1)"
       @keydown.down.prevent="moveActive(1)"
+      @blur="handleInputBlur"
       placeholder="搜索节点..."
       class="w-full bg-zinc-950 border border-zinc-800 text-white rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
     >
@@ -38,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { pinyin } from 'pinyin-pro'
 import { nodeRegistry } from '@/rendering/nodeRegistry';
 
@@ -59,10 +61,25 @@ const activeSearchIndex = ref(0)
 
 const menuRef = ref(null)
 
-const handleOutsideClick = (e) => {
-  if (menuRef.value && !menuRef.value.contains(e.target)) {
-    emit('close')
+let isMouseDownInsideMenu = false
+
+const handleMenuMouseDown = () => {
+  isMouseDownInsideMenu = true
+  setTimeout(() => {
+    isMouseDownInsideMenu = false
+  }, 0)
+}
+
+const handleInputBlur = (e) => {
+  if (isMouseDownInsideMenu || (menuRef.value && e.relatedTarget && menuRef.value.contains(e.relatedTarget))) {
+    nextTick(() => {
+      if (menuRef.value && document.activeElement !== searchInputRef.value) {
+        searchInputRef.value?.focus()
+      }
+    })
+    return
   }
+  emit('close')
 }
 
 const generatePinyinSearchStr = (label) => {
@@ -127,11 +144,6 @@ const confirmSelect = () => {
 onMounted(async () => {
   await nextTick()
   searchInputRef.value?.focus()
-  window.addEventListener('click', handleOutsideClick)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('click', handleOutsideClick)
 })
 
 </script>
