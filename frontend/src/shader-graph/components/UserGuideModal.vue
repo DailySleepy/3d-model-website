@@ -209,11 +209,13 @@
                   </tr>
                   <tr class="hover:bg-zinc-900/20 transition-colors">
                     <td class="py-2"><kbd
+                        class="px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 rounded font-mono text-[11px] text-indigo-400">f
+                        / F</kbd></td>
+                    <td class="py-2">乘法运算 (mul)</td>
+                    <td class="py-2"><kbd
                         class="px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 rounded font-mono text-[11px] text-indigo-400">m
                         / M</kbd></td>
                     <td class="py-2">线性插值 (mix)</td>
-                    <td class="py-2"></td>
-                    <td class="py-2"></td>
                   </tr>
                 </tbody>
               </table>
