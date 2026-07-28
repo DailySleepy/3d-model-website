@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { useShaderGraphStore } from '../stores/shaderGraph.js'
-import { nodeRegistry } from '@/rendering/nodeRegistry'
+import { nodeRegistry, getNodeInputs, getNodeOutputs } from '@/rendering/nodeRegistry'
 
 export function useGraphConnectionUX() {
   const store = useShaderGraphStore()
@@ -89,10 +89,15 @@ export function useGraphConnectionUX() {
     if (!sourceConfig || !targetConfig) return false
 
     // 判断插槽是输入还是输出
-    const isSourceInput = sourceConfig.inputs?.some(i => i.id === connection.sourceHandle)
-    const isSourceOutput = sourceConfig.outputs?.some(o => o.id === connection.sourceHandle)
-    const isTargetInput = targetConfig.inputs?.some(i => i.id === connection.targetHandle)
-    const isTargetOutput = targetConfig.outputs?.some(o => o.id === connection.targetHandle)
+    const sourceInputs = getNodeInputs(sourceConfig, sourceNode.data?.properties)
+    const sourceOutputs = getNodeOutputs(sourceConfig, sourceNode.data?.properties)
+    const targetInputs = getNodeInputs(targetConfig, targetNode.data?.properties)
+    const targetOutputs = getNodeOutputs(targetConfig, targetNode.data?.properties)
+
+    const isSourceInput = sourceInputs.some(i => i.id === connection.sourceHandle)
+    const isSourceOutput = sourceOutputs.some(o => o.id === connection.sourceHandle)
+    const isTargetInput = targetInputs.some(i => i.id === connection.targetHandle)
+    const isTargetOutput = targetOutputs.some(o => o.id === connection.targetHandle)
 
     // 必须一个是输出端口，一个是输入端口
     const isValidDirection = (isSourceOutput && isTargetInput) || (isSourceInput && isTargetOutput)
@@ -268,8 +273,10 @@ export function useGraphConnectionUX() {
 
       // 获取当前可见的空闲输入与输出插槽
       const properties = node.data.properties || {}
-      const emptyInputs = getEmptySlots(nodeConfig.inputs, store.inputEdgesLUT, node.id, properties)
-      const emptyOutputs = getEmptySlots(nodeConfig.outputs, store.outputEdgesLUT, node.id, properties)
+      const inputs = getNodeInputs(nodeConfig, properties)
+      const outputs = getNodeOutputs(nodeConfig, properties)
+      const emptyInputs = getEmptySlots(inputs, store.inputEdgesLUT, node.id, properties)
+      const emptyOutputs = getEmptySlots(outputs, store.outputEdgesLUT, node.id, properties)
 
       if (emptyInputs.length === 0 || emptyOutputs.length === 0) {
         clearTempInsert()

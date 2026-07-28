@@ -5,7 +5,7 @@ import { createNode } from '../utils/nodeFactory';
 import { remapAndRepositionGraph, generateBaseExportData, getUsedTextures } from '../utils/graphIO';
 import { loadThreeTexture } from '@/rendering/utils';
 import { useLoadingProgress } from '@/composables/useLoadingProgress.js';
-import { nodeRegistry } from '@/rendering/nodeRegistry';
+import { nodeRegistry, getNodeInputs } from '@/rendering/nodeRegistry';
 import { getDefaultValueForType } from '@/rendering/registryUtils';
 
 export const useShaderGraphStore = defineStore('shaderGraph', () => {
@@ -343,6 +343,16 @@ export const useShaderGraphStore = defineStore('shaderGraph', () => {
         })
       }
       Object.assign(node.data.properties, newData.properties)
+
+      // 检查并自动清理已被删除插槽的残留 Edges
+      const currentInputs = getNodeInputs(nodeConfig, node.data.properties)
+      const inputIdSet = new Set(currentInputs.map(i => i.id))
+      currentEdges.value = currentEdges.value.filter(e => {
+        if (e.target === nodeId && !inputIdSet.has(e.targetHandle)) {
+          return false
+        }
+        return true
+      })
     }
     if (newData.inputs) Object.assign(node.data.inputs, newData.inputs)
 

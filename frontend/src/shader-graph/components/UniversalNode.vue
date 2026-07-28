@@ -107,7 +107,7 @@
 <script setup>
 import { computed, inject, onUnmounted } from 'vue';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
-import { nodeRegistry } from '@/rendering/nodeRegistry';
+import { nodeRegistry, getNodeInputs, getNodeOutputs } from '@/rendering/nodeRegistry';
 import { useShaderGraphStore } from '../stores/shaderGraph.js';
 import { getSocketColor as getSocketColorUtil } from '../utils/socketHelper.js';
 
@@ -146,24 +146,18 @@ const theme = CATEGORY_THEMES[props.data.category] || CATEGORY_THEMES.MATH
 
 const nodeConfig = nodeRegistry[props.type]
 const propertiesConfig = nodeConfig.properties || {}
-const inputsConfig = computed(() => {
-  const inputs = nodeConfig.inputs || []
-  return inputs.filter(input => {
-    if (typeof input.visible === 'function') {
-      return input.visible(props.data.properties || {})
+
+const getVisibleSockets = (getSocketsFn) => {
+  const sockets = getSocketsFn(nodeConfig, props.data.properties)
+  return sockets.filter(socket => {
+    if (typeof socket.visible === 'function') {
+      return socket.visible(props.data.properties || {})
     }
     return true
   })
-})
-const outputsConfig = computed(() => {
-  const outputs = nodeConfig.outputs || []
-  return outputs.filter(output => {
-    if (typeof output.visible === 'function') {
-      return output.visible(props.data.properties || {})
-    }
-    return true
-  })
-})
+}
+const inputsConfig = computed(() => getVisibleSockets(getNodeInputs))
+const outputsConfig = computed(() => getVisibleSockets(getNodeOutputs))
 
 const hasProperties = Object.keys(propertiesConfig).length > 0
 

@@ -89,11 +89,30 @@ export function getDefaultValueForType(type) {
   return Array.isArray(val) ? [...val] : val
 }
 
+export function getNodeInputs(nodeConfig, nodeProps) {
+  if (!nodeConfig) return []
+  let inputs = nodeConfig.inputs || []
+  if (nodeConfig.getDynamicInputs) {
+    inputs = [...inputs, ...nodeConfig.getDynamicInputs(nodeProps || {})]
+  }
+  return inputs
+}
+
+export function getNodeOutputs(nodeConfig, nodeProps) {
+  if (!nodeConfig) return []
+  let outputs = nodeConfig.outputs || []
+  if (nodeConfig.getDynamicOutputs) {
+    outputs = [...outputs, ...nodeConfig.getDynamicOutputs(nodeProps || {})]
+  }
+  return outputs
+}
+
 export function getSocketDefaultResult(vueNode, socketId, registry) {
   const nodeProps = vueNode.data?.properties || {}
 
   const nodeConfig = registry?.[vueNode.type]
-  const socketConfig = nodeConfig?.inputs?.find((input) => input.id === socketId)
+  const inputs = getNodeInputs(nodeConfig, nodeProps)
+  const socketConfig = inputs.find((input) => input.id === socketId)
 
   if (!socketConfig) {
     console.warn('Unexpected')

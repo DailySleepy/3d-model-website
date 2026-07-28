@@ -1,13 +1,17 @@
-import { getDimension, nodeRegistry } from '@/rendering/nodeRegistry'
+import { getDimension, nodeRegistry, getNodeInputs, getNodeOutputs } from '@/rendering/nodeRegistry'
 
 export const getSocketColor = (node, slotId, isInput) => {
   if (!node) return '#a1a1aa'
   const nodeConfig = nodeRegistry[node.type]
   if (!nodeConfig) return '#a1a1aa'
 
+  const nodeProps = node.data?.properties || {}
+  const inputs = getNodeInputs(nodeConfig, nodeProps)
+  const outputs = getNodeOutputs(nodeConfig, nodeProps)
+
   const socket = isInput
-    ? nodeConfig.inputs?.find(i => i.id === slotId)
-    : nodeConfig.outputs?.find(o => o.id === slotId)
+    ? inputs.find(i => i.id === slotId)
+    : outputs.find(o => o.id === slotId)
 
   if (!socket) return '#a1a1aa'
 

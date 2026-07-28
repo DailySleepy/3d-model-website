@@ -13,7 +13,9 @@ export {
   DEFAULT_NODE_CONSTRUCTORS,
   getDimension,
   getWgslType,
-  getDefaultTexture
+  getDefaultTexture,
+  getNodeInputs,
+  getNodeOutputs
 } from './registryUtils'
 
 export function getSocketDefaultResult(vueNode, socketId) {
@@ -1170,12 +1172,20 @@ export const customNodes = {
     category: 'CUSTOM',
     properties: {
       inputs: [],
-      code: 'return vec3<f32>(0.0)',
+      code: 'return vec3<f32>(0.0);',
       returnType: 'vec3'
     },
     inputs: [],
+    getDynamicInputs(nodeProps) {
+      return (nodeProps?.inputs || []).map(id => ({
+        id,
+        defaultType: 'float',
+        isDynamic: true,
+        hideInput: true
+      }))
+    },
     outputs: [
-      { id: 'out', defaultType: 'vec3' }
+      { id: 'out', defaultType: (nodeProps) => nodeProps?.returnType || 'vec3' }
     ],
     inferType({ nodeProps }) {
       return nodeProps?.returnType || 'vec3'
