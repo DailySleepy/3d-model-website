@@ -230,79 +230,135 @@ const getSquaredDistancePointToSegment = (px, py, x1, y1, x2, y2) => {
   return cdx * cdx + cdy * cdy
 }
 
+const parseBezierPoints = (d) => {
+  if (!d) return null
+  const nums = d.match(/[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?/g)
+  if (!nums || nums.length < 8) return null
+  return {
+    x0: parseFloat(nums[0]), y0: parseFloat(nums[1]),
+    x1: parseFloat(nums[2]), y1: parseFloat(nums[3]),
+    x2: parseFloat(nums[4]), y2: parseFloat(nums[5]),
+    x3: parseFloat(nums[6]), y3: parseFloat(nums[7]),
+  }
+}
+
 export const performCut = (store, cutPoints) => {
-  if (cutPoints.length < 2) return
+  if (!cutPoints || cutPoints.length < 2) return
 
-  // 计算切线点集的包围盒
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-  cutPoints.forEach(p => {
-    if (p.x < minX) minX = p.x
-    if (p.x > maxX) maxX = p.x
-    if (p.y < minY) minY = p.y
-    if (p.y > maxY) maxY = p.y
-  })
-
+  // 1. 计算切线轨迹的屏幕 AABB 包围盒 (外扩 8px 容差)
+  let minCutX = Infinity, maxCutX = -Infinity, minCutY = Infinity, maxCutY = -Infinity
+  for (let i = 0; i < cutPoints.length; i++) {
+    const p = cutPoints[i]
+    if (p.x < minCutX) minCutX = p.x
+    if (p.x > maxCutX) maxCutX = p.x
+    if (p.y < minCutY) minCutY = p.y
+    if (p.y > maxCutY) maxCutY = p.y
+  }
   const pad = 8
-  minX -= pad
-  maxX += pad
-  minY -= pad
-  maxY += pad
+  minCutX -= pad
+  maxCutX += pad
+  minCutY -= pad
+  maxCutY += pad
 
   const edgePaths = document.querySelectorAll('.vue-flow__edge-path')
-  const edgesToRemove = []
+  const edgesToRemove = new Set()
 
   edgePaths.forEach(edgePath => {
     const edgeEl = edgePath.closest('.vue-flow__edge')
     const edgeId = edgeEl ? edgeEl.getAttribute('data-id') : null
-    if (!edgeId) return
+    if (!edgeId || edgeId.includes('temp')) return
 
-    const edge = store.currentEdges.find(e => e.id === edgeId)
-    if (!edge || edge.isTemp) return
+    const ctm = edgePath.getScreenCTM()
+    if (!ctm) return
 
-    // 计算连线的包围盒
-    const rect = edgePath.getBoundingClientRect()
-    // AABB 包围盒初步过滤判定
-    if (rect.right < minX || rect.left > maxX || rect.bottom < minY || rect.top > maxY) {
+    // 2. 利用 Y 单调性与 X 凸包定理确定 AABB, 避免 getBoundingClientRect DOM 回流
+    let rectMinX, rectMaxX, rectMinY, rectMaxY
+    const pts = parseBezierPoints(edgePath.getAttribute('d'))
+
+    if (pts) {
+      // Y 轴单调性: 最值严格由端点 y0 与 y3 决定
+      const localMinY = Math.min(pts.y0, pts.y3)
+      const localMaxY = Math.max(pts.y0, pts.y3)
+      // X 轴凸包性: 最值必落在 4 个控制点的凸包内
+      const localMinX = Math.min(pts.x0, pts.x1, pts.x2, pts.x3)
+      const localMaxX = Math.max(pts.x0, pts.x1, pts.x2, pts.x3)
+
+      const s1X = localMinX * ctm.a + localMinY * ctm.c + ctm.e
+      const s1Y = localMinX * ctm.b + localMinY * ctm.d + ctm.f
+      const s2X = localMaxX * ctm.a + localMaxY * ctm.c + ctm.e
+      const s2Y = localMaxX * ctm.b + localMaxY * ctm.d + ctm.f
+
+      rectMinX = Math.min(s1X, s2X)
+      rectMaxX = Math.max(s1X, s2X)
+      rectMinY = Math.min(s1Y, s2Y)
+      rectMaxY = Math.max(s1Y, s2Y)
+    } else {
+      // 非标准曲线 fallback
+      const r = edgePath.getBoundingClientRect()
+      rectMinX = r.left; rectMaxX = r.right; rectMinY = r.top; rectMaxY = r.bottom
+    }
+
+    // AABB 快速排除
+    if (rectMaxX < minCutX || rectMinX > maxCutX || rectMaxY < minCutY || rectMinY > maxCutY) {
       return
     }
 
-    // 细粒度相交采样判定
+    // 3. 采样判定与 Y 轴单调性 Early-Exit
     const totalLength = edgePath.getTotalLength()
+    if (totalLength === 0) return
+
+    // 每 12px 进行一次采样
     const samples = Math.max(2, Math.floor(totalLength / 12))
-    const ctm = edgePath.getScreenCTM()
-    if (!ctm) return
+
+    // 确定连线在屏幕视口中的 Y 轴单调走向
+    const startPt = edgePath.getPointAtLength(0)
+    const startY = startPt.x * ctm.b + startPt.y * ctm.d + ctm.f
+    const endPt = edgePath.getPointAtLength(totalLength)
+    const endY = endPt.x * ctm.b + endPt.y * ctm.d + ctm.f
+    const isYSortedAscending = startY <= endY
 
     let intersected = false
 
     for (let i = 0; i <= samples; i++) {
-      const distOnPath = (totalLength * i) / samples
-      const pt = edgePath.getPointAtLength(distOnPath)
+      const dist = (totalLength * i) / samples
+      const pt = edgePath.getPointAtLength(dist)
+      const curX = pt.x * ctm.a + pt.y * ctm.c + ctm.e
+      const curY = pt.x * ctm.b + pt.y * ctm.d + ctm.f
 
-      const clientX = pt.x * ctm.a + pt.y * ctm.c + ctm.e
-      const clientY = pt.x * ctm.b + pt.y * ctm.d + ctm.f
+      // 单调性 Early-Exit: 一旦超出切线垂直区间, 后续点不可能相交, 立即终止
+      if (isYSortedAscending) {
+        if (curY > maxCutY) break
+      } else {
+        if (curY < minCutY) break
+      }
 
+      // 距离判定
       for (let j = 0; j < cutPoints.length - 1; j++) {
         const p1 = cutPoints[j]
         const p2 = cutPoints[j + 1]
 
-        const dSq = getSquaredDistancePointToSegment(clientX, clientY, p1.x, p1.y, p2.x, p2.y)
-        if (dSq < 64) {
+        if (getSquaredDistancePointToSegment(curX, curY, p1.x, p1.y, p2.x, p2.y) < 64) {
           intersected = true
           break
         }
       }
+
       if (intersected) break
     }
 
     if (intersected) {
-      edgesToRemove.push(edgeId)
+      edgesToRemove.add(edgeId)
     }
   })
 
-  if (edgesToRemove.length > 0) {
-    store.takeSnapshot()
-    store.currentEdges = store.currentEdges.filter(e => !edgesToRemove.includes(e.id))
-    store.compileActiveTab()
+  if (edgesToRemove.size > 0) {
+    const prevCount = store.currentEdges.length
+    const nextEdges = store.currentEdges.filter(e => !edgesToRemove.has(e.id))
+    if (nextEdges.length !== prevCount) {
+      store.takeSnapshot()
+      store.currentEdges = nextEdges
+      store.compileActiveTab()
+    }
   }
 }
 
