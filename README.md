@@ -23,6 +23,64 @@
 
 ---
 
+## 系统展示与作品画廊
+
+### 1. 核心系统界面
+
+#### 3D 社区模型详情页
+> GLB 模型在线交互渲染、模型信息展示与社区交互。
+
+<img src="docs/assets/模型详情页面.png" width="85%" alt="模型详情页面" />
+
+<br>
+
+#### 可视化着色器编辑器 (Shader Graph)
+> 多模式混合渲染引擎、节点拓扑编辑与实时 3D 渲染视口。
+
+<img src="docs/assets/编辑器页面.png" width="85%" alt="编辑器页面" />
+
+---
+
+### 2. Shader 创作效果与节点拓扑
+
+#### 动态岩浆流体着色器 (Lava Shader)
+> 基于噪声函数与时间驱动构建的动态熔岩流体表面。
+
+<img src="docs/assets/lava.webp" width="680" alt="Lava Shader 效果演示" />
+
+<details>
+<summary><b>点击展开查看 Lava 材质节点拓扑图</b></summary>
+<br>
+
+<img src="docs/assets/lava-graph-material.png" width="680" alt="Lava 材质节点拓扑图" />
+
+</details>
+
+<br>
+
+#### 100×100 粒子阵列水波模拟 (Wave Particle Simulation)
+> 结合 Stokes 水动力学算法，通过 **物理仿真图 (Simulation Graph)** 解算粒子起伏回旋，**材质图 (Material Graph)** 实现三阶水色与斜率迎光高光。
+
+<img src="docs/assets/wave.webp" width="680" alt="Wave Particle Simulation 效果演示" />
+
+<details>
+<summary><b>点击展开查看 Wave 双图协同拓扑结构</b></summary>
+<br>
+
+**1. 粒子物理仿真图 (Simulation Graph)** —— 解算 10000 个球体的网格排布与垂直起伏动力学：
+<br>
+<img src="docs/assets/wave-graph-simulation.png" width="680" alt="Wave 粒子物理仿真图" />
+
+<br><br>
+
+**2. 粒子材质渲染图 (Material Graph)** —— 解算深水、碧青到浪尖的三阶色彩与坡度反光：
+<br>
+<img src="docs/assets/wave-graph-material.png" width="680" alt="Wave 材质渲染图" />
+
+</details>
+
+---
+
 ## 核心特性
 
 - **3D 实时渲染交互**
