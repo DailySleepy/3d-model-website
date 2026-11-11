@@ -74,8 +74,16 @@ public class FileUploadServiceImpl implements FileUploadService { // TODO: 兼�
         if (existing != null) {
             // 只有当储存路径存在且非空，且物理文件确实存在时，说明文件真正合并成功，可以进行秒传
             if (existing.getStoragePath() != null && !existing.getStoragePath().isEmpty()) {
-                Path path = Paths.get(existing.getStoragePath());
-                if (Files.exists(path)) {
+                boolean fileExists = false;
+                Path path = null;
+                try {
+                    path = Paths.get(existing.getStoragePath());
+                    fileExists = Files.exists(path);
+                } catch (Exception ignored) {
+                    // 非法本地路径格式（如历史 URL 数据），视为物理文件不存在
+                }
+
+                if (fileExists && path != null) {
                     response.setIsExist(true);
                     String relativeDir = getRelativeDir(existing.getFileSuffix());
                     String url = baseUrl + "/uploads/" + relativeDir + "/" + path.getFileName().toString();

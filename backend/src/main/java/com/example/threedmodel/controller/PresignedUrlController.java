@@ -74,8 +74,11 @@ public class PresignedUrlController {
             throw new RuntimeException("文件不存在，请提供有效的 fileId 或 modelId");
         }
 
-        String resourcePath = "/uploads/models/" +
-                Paths.get(fileInfo.getStoragePath()).getFileName().toString();
+        String storagePath = fileInfo.getStoragePath();
+        int lastSlash = (storagePath != null) ? Math.max(storagePath.lastIndexOf('/'), storagePath.lastIndexOf('\\')) : -1;
+        String fileName = (lastSlash >= 0) ? storagePath.substring(lastSlash + 1) : (storagePath != null ? storagePath : "");
+
+        String resourcePath = "/uploads/models/" + fileName;
 
         long expiry = Instant.now().getEpochSecond() + expirySeconds;
         String token = presignedUrlUtil.generateToken(resourcePath, expiry);

@@ -235,7 +235,8 @@ public class ModelService extends ServiceImpl<ModelMapper, Model> {
 
     private String buildUrl(String relativeDir, String storagePath) {
         if (storagePath == null || storagePath.isEmpty()) return "";
-        String fileName = Paths.get(storagePath).getFileName().toString();
+        int lastSlash = Math.max(storagePath.lastIndexOf('/'), storagePath.lastIndexOf('\\'));
+        String fileName = (lastSlash >= 0) ? storagePath.substring(lastSlash + 1) : storagePath;
         return baseUrl + "/uploads/" + relativeDir + "/" + fileName;
     }
 }
