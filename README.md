@@ -245,12 +245,23 @@ docker-compose up -d
 
 #### 后端服务配置与启动
 
-1. 登录本地 PostgreSQL 实例，创建数据库：
-   ```sql
-   CREATE DATABASE threed_model_db;
-   ```
-2. 配置环境变量：进入 `backend` 目录，将 `.env.example` 复制并命名为 `.env`，并在其中填入您本地 PostgreSQL 实际的连接信息（密码等）。
-3. 运行后端服务（系统将自动通过 `spring-dotenv` 加载您配置的 `backend/.env`）：
+1. **准备基础中间件（PostgreSQL 与 Redis）**：
+   - **方式一（推荐，全平台一键启动）**：使用项目自带配置仅启动中间件容器（自带 pgvector 扩展及端口映射）：
+     ```bash
+     docker compose up -d postgres redis
+     ```
+   - **方式二（本地原生安装运行）**：
+     - **PostgreSQL**：登录本地实例，创建数据库：
+       ```sql
+       CREATE DATABASE threed_model_db;
+       ```
+     - **Redis**：启动 Redis 服务（默认监听 `6379` 端口）：
+       - **macOS**：`brew services start redis`
+       - **Linux**：`sudo systemctl start redis-server`
+       - **Windows**：官方无原生包，建议执行 `docker run -d --name redis -p 6379:6379 redis:7.0-alpine`
+
+2. **配置环境变量**：进入 `backend` 目录，将 `.env.example` 复制并命名为 `.env`，并在其中填入您本地 PostgreSQL 与 Redis 实际的连接信息（密码等）。
+3. **运行后端服务**（系统将自动通过 `spring-dotenv` 加载您配置的 `backend/.env`）：
    ```bash
    cd backend
    mvn spring-boot:run
